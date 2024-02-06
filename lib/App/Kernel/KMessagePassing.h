@@ -1,7 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
 
 // #include "KTime.h"
 
@@ -38,53 +41,6 @@
 // code no longer attempts to 'wake' the evm thread.  I'm simply relying on checking my work
 // queues frequently.
 
-
-
-
-// // https://docs.zephyrproject.org/latest/kernel/services/data_passing/pipes.html
-// template <typename T, uint16_t SIZE>
-// class KMessagePipe
-// {
-// public:
-//     KMessagePipe()
-//     {
-//         k_pipe_init(&msgPipe_, buf_, sizeof(T) * SIZE);
-//     }
-
-//     ~KMessagePipe()
-//     {
-//         k_pipe_cleanup(&msgPipe_);
-//     }
-
-//     int Put(T &&val, TickType_t timeout = portMAX_DELAY)
-//     {
-//         size_t bytesWritten;
-//         return k_pipe_put(&msgPipe_, &val, sizeof(T), &bytesWritten, sizeof(T), KTime{timeout});
-//     }
-
-//     int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
-//     {
-//         size_t bytesWritten;
-//         return k_pipe_put(&msgPipe_, valList, sizeof(T) * valListLen, &bytesWritten, sizeof(T) * valListLen, KTime{timeout});
-//     }
-
-//     int Get(T &val, TickType_t timeout = portMAX_DELAY)
-//     {
-//         size_t bytesRead;
-//         k_pipe_get(&msgPipe_, &val, sizeof(T), &bytesRead, sizeof(T), KTime{timeout});
-//         return bytesRead;
-//     }
-
-//     void Flush()
-//     {
-//         k_pipe_flush(&msgPipe_);
-//     }
-
-
-// private:
-//     k_pipe msgPipe_;
-//     uint8_t buf_[sizeof(T) * SIZE];
-// };
 
 
 // https://www.freertos.org/a00018.html (API)
@@ -146,39 +102,35 @@ private:
 // https://www.freertos.org/a00113.html
 // https://www.freertos.org/Embedded-RTOS-Binary-Semaphores.html
 // https://www.freertos.org/Real-time-embedded-RTOS-Counting-Semaphores.html
-// class KSemaphore
-// {
-// public:
-//     KSemaphore(uint32_t initialCount = 0,
-//                uint32_t countLimit   = K_SEM_MAX_LIMIT)
-//     {
-//         k_sem_init(&sem_, initialCount, countLimit);
-//     }
+class KSemaphore
+{
+public:
+    KSemaphore(uint32_t initialCount = 0,
+               uint32_t countLimit   = UINT32_MAX)
+    {
+        sem_ = xSemaphoreCreateCounting(countLimit, initialCount);
+    }
 
-//     bool Take(k_timeout_t timeout)
-//     {
-//         int retVal = k_sem_take(&sem_, KTime{timeout});
+    ~KSemaphore()
+    {
+        vSemaphoreDelete(sem_);
+    }
 
-//         return retVal == 0;
-//     }
+    bool Take(TickType_t timeout = portMAX_DELAY)
+    {
+        BaseType_t retVal = xSemaphoreTake(sem_, timeout);
 
-//     void Give()
-//     {
-//         k_sem_give(&sem_);
-//     }
+        return retVal == pdTRUE;
+    }
 
-//     void Reset()
-//     {
-//         k_sem_reset(&sem_);
-//     }
+    void Give()
+    {
+        xSemaphoreGive(sem_);
+    }
 
-//     uint32_t Count()
-//     {
-//         return k_sem_count_get(&sem_);
-//     }
 
-// private:
-//     k_sem sem_;
-// };
+private:
+    SemaphoreHandle_t  sem_;
+};
 
 
