@@ -1,7 +1,7 @@
 # root of library tree known to have compilable sources
 
 # headers in this dir are directly includable (-I)
-# zephyr_include_directories(.)
+target_include_directories(LibPico PUBLIC .)
 
 # compile everything in this directory
 file(GLOB lib_sources *.cpp)
