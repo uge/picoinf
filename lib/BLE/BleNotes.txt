@@ -1,0 +1,161 @@
+Spec for how the fucking zephyr bluetooth gatt structures work.
+
+The struct bt_gatt_attr is used to configure all aspects of the gatt.
+
+The .uuid pointer and .user_data pointer get overloaded to mean different things.
+
+The .uuid pointer is a "base class" pointer, really possibly pointing at:
+- bt_uuid_16
+- bt_uuid_32
+- bt_uuid_128
+
+The real uuid structures are all:
+- uint8_t type
+- uint16_t val / uint32_t val / uint8_t val[16]
+
+The uuid dictates the meaning of the rest of the structure.
+There are well-known UUIDs that have meaning.  Can find them in uuid.h.
+
+The user_data pointer holds data whose meaning depends on the uuid value.
+
+
+
+Primary Service Definition
+--------------------------
+
+struct bt_gatt_attr
+    const struct bt_uuid *uuid
+        BT_UUID_TYPE_16 / BT_UUID_GATT_PRIMARY_VAL
+    read = bt_gatt_attr_read_service
+    write = nullptr
+    void *user_data
+        point to a uuid structure
+        value is the actual service uuid
+    uint16_t handle = 0
+    uint8_t perm = BT_GATT_PERM_READ 
+
+
+
+Characteristic Definition
+-------------------------
+
+Requires 2 structures in a row
+    Optionally followed by a CCC block
+
+// this sets up the definition of the user-supplied data
+struct bt_gatt_attr
+    const struct bt_uuid *uuid
+        BT_UUID_TYPE_16 / BT_UUID_GATT_CHRC_VAL
+    read = bt_gatt_attr_read_chrc
+    write = nullptr
+    void *user_data
+        struct bt_gatt_chr representing the characteristic
+            .uuid of the actual characteristic
+            .value_handle = 0
+            .properties = bitwise-or of user supplied characteristic properties
+    uint16_t handle = 0
+    uint8_t perm = BT_GATT_PERM_READ
+
+// this is the user-supplied data
+struct bt_gatt_attr
+    const struct bt_uuid *uuid
+        uuid of the actual characteristic
+    read = callback for read operations
+    write = callback for write operations
+    void *user_data = actual user data passed to read/write callbacks
+    uint16_t handle = 0
+    uint8_t perm = bitwise-or of user supplied gatt attribute permissions
+
+
+
+/** Characteristic Properties Bit field values */
+BT_GATT_CHRC_READ   (0x02) // Characteristic read property. If set, permits reads of the Characteristic Value.
+BT_GATT_CHRC_NOTIFY (0x10) // Characteristic notify property. If set, permits notifications of a Characteristic Value without acknowledgment.
+BT_GATT_CHRC_WRITE  (0x08) // Characteristic write with response property. If set, permits write of the Characteristic Value with response
+
+/** GATT attribute permission bit field values */
+BT_GATT_PERM_READ  (1) // Attribute read permission
+BT_GATT_PERM_WRITE (2) // Attribute write permission
+
+
+Callback functions look like this:
+I am wondering if the whole "offset" thing is due to chunking due to small packets
+
+// https://docs.zephyrproject.org/apidoc/latest/group__bt__gatt.html#ga4eb3ccdabe11fc510ee8d41c4d2ee0cb
+ssize_t OnReadValueRequested(
+    struct bt_conn *conn,               // the connection
+    const struct bt_gatt_attr *attr,    // jesus, the actual attr block, to get to user_data I guess
+	void *buf,                          // buffer to put data into
+    uint16_t len,                       // how big the buffer is?
+    uint16_t offset)                    // offset of ... something?
+{
+    // do work, come up with data of dataLen bytes
+
+    // I think this just fills out the buffer the right way with the data
+    // that you give it (last two params).
+    // Or maybe you give it the whole data and it just takes the parts
+    // from the right offset
+    return bt_gatt_attr_read(conn, attr, buf, len, offset, data, dataLen);
+}
+
+// https://docs.zephyrproject.org/apidoc/latest/group__bt__gatt.html#ga7c0ac4fb5111ab9af7af347576be8d9b
+ssize_t OnWriteValueRequested(
+    struct bt_conn *conn,               // the connection
+    const struct bt_gatt_attr *attr,    // the attr block, get to user_data
+	const void *buf,                    // the buf to read from
+    uint16_t len,                       // the amount of data
+    uint16_t offset,                    // the offset within your data to put the buf data
+	uint8_t flags)                      // "Flags (BT_GATT_WRITE_FLAG_*)" ??
+{
+    // apply the data somehow
+    // or error out and return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET) or other problem
+
+    return len;
+}
+
+
+
+CCC Definition - Enable notifications
+-------------------------------------
+
+
+struct bt_gatt_attr
+    const struct bt_uuid *uuid
+        BT_UUID_TYPE_16 / BT_UUID_GATT_CCC_VAL
+    read = bt_gatt_attr_read_ccc
+    write = bt_gatt_attr_write_ccc
+    void *user_data
+        _bt_gatt_ccc struct
+            .cfg = {}
+            .cfg_changed = callback for change
+            .cfg_write = nullptr
+            .cfg_match = nullptr
+    uint16_t handle = 0
+    uint8_t perm = bitwise-or of user supplied gatt attribute permissions
+        maybe always BT_GATT_PERM_READ | BT_GATT_PERM_WRITE
+
+
+void OnChangeCCC(
+    const struct bt_gatt_attr *attr,    // attr block, no user data here though?
+    uint16_t value)                     // not sure yet
+{
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

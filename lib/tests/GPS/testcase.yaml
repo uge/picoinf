@@ -1,0 +1,8 @@
+tests:
+  lib.gps:
+    build_only: true
+    platform_allow: qemu_x86
+    integration_platforms:
+      - native_posix
+      - qemu_x86
+    tags: testing
