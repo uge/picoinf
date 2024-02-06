@@ -1,8 +1,9 @@
 #pragma once
 
-#include <zephyr/kernel.h>
+#include "FreeRTOS.h"
+#include "queue.h"
 
-#include "KTime.h"
+// #include "KTime.h"
 
 
 // Thoughts on ISRs and message passing
@@ -40,88 +41,144 @@
 
 
 
-// https://docs.zephyrproject.org/latest/kernel/services/data_passing/pipes.html
+// // https://docs.zephyrproject.org/latest/kernel/services/data_passing/pipes.html
+// template <typename T, uint16_t SIZE>
+// class KMessagePipe
+// {
+// public:
+//     KMessagePipe()
+//     {
+//         k_pipe_init(&msgPipe_, buf_, sizeof(T) * SIZE);
+//     }
+
+//     ~KMessagePipe()
+//     {
+//         k_pipe_cleanup(&msgPipe_);
+//     }
+
+//     int Put(T &&val, TickType_t timeout = portMAX_DELAY)
+//     {
+//         size_t bytesWritten;
+//         return k_pipe_put(&msgPipe_, &val, sizeof(T), &bytesWritten, sizeof(T), KTime{timeout});
+//     }
+
+//     int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
+//     {
+//         size_t bytesWritten;
+//         return k_pipe_put(&msgPipe_, valList, sizeof(T) * valListLen, &bytesWritten, sizeof(T) * valListLen, KTime{timeout});
+//     }
+
+//     int Get(T &val, TickType_t timeout = portMAX_DELAY)
+//     {
+//         size_t bytesRead;
+//         k_pipe_get(&msgPipe_, &val, sizeof(T), &bytesRead, sizeof(T), KTime{timeout});
+//         return bytesRead;
+//     }
+
+//     void Flush()
+//     {
+//         k_pipe_flush(&msgPipe_);
+//     }
+
+
+// private:
+//     k_pipe msgPipe_;
+//     uint8_t buf_[sizeof(T) * SIZE];
+// };
+
+
+// https://www.freertos.org/a00018.html (API)
+// https://www.freertos.org/Embedded-RTOS-Queues.html
 template <typename T, uint16_t SIZE>
 class KMessagePipe
 {
 public:
     KMessagePipe()
     {
-        k_pipe_init(&msgPipe_, buf_, sizeof(T) * SIZE);
+        msgPipe_ = xQueueCreate(SIZE, (UBaseType_t)sizeof(T));
     }
 
     ~KMessagePipe()
     {
-        k_pipe_cleanup(&msgPipe_);
+        vQueueDelete(msgPipe_);
     }
 
-    int Put(T &&val, k_timeout_t timeout = K_FOREVER)
+    int Put(T &&val, TickType_t timeout = portMAX_DELAY)
     {
-        size_t bytesWritten;
-        return k_pipe_put(&msgPipe_, &val, sizeof(T), &bytesWritten, sizeof(T), KTime{timeout});
+        return Put(val, timeout);
     }
 
-    int Put(T *valList, uint16_t valListLen, k_timeout_t timeout = K_FOREVER)
+    int Put(T &val, TickType_t timeout = portMAX_DELAY)
     {
-        size_t bytesWritten;
-        return k_pipe_put(&msgPipe_, valList, sizeof(T) * valListLen, &bytesWritten, sizeof(T) * valListLen, KTime{timeout});
+        return xQueueSendToBack(msgPipe_, (void *)&val, timeout);
     }
 
-    int Get(T &val, k_timeout_t timeout = K_FOREVER)
+    int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
     {
-        size_t bytesRead;
-        k_pipe_get(&msgPipe_, &val, sizeof(T), &bytesRead, sizeof(T), KTime{timeout});
-        return bytesRead;
+        BaseType_t retVal;
+        for (uint32_t i = 0; i < valListLen; ++i)
+        {
+            retVal = Put(valList[i], timeout);
+        }
+
+        return retVal;
+    }
+
+    int Get(T &val, TickType_t timeout = portMAX_DELAY)
+    {
+        BaseType_t retVal = xQueueReceive(msgPipe_, (void *)&val, timeout);
+
+        return retVal == pdTRUE ? sizeof(val) : 0;
     }
 
     void Flush()
     {
-        k_pipe_flush(&msgPipe_);
+        xQueueReset(msgPipe_);
     }
 
 
 private:
-    k_pipe msgPipe_;
-    uint8_t buf_[sizeof(T) * SIZE];
+    QueueHandle_t msgPipe_;
 };
 
 
 
+// https://www.freertos.org/a00113.html
+// https://www.freertos.org/Embedded-RTOS-Binary-Semaphores.html
+// https://www.freertos.org/Real-time-embedded-RTOS-Counting-Semaphores.html
+// class KSemaphore
+// {
+// public:
+//     KSemaphore(uint32_t initialCount = 0,
+//                uint32_t countLimit   = K_SEM_MAX_LIMIT)
+//     {
+//         k_sem_init(&sem_, initialCount, countLimit);
+//     }
 
-// https://docs.zephyrproject.org/3.0.0/reference/kernel/synchronization/semaphores.html
-class KSemaphore
-{
-public:
-    KSemaphore(uint32_t initialCount = 0,
-               uint32_t countLimit   = K_SEM_MAX_LIMIT)
-    {
-        k_sem_init(&sem_, initialCount, countLimit);
-    }
+//     bool Take(k_timeout_t timeout)
+//     {
+//         int retVal = k_sem_take(&sem_, KTime{timeout});
 
-    bool Take(k_timeout_t timeout)
-    {
-        int retVal = k_sem_take(&sem_, KTime{timeout});
+//         return retVal == 0;
+//     }
 
-        return retVal == 0;
-    }
+//     void Give()
+//     {
+//         k_sem_give(&sem_);
+//     }
 
-    void Give()
-    {
-        k_sem_give(&sem_);
-    }
+//     void Reset()
+//     {
+//         k_sem_reset(&sem_);
+//     }
 
-    void Reset()
-    {
-        k_sem_reset(&sem_);
-    }
+//     uint32_t Count()
+//     {
+//         return k_sem_count_get(&sem_);
+//     }
 
-    uint32_t Count()
-    {
-        return k_sem_count_get(&sem_);
-    }
-
-private:
-    k_sem sem_;
-};
+// private:
+//     k_sem sem_;
+// };
 
 

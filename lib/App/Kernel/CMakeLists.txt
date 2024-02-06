@@ -1,8 +1,10 @@
 # leaf of library subtree
 
-zephyr_include_directories(.)
+target_include_directories(LibPico PUBLIC .)
 
-file(GLOB lib_sources *.cpp)
-if (lib_sources)
-  zephyr_library_sources(${lib_sources})
-endif()
+target_sources(LibPico PRIVATE KHooks.cpp)
+
+# file(GLOB lib_sources *.cpp)
+# if (lib_sources)
+#   target_sources(LibPico PRIVATE ${lib_sources})
+# endif()

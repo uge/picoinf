@@ -11,12 +11,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../pico-sdk")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 if (PICO_SDK_VERSION_STRING VERSION_LESS "1.4.0")
   message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.4.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
 endif()
 
+# Pull in FreeRTOS
+set(FRTOS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../FreeRTOS-Kernel")
+include(${FRTOS_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
 
 project(ProjLibPico)
@@ -26,11 +29,19 @@ set(PICO_BOARD pico_w)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+set(LIB_PICO ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(LibPico "")
 
-message("LibPico here: ${CMAKE_CURRENT_SOURCE_DIR}")
-
-set(LIB_PICO ${CMAKE_CURRENT_SOURCE_DIR})
+# Target FreeRTOS
+target_sources(LibPico PRIVATE
+    ${FRTOS_PATH}/tasks.c
+    ${FRTOS_PATH}/queue.c
+)
+target_include_directories(LibPico PRIVATE
+    ${LIB_PICO}
+    ${FRTOS_PATH}/include
+    ${FRTOS}/portable/GCC/ARM_CM0
+)
 
 add_subdirectory(${LIB_PICO}/App)
 # add_subdirectory(Ble)
@@ -44,4 +55,7 @@ add_subdirectory(${LIB_PICO}/App)
 
 target_link_libraries(LibPico
     pico_stdlib
+    FreeRTOS-Kernel
+    FreeRTOS-Kernel-Heap4
+    cmsis_core
 )
