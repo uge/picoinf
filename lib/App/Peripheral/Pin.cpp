@@ -1,3 +1,15 @@
+
+
+
+
+#include "Pin.h"
+
+Pin::PinData Pin::pin__data_[Pin::PIN_COUNT];
+
+
+
+
+#if 0
 #include "Evm.h"
 #include "PAL.h"
 #include "Shell.h"
@@ -27,7 +39,7 @@ void Pin::OnInterrupt(const device * /*port*/,
     Pin *pin = callbackData->pinPtr;
 
     uint64_t timeNow = PAL.Millis();
-    if (timeNow - pin->interruptTimeMs > DEBOUNCE_TIME_MS)
+    if (timeNow - pin->interruptTimeMs_ > DEBOUNCE_TIME_MS)
     {
         // Pass off to evm
         Evm::QueueWork("PIN_EVM_QUEUE", [=](){
@@ -37,7 +49,7 @@ void Pin::OnInterrupt(const device * /*port*/,
             }
         });
 
-        pin->interruptTimeMs = timeNow;
+        pin->interruptTimeMs_ = timeNow;
     }
 }
 
@@ -100,6 +112,4 @@ int PinSetupShell()
 }
 
 
-#include <zephyr/init.h>
-SYS_INIT(PinSetupShell, APPLICATION, 80);
-
+#endif
