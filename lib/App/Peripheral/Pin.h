@@ -31,8 +31,6 @@ public:
     Pin(uint8_t pin, Type type = Type::OUTPUT, uint8_t outputLevel = 0)
     : pin_(pin)
     {
-        // printf("Pin::Pin(%i - instan): %li\n", pin_, this);
-
         if (PinValid(pin_))
         {
             PinData &pd = GetPinData(pin_);
