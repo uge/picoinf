@@ -209,6 +209,17 @@ void Log(uint64_t val)
     LogNL();
 }
 
+void LogNNL(unsigned int val)
+{
+    FormatAndUartSend("%u", val);
+}
+
+void Log(unsigned int val)
+{
+    LogNNL(val);
+    LogNL();
+}
+
 void LogNNL(uint32_t val)
 {
     FormatAndUartSend("%u", val);
@@ -244,6 +255,17 @@ void Log(uint8_t val)
 ////////////////////////////////////////////////////////////////////////////////
 // Signed Ints
 ////////////////////////////////////////////////////////////////////////////////
+
+void LogNNL(int val)
+{
+    FormatAndUartSend("%i", val);
+}
+
+void Log(int val)
+{
+    LogNNL(val);
+    LogNL();
+}
 
 void LogNNL(int32_t val)
 {

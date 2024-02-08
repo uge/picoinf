@@ -54,6 +54,8 @@ extern void LogX(char val, uint8_t count);
 
 extern void LogNNL(uint64_t val);
 extern void Log(uint64_t val);
+extern void LogNNL(unsigned int val);
+extern void Log(unsigned int val);
 extern void LogNNL(uint32_t val);
 extern void Log(uint32_t val);
 extern void LogNNL(uint16_t val);
@@ -66,6 +68,8 @@ extern void Log(uint8_t val);
 // Signed Ints
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void LogNNL(int val);
+extern void Log(int val);
 extern void LogNNL(int32_t val);
 extern void Log(int32_t val);
 extern void LogNNL(int16_t val);
