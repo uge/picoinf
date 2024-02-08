@@ -1,9 +1,11 @@
 #pragma once
 
 #include <stdint.h>
-#include <string>
 
-#include "UART.h"
+#include <array>
+#include <string>
+#include <vector>
+using namespace std;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,8 +54,6 @@ extern void LogX(char val, uint8_t count);
 
 extern void LogNNL(uint64_t val);
 extern void Log(uint64_t val);
-extern void LogNNL(long unsigned val);
-extern void Log(long unsigned val);
 extern void LogNNL(uint32_t val);
 extern void Log(uint32_t val);
 extern void LogNNL(uint16_t val);

@@ -1,14 +1,23 @@
 #include "Log.h"
 
 #include <stdio.h>
-
-#include <zephyr/kernel.h>
+#include <string.h>
 
 #include "PAL.h"
-#include "Shell.h"
-#include "KMessagePassing.h"
-#include "UART.h"
-#include "Utl.h"
+// #include "Shell.h"
+// #include "KMessagePassing.h"
+// #include "UART.h"
+#include "Format.h"
+
+// TODO
+void UartSend(const uint8_t *buf, uint16_t bufLen)
+{
+    for (uint32_t i = 0; i < bufLen; ++i)
+    {
+        printf("%c", buf[i]);
+    }
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,17 +204,6 @@ void LogNNL(uint64_t val)
 }
 
 void Log(uint64_t val)
-{
-    LogNNL(val);
-    LogNL();
-}
-
-void LogNNL(long unsigned val)
-{
-    FormatAndUartSend("%lu", val);
-}
-
-void Log(long unsigned val)
 {
     LogNNL(val);
     LogNL();
@@ -411,7 +409,7 @@ void LogBlob(uint8_t  *buf,
                 
                 for (uint8_t j = 0; j < 8; ++j)
                 {
-                    LogNNL((b & 0x80) ? 1 : 0);
+                    LogNNL((uint8_t)((b & 0x80) ? 1 : 0));
                     
                     b <<= 1;
                 }
@@ -462,6 +460,8 @@ void LogBlob(const vector<uint8_t> &byteList, uint8_t showBin, uint8_t showHex)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO
+#if 0
 int LogInit()
 {
     Timeline::Global().Event("LogInit");
@@ -487,11 +487,7 @@ int LogSetupShell()
 
     return 1;
 }
-
-
-#include <zephyr/init.h>
-SYS_INIT(LogInit, APPLICATION, 11);
-SYS_INIT(LogSetupShell, APPLICATION, 80);
+#endif
 
 
 

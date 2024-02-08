@@ -1,8 +1,8 @@
 # leaf of library subtree
 
-zephyr_include_directories(.)
+target_include_directories(LibPico PUBLIC .)
 
-file(GLOB lib_sources *.cpp)
-if (lib_sources)
-  zephyr_library_sources(${lib_sources})
-endif()
+# file(GLOB lib_sources *.cpp)
+# if (lib_sources)
+#   zephyr_library_sources(${lib_sources})
+# endif()
