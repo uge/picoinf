@@ -51,16 +51,12 @@ public:
         // just copy members, the actual processor gpio state will already be set
         Assign(other);
 
-        // printf("Pin::Pin(%i - copy): %li\n", pin_, this);
-
         IncrRef(pin_);
     }
 
     // copy operator
     Pin& operator=(const Pin& other)
     {
-        // printf("Pin::operator=(%i from %i): %li\n", pin_, other.pin_, this);
-
         // cache current pin for (maybe) destruction
         uint8_t thisPin = pin_;
 
@@ -82,7 +78,6 @@ public:
     {
         if (PinValid(pin_))
         {
-            // printf("Pin::~Pin(%i): %li\n", pin_, this);
             DecrRef(pin_);
         }
     }
@@ -181,39 +176,72 @@ public:
     }
 
 
-    // enum class TriggerType : int
-    // {
-    //     RISING = GPIO_INT_EDGE_RISING,
-    //     FALLING = GPIO_INT_EDGE_FALLING,
-    //     BOTH = GPIO_INT_EDGE_BOTH,
-    // };
+    enum class TriggerType : uint32_t
+    {
+        RISING  = GPIO_IRQ_EDGE_RISE,
+        FALLING = GPIO_IRQ_EDGE_FALL,
+        BOTH    = GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+    };
 
-    // void SetInterruptCallback(function<void()> cbFn, TriggerType triggerType)
-    // {
-    //     cbFn_        = cbFn;
-    //     triggerType_ = triggerType;
-    // }
+    void SetInterruptCallback(function<void()> cbFn, TriggerType triggerType)
+    {
+        PinData &pd = GetPinData(pin_);
 
-    // void EnableInterrupt()
-    // {
-    //     if (PinValid(pin_) && intEnabled_ == false)
-    //     {
-    //         gpio_init_callback(&callbackData_, OnInterrupt, BIT(pin_));
-    //         gpio_add_callback(port_, &callbackData_);
-    //         callbackData_.pinPtr = this;
+        pd.cbFn_        = cbFn;
+        pd.triggerType_ = triggerType;
+    }
 
-    //         gpio_pin_interrupt_configure(port_, pin_, (int)triggerType_);
+    void EnableInterrupt()
+    {
+        PinData &pd = GetPinData(pin_);
 
-    //         intEnabled_ = true;
-    //     }
-    // }
+        if (PinValid(pin_))
+        {
+            // establish (once) the GPIO interrupt callback handler, for this core
+            static bool doneOnce = false;
+            if (!doneOnce)
+            {
+                gpio_set_irq_callback(&InterruptHandler);
+                irq_set_enabled(IO_IRQ_BANK0, true);
 
-    // void DisableInterrupt();
+                doneOnce = true;
+            }
+
+            // enable interrupts on this specific pin
+            gpio_set_irq_enabled(pin_, (uint32_t)pd.triggerType_, true);
+
+            // keep track that this pin has an interrupt enabled
+            pd.intEnabled_ = true;
+        }
+    }
+
+    void DisableInterrupt()
+    {
+        if (PinValid(pin_))
+        {
+            PinData &pd = GetPinData(pin_);
+
+            // disable interrupts on this specific pin.
+            // if the triggerType changed since enable, this won't work
+            // as expected.
+            gpio_set_irq_enabled(pin_, (uint32_t)pd.triggerType_, false);
+
+            pd.intEnabled_ = false;
+        }
+    }
 
 
 private:
 
-    
+    static void InterruptHandler(uint pin, uint32_t eventMask)
+    {
+        PinData &pd = GetPinData(pin);
+
+        if (pd.intEnabled_)
+        {
+            pd.cbFn_();
+        }
+    }
 
     inline static bool PinValid(uint8_t pin)
     {
@@ -238,7 +266,6 @@ private:
         if (PinValid(pin))
         {
             ++pin__data_[pin].count;
-            // printf("Pin(%i) Ref++ = %i\n", pin, pin__data_[pin].count);
         }
     }
 
@@ -247,7 +274,6 @@ private:
         if (PinValid(pin))
         {
             --pin__data_[pin].count;
-            // printf("Pin(%i) Ref-- = %i\n", pin, pin__data_[pin].count);
 
             if (pin__data_[pin].count == 0)
             {
@@ -258,26 +284,12 @@ private:
 
     void RefCountDestroy(uint8_t pin)
     {
-        // printf("Pin::RefCountDestroy(%i)\n", pin);
-
         gpio_deinit(pin_);
-        // DisableInterrupt();
+        DisableInterrupt();
 
-        // Disable?
-        // Makes passing by value (and subsequent destruct) break operation
-        // gpio_pin_configure(port_, pin_, GPIO_DISCONNECTED);
+        PinData &pd = GetPinData(pin);
+        pd = PinData{};
     }
-
-
-private:
-
-    // bool intEnabled_ = false;
-    // function<void()> cbFn_ = []{};
-    // TriggerType triggerType_ = TriggerType::FALLING;
-
-    // static void OnInterrupt(const device * /*port*/,
-    //                         gpio_callback *gpioCallbackWrapped,
-    //                         gpio_port_pins_t /*pins*/);
 
 
 
@@ -290,10 +302,15 @@ private:
         // reference count
         uint8_t count = 0;
 
-        // actual members
+        // digital pin members
         Type     type_            = Type::OUTPUT;
         uint8_t  outputLevel_     = 0;
         uint64_t interruptTimeMs_ = 0;
+
+        // interrupt members
+        bool             intEnabled_  = false;
+        function<void()> cbFn_        = []{};
+        TriggerType      triggerType_ = TriggerType::FALLING;
     };
 
     static PinData pin__data_[PIN_COUNT];
