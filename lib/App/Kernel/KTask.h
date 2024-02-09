@@ -6,14 +6,23 @@
 using namespace std;
 
 
+template <uint16_t STACK_SIZE>
 class KTask
 {
 public:
-    KTask(string name, function<void()> fn)
+    KTask(string           name,
+          function<void()> fn,
+          uint32_t         priority)
     : name_(name)
     , fn_(fn)
     {
-        BaseType_t status = xTaskCreate(TaskRunner, name_.c_str(),  128, this, 1, &h_);
+        h_ = xTaskCreateStatic(TaskRunner,
+                               name_.c_str(),
+                               STACK_SIZE,
+                               this,
+                               priority,
+                               puxStackBuffer_,
+                               &pxTaskBuffer_);
     }
 
 private:
@@ -27,5 +36,8 @@ private:
 private:
     string name_;
     function<void()> fn_;
+
+    StackType_t puxStackBuffer_[STACK_SIZE];
+    StaticTask_t pxTaskBuffer_;
     TaskHandle_t h_;
 };

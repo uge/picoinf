@@ -7,6 +7,7 @@
 #include "semphr.h"
 
 // #include "KTime.h"
+#include "PAL.h"
 
 
 // Thoughts on ISRs and message passing
@@ -51,7 +52,10 @@ class KMessagePipe
 public:
     KMessagePipe()
     {
-        msgPipe_ = xQueueCreate(SIZE, (UBaseType_t)sizeof(T));
+        msgPipe_ = xQueueCreateStatic(SIZE,
+                                      (UBaseType_t)sizeof(T),
+                                      (uint8_t *)&pucQueueStorageBuffer_,
+                                      &pxQueueBuffer_);
     }
 
     ~KMessagePipe()
@@ -66,7 +70,18 @@ public:
 
     int Put(T &val, TickType_t timeout = portMAX_DELAY)
     {
-        return xQueueSendToBack(msgPipe_, (void *)&val, timeout);
+        int retVal;
+
+        if (PAL.InIsrReal())
+        {
+            retVal = xQueueSendToBackFromISR(msgPipe_, (void *)&val, nullptr);
+        }
+        else
+        {
+            retVal = xQueueSendToBack(msgPipe_, (void *)&val, timeout);
+        }
+
+        return retVal;
     }
 
     int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
@@ -82,10 +97,35 @@ public:
 
     int Get(T &val, TickType_t timeout = portMAX_DELAY)
     {
-        BaseType_t retVal = xQueueReceive(msgPipe_, (void *)&val, timeout);
-
+        BaseType_t retVal;
+        
+        if (PAL.InIsrReal())
+        {
+            retVal = xQueueReceiveFromISR(msgPipe_, (void *)&val, nullptr);
+        }
+        else
+        {
+            retVal = xQueueReceive(msgPipe_, (void *)&val, timeout);
+        }
+        
         return retVal == pdTRUE ? sizeof(val) : 0;
     }
+
+    uint16_t Count() const
+    {
+        uint16_t retVal;
+
+        if (PAL.InIsrReal())
+        {
+            retVal = uxQueueMessagesWaiting(msgPipe_);
+        }
+        else
+        {
+            retVal = uxQueueMessagesWaitingFromISR(msgPipe_);
+        }
+
+        return retVal;
+    } 
 
     void Flush()
     {
@@ -94,6 +134,8 @@ public:
 
 
 private:
+    uint8_t       pucQueueStorageBuffer_[SIZE * sizeof(T)];
+    StaticQueue_t pxQueueBuffer_;
     QueueHandle_t msgPipe_;
 };
 
@@ -108,7 +150,9 @@ public:
     KSemaphore(uint32_t initialCount = 0,
                uint32_t countLimit   = UINT32_MAX)
     {
-        sem_ = xSemaphoreCreateCounting(countLimit, initialCount);
+        sem_ = xSemaphoreCreateCountingStatic(countLimit,
+                                              initialCount,
+                                              &pxSemaphoreBuffer_);
     }
 
     ~KSemaphore()
@@ -118,19 +162,36 @@ public:
 
     bool Take(TickType_t timeout = portMAX_DELAY)
     {
-        BaseType_t retVal = xSemaphoreTake(sem_, timeout);
+        BaseType_t retVal;
+        
+        if (PAL.InIsrReal())
+        {
+            retVal = xSemaphoreTakeFromISR(sem_, nullptr);
+        }
+        else
+        {
+            retVal = xSemaphoreTake(sem_, timeout);
+        }
 
         return retVal == pdTRUE;
     }
 
     void Give()
     {
-        xSemaphoreGive(sem_);
+        if (PAL.InIsrReal())
+        {
+            xSemaphoreGiveFromISR(sem_, nullptr);
+        }
+        else
+        {
+            xSemaphoreGive(sem_);
+        }
     }
 
 
 private:
-    SemaphoreHandle_t  sem_;
+    StaticSemaphore_t pxSemaphoreBuffer_;
+    SemaphoreHandle_t sem_;
 };
 
 
