@@ -28,6 +28,8 @@ public:
 
 public:
 
+    Pin() { }
+
     Pin(uint8_t pin, Type type = Type::OUTPUT, uint8_t outputLevel = 0)
     : pin_(pin)
     {

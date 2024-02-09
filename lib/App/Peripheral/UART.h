@@ -6,6 +6,8 @@
 using namespace std;
 
 
+extern void UartInit();
+
 // Allow code to decide which UART it wants to send data to
 enum class UART : uint8_t
 {
@@ -13,9 +15,6 @@ enum class UART : uint8_t
     UART_1,
     UART_USB,
 };
-
-#include <zephyr/device.h>
-const device *UartDeviceMap(UART uart);
 
 extern void UartPush(UART uart);
 extern void UartPop();
@@ -62,9 +61,6 @@ extern bool                UartRemoveLineStreamCallback(UART uart, uint8_t id = 
 // Turn on or off
 extern void UartClearRxBuffer(UART uart);
 extern void UartClearTxBuffer(UART uart);
-extern void UartDisable(UART uart);
-extern void UartEnable(UART uart);
-extern bool UartIsEnabled(UART uart);
 
 extern uint32_t UartGetBaud(UART uart);
 

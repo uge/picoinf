@@ -95,24 +95,31 @@ void PlatformAbstractionLayer::EnableForcedInIsrYes(bool force)
     }
 }
 
+// These two functions are being left in place but muted.
+// Their function was originally to indicate that the running thread should
+// not be interrupted by another thread, given the operations in question.
+// However, because this works differently (and inconveniently) in FreeRTOS,
+// I will simply be ensuring threads are prioritized equally where needed
+// and that the scheduler is in cooperative mode and not preemptive mode.
+// These functions will be left in the code so in the future I can more
+// easily find areas affected by a potential switch to SMP where more than
+// one core can be running code at a time and that this problem would
+// re-arise.
 void PlatformAbstractionLayer::SchedulerLock()
 {
-    vTaskSuspendAll();
+    // vTaskSuspendAll();
 }
-
 void PlatformAbstractionLayer::SchedulerUnlock()
 {
-    xTaskResumeAll();
+    // xTaskResumeAll();
 }
 
-// Not using k_yield(), it doesn't allow lower-priority threads
-// to run, such as shell.
-// Instead this microsleeps to force the scheduler to let
-// all other threads run.
-// The overhead is 150us.
+// The pico platform will busy-sleep for the last remaining portion of a
+// timeout, which isn't what we want, we want to actually sleep hard enough
+// to yield to other procs, so make sure we're above the threshold
 void PlatformAbstractionLayer::YieldToAll()
 {
-    DelayUs(1);
+    DelayUs(PICO_TIME_SLEEP_OVERHEAD_ADJUST_US + 50);   // 150 + 50 = 200
 }
 
 void PlatformAbstractionLayer::RegisterOnFatalHandler(const char *title, function<void()> cbFnOnFatal)
@@ -261,6 +268,7 @@ PlatformAbstractionLayer PAL;
 extern "C" {
 void _exit(int status)
 {
+    LogModeSync();
     Log("_exit(", status, ") from libc-hooks.c");
 
     while (true) {}

@@ -5,19 +5,8 @@
 
 #include "PAL.h"
 // #include "Shell.h"
-// #include "KMessagePassing.h"
-// #include "UART.h"
+#include "UART.h"
 #include "Format.h"
-
-// TODO
-void UartSend(const uint8_t *buf, uint16_t bufLen)
-{
-    for (uint32_t i = 0; i < bufLen; ++i)
-    {
-        printf("%c", buf[i]);
-    }
-}
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
