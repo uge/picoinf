@@ -116,25 +116,25 @@ public:
         idMaker_.GetNextId();   // 0
     }
 
-    pair<bool, uint8_t> AddLineStreamCallback(function<void(const string &line)> cbFn)
+    pair<bool, uint8_t> AddLineStreamCallback(function<void(const string &line)> cbFn, bool hideBlankLines = true)
     {
         auto [ok, id] = idMaker_.GetNextId();
 
         if (ok)
         {
-            id__cbFn_[id] = cbFn;
+            id__data_[id] = Data{cbFn, hideBlankLines};
         }
 
         return { ok, id };
     }
 
-    bool SetLineStreamCallback(uint8_t id, function<void(const string &line)> cbFn)
+    bool SetLineStreamCallback(uint8_t id, function<void(const string &line)> cbFn, bool hideBlankLines = true)
     {
         bool retVal = false;
 
-        if (id__cbFn_.contains(id) || id == 0)
+        if (id__data_.contains(id) || id == 0)
         {
-            id__cbFn_[id] = cbFn;
+            id__data_[id] = Data{cbFn, hideBlankLines};
 
             retVal = true;
         }
@@ -146,12 +146,12 @@ public:
     {
         idMaker_.ReturnId(id);
         
-        return id__cbFn_.erase(id);
+        return id__data_.erase(id);
     }
 
     void AddData(const vector<uint8_t> &data)
     {
-        if (id__cbFn_.empty()) { return; }
+        if (id__data_.empty()) { return; }
 
         for (int i = 0; i < (int)data.size(); ++i)
         {
@@ -162,51 +162,51 @@ public:
                 // remember if max line len hit
                 bool wasMaxLine = inputStream_.size() == maxLineLen_;
 
-                if (inputStream_.size())
-                {
-                    // TODO
-                    #if 0
-                    // make a copy (move) of the input stream on the way in
-                    Evm::QueueLowPriorityWork(name_, [this, inputStream = move(inputStream_)](){
-                    #else
-                    auto inputStream = move(inputStream_);
-                    #endif
-                        // distribute
+                // TODO
+                #if 0
+                // make a copy (move) of the input stream on the way in
+                Evm::QueueLowPriorityWork(name_, [this, inputStream = move(inputStream_)](){
+                #else
+                auto inputStream = move(inputStream_);
+                #endif
+                    // distribute
 
-                        // handle case where the callback leads to the caller
-                        // de-registering itself and invalidating the id and callback fn
-                        // itself.
-                        //
-                        // this was happening with gps getting a lock, bubbling the lock
-                        // event, which then says ok no need to listen anymore, which
-                        // found its way back to deregistering, all while the initial
-                        // callback was still executing
-                        auto tmp = id__cbFn_;
-                        for (auto &[id, cbFn] : tmp)
+                    // handle case where the callback leads to the caller
+                    // de-registering itself and invalidating the id and callback fn
+                    // itself.
+                    //
+                    // this was happening with gps getting a lock, bubbling the lock
+                    // event, which then says ok no need to listen anymore, which
+                    // found its way back to deregistering, all while the initial
+                    // callback was still executing
+                    auto tmp = id__data_;
+                    for (auto &[id, data] : tmp)
+                    {
+                        if (inputStream.size() || data.hideBlankLines == false)
                         {
                             // default to writing back to the uart that sent the data
                             UartTarget target(uart_);
 
                             // fire callback
-                            cbFn(inputStream);
+                            data.cbFn(inputStream);
                         }
-                    #if 0
-                    });
-                    #endif
+                    }
+                #if 0
+                });
+                #endif
 
 
-                    // clear line cache
-                    inputStream_.clear();
+                // clear line cache
+                inputStream_.clear();
 
-                    // wind forward to next newline if needed
-                    if (wasMaxLine)
+                // wind forward to next newline if needed
+                if (wasMaxLine)
+                {
+                    for (; i < (int)data.size(); ++i)
                     {
-                        for (; i < (int)data.size(); ++i)
+                        if (data[i] == '\n')
                         {
-                            if (data[i] == '\n')
-                            {
-                                break;
-                            }
+                            break;
                         }
                     }
                 }
@@ -220,7 +220,7 @@ public:
 
     uint8_t GetCallbackCount()
     {
-        return id__cbFn_.size();
+        return id__data_.size();
     }
 
     uint32_t Clear()
@@ -244,7 +244,12 @@ private:
     uint16_t maxLineLen_;
     const char *name_;
     IDMaker<32> idMaker_;
-    unordered_map<uint8_t, function<void(const string &)>> id__cbFn_;
+    struct Data
+    {
+        function<void(const string &)> cbFn = [](const string &){};
+        bool hideBlankLines = true;
+    };
+    unordered_map<uint8_t, Data> id__data_;
     string inputStream_;
 };
 
@@ -687,7 +692,7 @@ bool UartRemoveDataStreamCallback(UART uart, uint8_t id)
     return retVal;
 }
 
-pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const string &line)> cbFn)
+pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const string &line)> cbFn, bool hideBlankLines)
 {
     bool retValOk = false;
     uint8_t retValId = 0;
@@ -708,7 +713,7 @@ pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const str
 
     if (dist)
     {
-        auto [ok, id] = dist->AddLineStreamCallback(cbFn);
+        auto [ok, id] = dist->AddLineStreamCallback(cbFn, hideBlankLines);
 
         retValOk = ok;
         retValId = id;
@@ -717,7 +722,7 @@ pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const str
     return { retValOk, retValId };
 }
 
-bool UartSetLineStreamCallback(UART uart, function<void(const string &line)> cbFn, uint8_t id)
+bool UartSetLineStreamCallback(UART uart, function<void(const string &line)> cbFn, uint8_t id, bool hideBlankLines)
 {
     bool retVal = false;
 
@@ -737,7 +742,7 @@ bool UartSetLineStreamCallback(UART uart, function<void(const string &line)> cbF
 
     if (dist)
     {
-        retVal = dist->SetLineStreamCallback(id, cbFn);
+        retVal = dist->SetLineStreamCallback(id, cbFn, hideBlankLines);
     }
 
     return retVal;

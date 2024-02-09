@@ -50,8 +50,8 @@ extern bool                UartRemoveDataStreamCallback(UART uart, uint8_t id = 
 
 // Input handling for ASCII-only lines
 // high frills (auto-redirect output), cb executes in main evm thread
-extern pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const string &line)> cbFn);
-extern bool                UartSetLineStreamCallback(UART uart, function<void(const string &line)> cbFn, uint8_t id = 0);
+extern pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const string &line)> cbFn, bool hideBlankLines = true);
+extern bool                UartSetLineStreamCallback(UART uart, function<void(const string &line)> cbFn, uint8_t id = 0, bool hideBlankLines = true);
 extern bool                UartRemoveLineStreamCallback(UART uart, uint8_t id = 0);
 
 
