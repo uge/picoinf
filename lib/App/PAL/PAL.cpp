@@ -1,38 +1,36 @@
 #include "PAL.h"
+#include "Log.h"
+
+#include "pico/time.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 #include <vector>
 #include <string>
 using namespace std;
 
-#include <zephyr/sys/reboot.h>
-#include <zephyr/drivers/hwinfo.h>
-
-#include "KTime.h"
-#include "Log.h"
-#include "Shell.h"
-#include "Utl.h"
-#include "RP2040.h"
 
 
 string PlatformAbstractionLayer::GetAddress()
 {
     string retVal = "0x0";
 
-    const uint8_t BYTES = 32;
-    array<uint8_t, BYTES + 1> arr;
-    arr.fill(0);
+    // const uint8_t BYTES = 32;
+    // array<uint8_t, BYTES + 1> arr;
+    // arr.fill(0);
 
-    ssize_t len = hwinfo_get_device_id(arr.data(), BYTES);
+    // ssize_t len = hwinfo_get_device_id(arr.data(), BYTES);
 
-    if (len > 0)
-    {
-        retVal = "0x";
+    // if (len > 0)
+    // {
+    //     retVal = "0x";
 
-        for (int i = 0; i < len; ++i)
-        {
-            retVal += Format::ToHex(arr[i], false);
-        }
-    }
+    //     for (int i = 0; i < len; ++i)
+    //     {
+    //         retVal += Format::ToHex(arr[i], false);
+    //     }
+    // }
 
     return retVal;
 }
@@ -44,20 +42,19 @@ uint64_t PlatformAbstractionLayer::Millis()
 
 uint64_t PlatformAbstractionLayer::Micros()
 {
-    // rpi pico 1us counter
-    return RP2040::TimeUs64();
+    return time_us_64();
 }
 
-uint64_t PlatformAbstractionLayer::Delay(uint64_t ms)
+void PlatformAbstractionLayer::Delay(uint64_t ms)
 {
     // thread gets descheduled
-    return k_msleep(KTime{ms});
+    DelayUs(ms * 1000);
 }
 
-uint64_t PlatformAbstractionLayer::DelayUs(uint64_t us)
+void PlatformAbstractionLayer::DelayUs(uint64_t us)
 {
     // thread gets descheduled
-    return k_usleep(KTime{us});
+    sleep_us(us);
 }
 
 void PlatformAbstractionLayer::DelayBusy(uint64_t ms)
@@ -69,11 +66,7 @@ void PlatformAbstractionLayer::DelayBusy(uint64_t ms)
 void PlatformAbstractionLayer::DelayBusyUs(uint64_t us)
 {
     // thread doesn't get descheduled
-    uint64_t timeNow = PAL.Micros();
-    while (PAL.Micros() - timeNow < us)
-    {
-        // do nothing
-    }
+    busy_wait_us(us);
 }
 
 void PlatformAbstractionLayer::EnableForcedInIsrYes(bool force)
@@ -102,19 +95,14 @@ void PlatformAbstractionLayer::EnableForcedInIsrYes(bool force)
     }
 }
 
-bool PlatformAbstractionLayer::InIsr()
-{
-    return forceInIsrYes_ ? true : k_is_in_isr();
-}
-
 void PlatformAbstractionLayer::SchedulerLock()
 {
-    k_sched_lock();
+    vTaskSuspendAll();
 }
 
 void PlatformAbstractionLayer::SchedulerUnlock()
 {
-    k_sched_unlock();
+    xTaskResumeAll();
 }
 
 // Not using k_yield(), it doesn't allow lower-priority threads
@@ -122,24 +110,9 @@ void PlatformAbstractionLayer::SchedulerUnlock()
 // Instead this microsleeps to force the scheduler to let
 // all other threads run.
 // The overhead is 150us.
-uint64_t PlatformAbstractionLayer::YieldToAll()
+void PlatformAbstractionLayer::YieldToAll()
 {
-    return DelayUs(1);
-}
-
-k_tid_t PlatformAbstractionLayer::GetThreadId()
-{
-    return k_current_get();
-}
-
-void PlatformAbstractionLayer::SetThreadPriority(int priority)
-{
-    k_thread_priority_set(GetThreadId(), priority);
-}
-
-void PlatformAbstractionLayer::WakeThread(k_tid_t id)
-{
-    k_wakeup(id);
+    DelayUs(1);
 }
 
 void PlatformAbstractionLayer::RegisterOnFatalHandler(const char *title, function<void()> cbFnOnFatal)
@@ -160,7 +133,8 @@ void PlatformAbstractionLayer::Fatal(const char *title)
     Log("Logging, then Resetting");
 
     // First the global timeline
-    Timeline::Global().ReportNow("Fatal Error");
+    // TODO
+    // Timeline::Global().ReportNow("Fatal Error");
 
     // Show how many handlers will get called
     size_t size = fatalHandlerDataList_.size();
@@ -196,7 +170,9 @@ void PlatformAbstractionLayer::Fatal(const char *title)
 void PlatformAbstractionLayer::Reset()
 {
     // notably, the ROSC being on is required otherwise this hangs
-    sys_reboot(SYS_REBOOT_COLD);
+
+    // TODO
+    // sys_reboot(SYS_REBOOT_COLD);
 }
 
 void PlatformAbstractionLayer::ResetToBootloader()
@@ -221,26 +197,30 @@ void PlatformAbstractionLayer::CaptureResetReasonAndClear()
     //
     // Not very granular...
 
-    unordered_map<uint32_t, const char *> reasonMap = {
-        { RESET_PIN,            "RESET_PIN"            },
-        { RESET_SOFTWARE,       "RESET_SOFTWARE"       },
-        { RESET_BROWNOUT,       "RESET_BROWNOUT"       },
-        { RESET_POR,            "RESET_POR"            },
-        { RESET_WATCHDOG,       "RESET_WATCHDOG"       },
-        { RESET_DEBUG,          "RESET_DEBUG"          },
-        { RESET_SECURITY,       "RESET_SECURITY"       },
-        { RESET_LOW_POWER_WAKE, "RESET_LOW_POWER_WAKE" },
-        { RESET_CPU_LOCKUP,     "RESET_CPU_LOCKUP"     },
-        { RESET_PARITY,         "RESET_PARITY"         },
-        { RESET_PLL,            "RESET_PLL"            },
-        { RESET_CLOCK,          "RESET_CLOCK"          },
-        { RESET_HARDWARE,       "RESET_HARDWARE"       },
-        { RESET_USER,           "RESET_USER"           },
-        { RESET_TEMPERATURE,    "RESET_TEMPERATURE"    },
-    };
+    // TODO
+    unordered_map<uint32_t, const char *> reasonMap = {};
+    // unordered_map<uint32_t, const char *> reasonMap = {
+    //     { RESET_PIN,            "RESET_PIN"            },
+    //     { RESET_SOFTWARE,       "RESET_SOFTWARE"       },
+    //     { RESET_BROWNOUT,       "RESET_BROWNOUT"       },
+    //     { RESET_POR,            "RESET_POR"            },
+    //     { RESET_WATCHDOG,       "RESET_WATCHDOG"       },
+    //     { RESET_DEBUG,          "RESET_DEBUG"          },
+    //     { RESET_SECURITY,       "RESET_SECURITY"       },
+    //     { RESET_LOW_POWER_WAKE, "RESET_LOW_POWER_WAKE" },
+    //     { RESET_CPU_LOCKUP,     "RESET_CPU_LOCKUP"     },
+    //     { RESET_PARITY,         "RESET_PARITY"         },
+    //     { RESET_PLL,            "RESET_PLL"            },
+    //     { RESET_CLOCK,          "RESET_CLOCK"          },
+    //     { RESET_HARDWARE,       "RESET_HARDWARE"       },
+    //     { RESET_USER,           "RESET_USER"           },
+    //     { RESET_TEMPERATURE,    "RESET_TEMPERATURE"    },
+    // };
 
     uint32_t cause;
-    int res = hwinfo_get_reset_cause(&cause);
+    // TODO
+    // int res = hwinfo_get_reset_cause(&cause);
+    int res = 0;
 
     if (res == 0)
     {
@@ -255,7 +235,9 @@ void PlatformAbstractionLayer::CaptureResetReasonAndClear()
 
 double PlatformAbstractionLayer::MeasureVCC()
 {
-    return RP2040::MeasureVCC();
+    // TODO
+    // return RP2040::MeasureVCC();
+    return 0;
 }
 
 
@@ -267,10 +249,11 @@ PlatformAbstractionLayer PAL;
 // The default implementation of this function halts the system unconditionally.
 // I'm overriding it because why would I want to just hang?  Restart!
 
-void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
-{
-    PAL.Fatal("k_sys_fatal_error_handler");
-}
+// TODO
+// void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
+// {
+//     PAL.Fatal("k_sys_fatal_error_handler");
+// }
 
 
 // stop hanging in the libc-hooks.c when, for example, and empty
@@ -279,6 +262,8 @@ extern "C" {
 void _exit(int status)
 {
     Log("_exit(", status, ") from libc-hooks.c");
+
+    while (true) {}
 }
 }
 
@@ -296,7 +281,9 @@ void _exit(int status)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-
+// TODO
+#if 0
+// #include "Shell.h"
 int PALInit()
 {
     Timeline::Global().Event("PALInit");
@@ -366,9 +353,4 @@ int PALSetupJSON()
 
     return 1;
 }
-
-
-#include <zephyr/init.h>
-SYS_INIT(PALInit, APPLICATION, 13);
-SYS_INIT(PALSetupShell, APPLICATION, 80);
-SYS_INIT(PALSetupJSON, APPLICATION, 80);
+#endif

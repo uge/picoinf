@@ -2,7 +2,7 @@
 
 target_include_directories(LibPico PUBLIC .)
 
-# target_sources(LibPico PRIVATE PAL.cpp)
+target_sources(LibPico PRIVATE PAL.cpp)
 
 # file(GLOB lib_sources *.cpp)
 # if (lib_sources)

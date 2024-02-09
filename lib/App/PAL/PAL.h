@@ -1,11 +1,10 @@
 #pragma once
 
-#include <zephyr/kernel.h>
-#include <zephyr/sys/reboot.h>
-
 #include <functional>
 #include <string>
 using namespace std;
+
+#include "hardware/sync.h"
 
 
 class PlatformAbstractionLayer
@@ -19,28 +18,37 @@ public:
 
     static uint64_t Millis();
     static uint64_t Micros();
-    static uint64_t Delay(uint64_t ms);
-    static uint64_t DelayUs(uint64_t us);
+    static void Delay(uint64_t ms);
+    static void DelayUs(uint64_t us);
     static void DelayBusy(uint64_t ms);
     static void DelayBusyUs(uint64_t us);
     static void EnableForcedInIsrYes(bool force);
-    static bool InIsr();
     inline __attribute__((always_inline))
-    static unsigned int IrqLock()
+    static bool InIsr()
     {
-        return irq_lock();
+        return forceInIsrYes_ ? true : InIsrReal();
     }
     inline __attribute__((always_inline))
-    static void IrqUnlock(unsigned int key)
+    static bool InIsrReal()
     {
-        irq_unlock(key);
+        // taken from https://github.com/FreeRTOS/FreeRTOS-Kernel/blob/7284d84dc88c5aaf2dc8337044177728b8bdae2d/portable/ThirdParty/GCC/RP2040/include/portmacro.h#L146
+        uint32_t ulIPSR;
+        __asm volatile ( "mrs %0, IPSR" : "=r" ( ulIPSR )::);
+        return (uint8_t)ulIPSR > 0;
+    }
+    inline __attribute__((always_inline))
+    static uint32_t IrqLock()
+    {
+        return save_and_disable_interrupts();
+    }
+    inline __attribute__((always_inline))
+    static void IrqUnlock(uint32_t key)
+    {
+        restore_interrupts(key);
     }
     static void SchedulerLock();
     static void SchedulerUnlock();
-    static uint64_t YieldToAll();
-    static k_tid_t GetThreadId();
-    static void SetThreadPriority(int priority);
-    static void WakeThread(k_tid_t id);
+    static void YieldToAll();
     static void RegisterOnFatalHandler(const char *title, std::function<void()> cbFnOnFatal);
     static void Fatal(const char *title);
     static void Reset();
@@ -82,11 +90,6 @@ public:
     }
 
 private:
-    unsigned int key_;
+    uint32_t key_;
 };
 
-
-extern void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf);
-extern "C" {
-extern void _exit(int);
-}
