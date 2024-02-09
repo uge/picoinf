@@ -55,6 +55,7 @@ add_subdirectory(${LIB_PICO}/App)
 
 target_link_libraries(LibPico
     pico_stdlib
+    pico_rand
     FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap4
     cmsis_core

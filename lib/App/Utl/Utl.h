@@ -1,20 +1,21 @@
 #pragma once
 
+#include "Log.h"
+#include "PAL.h"
+#include "Shell.h"
+#include "HeapAllocators.h"
+#include "Format.h"
+
+#include "pico/rand.h"
+
+#include <string.h>
+
 #include <algorithm>
 #include <vector>
 #include <string>
 #include <list>
 #include <cmath>
 using namespace std;
-
-#include <zephyr/random/rand32.h>
-
-#include "Log.h"
-#include "PAL.h"
-#include "Timeline.h"
-#include "Shell.h"
-#include "HeapAllocators.h"
-#include "Format.h"
 
 
 // thanks to (but lightly modified from)
@@ -429,11 +430,11 @@ inline uint32_t RandInRange(int32_t rangeLow, int32_t rangeHigh)
     {
         if (rangeLow < 0 && rangeHigh < 0)
         {
-            retVal = rangeLow - (sys_rand32_get() % (-rangeLow - -rangeHigh + 1));
+            retVal = rangeLow - (get_rand_32() % (-rangeLow - -rangeHigh + 1));
         }
         else // rangeLow can be neg/0/pos, rangeHigh >= 0
         {
-            retVal = rangeLow + (sys_rand32_get() % (rangeHigh - rangeLow + 1));
+            retVal = rangeLow + (get_rand_32() % (rangeHigh - rangeLow + 1));
         }
     }
 
