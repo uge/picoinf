@@ -1,19 +1,16 @@
 #pragma once
 
+#include "PAL.h"
+#include "Log.h"
+
 #include <string>
 #include <vector>
 #include <functional>
 #include <map>
-
 using namespace std;
 
-#include <zephyr/shell/shell.h>
-#include <zephyr/shell/shell_uart.h>
 
-#include "Evm.h"
-#include "PAL.h"
-#include "Log.h"
-
+extern void ShellInit();
 
 class Shell
 {
@@ -34,7 +31,6 @@ private:
 
 public:
     static void Eval(string cmd);
-    static void EvalRoot(string cmd);
 
     // put implementation in .cpp because system would crash on startup 
     // no idea, moving on for now
@@ -42,16 +38,11 @@ public:
     static bool AddCommand(string name, function<void(vector<string> argList)> cbFn, CmdOptions cmdOptions);
     static bool RemoveCommand(string name);
 
+    static void ShowHelp();
 
-public:
+private:
 
-    static int ShellCmdExecute(const struct shell *shellArg, size_t argc, char **argv);
-
-    // Fill out entry when asked.
-    // This function is probed each time the 'app' command is run.
-    // It is called with ever-increasing indexes until a null-like
-    // entry is returned
-    static void ShellCmdListProbe(size_t idx, struct shell_static_entry *entry);
+    static void ShellCmdExecute(const string &line);
 
 private:
 
