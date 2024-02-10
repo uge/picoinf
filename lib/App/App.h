@@ -37,8 +37,8 @@ public:
         PALInit();
         // FlashStoreInit();
         EvmInit();
-        ShellInit();
         JSONMsgRouterInit();
+        ShellInit();
 
         // Shell
         EvmSetupShell();
