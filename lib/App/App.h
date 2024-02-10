@@ -1,26 +1,26 @@
 #pragma once
 
-#include <zephyr/devicetree.h>
-
-#define DT_GET(name) DT_PROP_OR(DT_PATH(zephyr_user), name, {})
-
-
-#include "Utl.h"
-#include "Log.h"
-#include "Evm.h"
-#include "PWM.h"
-#include "Shell.h"
 // #include "Ble.h"
 // #include "Esb.h"
+#include "Evm.h"
 // #include "Filesystem.h"
-#include "Flash.h"
-#include "I2C.h"
-#include "Timeline.h"
-#include "Work.h"
+// #include "Flash.h"
+// #include "I2C.h"
+#include "JSONMsgRouter.h"
+#include "KMessagePassing.h"
+#include "KTask.h"
+#include "Log.h"
 // #include "MPSL.h"
-#include "USB.h"
-#include "VersionStr.h"
+#include "PAL.h"
+#include "Pin.h"
+// #include "PWM.h"
+#include "Shell.h"
+#include "Timeline.h"
+// #include "USB.h"
+#include "Utl.h"
+// #include "VersionStr.h"
 #include "WDT.h"
+#include "Work.h"
 
 
 class App
@@ -30,20 +30,48 @@ public:
     {
         NukeAppStorageFlashIfFirmwareChanged();
 
-        // Setup high-level systems
-        // Ble::Init();
-        // MPSL::Init();
+        // Init
+        TimelineInit();
+        LogInit();
+        UartInit();
+        PALInit();
+        // FlashStoreInit();
+        EvmInit();
+        ShellInit();
+        JSONMsgRouterInit();
 
-        // Setup shell interactions
-        // Ble::SetupShell();
-        // Esb::SetupShell();
-        // MPSL::SetupShell();
-        // MpslSession::SetupShell();
+        // Shell
+        EvmSetupShell();
+        JSONMsgRouterSetupShell();
+        LogSetupShell();
+        PALSetupShell();
+        PinSetupShell();
+        TimelineSetupShell();
+        UartSetupShell();
+        UtlSetupShell();
+        WatchdogSetupShell();
+        WorkSetupShell();
+
+        // JSON
+        JSONMsgRouterSetupJSON();
+        PALSetupJSON();
+        ShellSetupJSON();
+    }
+
+    void Run()
+    {
+        KTask<1000> t("App", []{
+            Evm::MainLoop();
+        }, 10);
+
+        vTaskStartScheduler();
     }
 
 private:
+    // TODO
     void NukeAppStorageFlashIfFirmwareChanged()
     {
+    #if 0
         // We of course want app settings to persist across reboots.
         //
         // But we don't want that if the firmware gets upgraded.
@@ -110,6 +138,7 @@ private:
         {
             FlashStore::Write(0, &version, sizeof(version));
         }
+    #endif
     }
 };
 

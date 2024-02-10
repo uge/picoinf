@@ -5,6 +5,9 @@
 #include "JSON.h"
 #include "Timeline.h"
 
+extern void JSONMsgRouterInit();
+extern void JSONMsgRouterSetupShell();
+extern void JSONMsgRouterSetupJSON();
 
 class JSONMsgRouter
 {
@@ -178,5 +181,6 @@ private:
     inline static uint8_t id_ = 0;
     inline static UART uart_ = UART::UART_USB;
 
+public:
     inline static vector<HandlerData> handlerDataList_;
 };

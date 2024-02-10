@@ -1,12 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <set>
-#include <list>
-#include <functional>
-
-#include <zephyr/kernel.h>
-
 #include "PAL.h"
 #include "Log.h"
 #include "TimedEventHandler.h"
@@ -16,8 +9,15 @@
 #include "Container.h"
 #include "WDT.h"
 
+#include <cstdint>
+#include <set>
+#include <list>
+#include <functional>
 using namespace std;
 
+
+extern void EvmInit();
+extern void EvmSetupShell();
 
 class Evm
 {

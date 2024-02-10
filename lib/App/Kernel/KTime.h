@@ -1,7 +1,5 @@
 #pragma once
 
-#include <zephyr/kernel.h>
-
 #include <functional>
 #include <vector>
 using namespace std;
@@ -26,25 +24,24 @@ differences.  Only the deepest libraries should know or care.
 class KTime
 {
 public:
-    KTime(uint64_t msOrUs)
+    KTime(uint64_t us)
     {
-        msOrUs_ = (uint64_t)(msOrUs * scalingFactor_);
+        us_ = us;
     }
 
-    KTime(k_timeout_t timeout)
+    operator uint32_t()
     {
-        if (timeout.ticks == -1)
+        // the kernel is operating on ticks, and each tick is 1ms (awful rez).
+        // Here we convert to ms, allowing truncation, would rather be
+        // early than late.
+        uint32_t ms = us_;
+        if (ms != portMAX_DELAY)
         {
-            timeout_ = timeout;
+            ms = us_ / 1'000;
         }
-        else
-        {
-            timeout_ = { .ticks = (uint32_t)(timeout.ticks * scalingFactor_) };
-        }
-    }
 
-    operator uint32_t() { return (uint32_t)msOrUs_; }
-    operator k_timeout_t() { return timeout_; }
+        return ms;
+    }
 
     static void SetScalingFactor(double scalingFactor);
 
@@ -60,8 +57,7 @@ public:
     }
 
 private:
-    uint64_t msOrUs_ = 0;
-    k_timeout_t timeout_ = { 0 };
+    uint64_t us_ = 0;
 
     inline static double scalingFactor_ = 1.0;
 

@@ -7,6 +7,7 @@ using namespace std;
 
 
 extern void UartInit();
+extern void UartSetupShell();
 
 // Allow code to decide which UART it wants to send data to
 enum class UART : uint8_t

@@ -1,6 +1,7 @@
 #include <list>
 using namespace std;
 
+#include "KTask.h"
 #include "Work.h"
 #include "Log.h"
 #include "PAL.h"
@@ -59,7 +60,7 @@ void Work::Queue(const char *label, function<void()> &&fn)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-int WorkSetupShell()
+void WorkSetupShell()
 {
     Timeline::Global().Event("WorkSetupShell");
 
@@ -68,17 +69,15 @@ int WorkSetupShell()
     }, { .argCount = 0, .help = "Work Report" });
 
     Shell::AddCommand("work.test", [&](vector<string> argList){
-        Work::Queue("work.test", []{
-            Log("work.test");
+        uint64_t timeStart = PAL.Micros();
+        Work::Queue("work.test", [=]{
+            uint64_t timeDiff = PAL.Micros() - timeStart;
+            Log("work.test success - ", Commas(timeDiff), " us trip");
         });
     }, { .argCount = 0, .help = "" });
-
-    return 1;
 }
 
 
-#include <zephyr/init.h>
-SYS_INIT(WorkSetupShell, APPLICATION, 80);
 
 
 
@@ -91,7 +90,7 @@ static void ThreadFnWork()
     while (true)
     {
         // block on this
-        sem_.Take(K_FOREVER);
+        sem_.Take();
 
         // extract data safely
         unsigned int key = PAL.IrqLock();
@@ -117,8 +116,9 @@ static void ThreadFnWork()
     }
 }
 
-static const uint32_t STACKSIZE = 1024;
-static const uint32_t PRIORITY  = 7;
 
-K_THREAD_DEFINE(ThreadWork, STACKSIZE, ThreadFnWork, NULL, NULL, NULL, PRIORITY, 0, 0);
+static const uint32_t STACK_SIZE = 1024;
+static const uint32_t PRIORITY  = 1;
+
+static KTask<STACK_SIZE> t("WORK", ThreadFnWork, PRIORITY);
 

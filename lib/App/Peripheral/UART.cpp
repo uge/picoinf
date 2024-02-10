@@ -1,7 +1,8 @@
 #include "KMessagePassing.h"
 #include "KTask.h"
+#include "Evm.h"
 #include "PAL.h"
-// #include "Shell.h"
+#include "Shell.h"
 #include "UART.h"
 #include "IDMaker.h"
 
@@ -162,13 +163,8 @@ public:
                 // remember if max line len hit
                 bool wasMaxLine = inputStream_.size() == maxLineLen_;
 
-                // TODO
-                #if 0
                 // make a copy (move) of the input stream on the way in
                 Evm::QueueLowPriorityWork(name_, [this, inputStream = move(inputStream_)](){
-                #else
-                auto inputStream = move(inputStream_);
-                #endif
                     // distribute
 
                     // handle case where the callback leads to the caller
@@ -191,10 +187,7 @@ public:
                             data.cbFn(inputStream);
                         }
                     }
-                #if 0
                 });
-                #endif
-
 
                 // clear line cache
                 inputStream_.clear();
@@ -234,9 +227,7 @@ public:
 
     uint32_t ClearInFlight()
     {
-        // TODO
-        // return Evm::ClearLowPriorityWorkByLabel(name_);
-        return 1;
+        return Evm::ClearLowPriorityWorkByLabel(name_);
     }
 
 private:
@@ -361,32 +352,22 @@ static void UartInterruptHandlerUartX(uart_inst_t               *uart,
     }
 }
 
-// TODO
-#include "Pin.h"
 static void UartInterruptHandlerUart0()
 {
-    // TODO
-    static Pin p(14);
-    p.DigitalToggle();
     UartInterruptHandlerUartX(uart0,
                               UART_0_INPUT_VEC,
                               UART_0_INPUT_DATA_STREAM_DISTRIBUTOR,
                               UART_0_OUTPUT_PIPE,
                               UART_0_INPUT_SEM);
-    p.DigitalToggle();
 }
 
 static void UartInterruptHandlerUart1()
 {
-    // TODO
-    static Pin p(15);
-    p.DigitalToggle();
     UartInterruptHandlerUartX(uart1,
                               UART_1_INPUT_VEC,
                               UART_1_INPUT_DATA_STREAM_DISTRIBUTOR,
                               UART_1_OUTPUT_PIPE,
                               UART_1_INPUT_SEM);
-    p.DigitalToggle();
 }
 
 
@@ -801,7 +782,11 @@ void UartClearTxBuffer(UART uart)
 
 static void UartInitDevice(uart_inst_t *uart, uint8_t pinRx, uint8_t pinTx)
 {
-    static const uint32_t BAUD_RATE = 9600;
+    // https://lucidar.me/en/serialib/most-used-baud-rates-table/
+
+    // static const uint32_t BAUD_RATE = 9600;
+    // static const uint32_t BAUD_RATE = 57600;
+    static const uint32_t BAUD_RATE = 76800;
 
     // Set the TX and RX pins by using the function select on the GPIO
     // Set datasheet for more information on function select
@@ -832,10 +817,10 @@ static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
     uart_set_irq_enables(uart, true, true);
 }
 
+#include "Timeline.h"
 void UartInit()
 {
-    // TODO
-    // Timeline::Global().Event("UartInit");
+    Timeline::Global().Event("UartInit");
 
     // Set up stdio
     stdio_init_all();
@@ -879,9 +864,7 @@ void UartInit()
     irq_set_pending(UART1_IRQ);
 }
 
-// TODO
-#if 0
-int UartSetupShell()
+void UartSetupShell()
 {
     Timeline::Global().Event("UartSetupShell");
     
@@ -918,10 +901,10 @@ int UartSetupShell()
         LogNL();
     }, { .argCount = 0, .help = "UART stats"});
 
-    Shell::AddCommand("uart.uart1", [](vector<string> argList){
-        if (argList[0] == "on") { UartEnable(UART::UART_1);  }
-        else                    { UartDisable(UART::UART_1); }
-    }, { .argCount = 1, .help = "UART1 <on/off>"});
+    // Shell::AddCommand("uart.uart1", [](vector<string> argList){
+    //     if (argList[0] == "on") { UartEnable(UART::UART_1);  }
+    //     else                    { UartDisable(UART::UART_1); }
+    // }, { .argCount = 1, .help = "UART1 <on/off>"});
 
     Shell::AddCommand("uart.uart1.clear.rx", [](vector<string> argList){
         PAL.DelayBusy(2000);
@@ -931,8 +914,5 @@ int UartSetupShell()
     Shell::AddCommand("uart.uart1.clear.tx", [](vector<string> argList){
         UartClearTxBuffer(UART::UART_1);
     }, { .argCount = 0, .help = "Clear UART1 TX buffer"});
-
-    return 1;
 }
-#endif
 

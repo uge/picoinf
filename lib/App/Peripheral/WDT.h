@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-// forward decl
-struct device;
+
+extern void WatchdogSetupShell();
 
 
 class Watchdog
@@ -16,11 +16,10 @@ public:
     static void Start();
     static void Stop();
     static void Feed();
+    static bool CausedReboot();
 
 
 private:
 
     inline static uint32_t timeoutMs_ = DEFAULT_TIMEOUT_MS;
-    inline static int channelId_ = 0;
-    inline static bool running_ = false;
 };

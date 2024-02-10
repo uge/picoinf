@@ -4,6 +4,8 @@
 using namespace std;
 
 
+extern void WorkSetupShell();
+
 class Work
 {
 public:

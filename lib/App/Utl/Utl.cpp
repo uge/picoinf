@@ -31,21 +31,21 @@ string &CommasStatic(const char *numStr)
     return retVal;
 }
 
+#include "Blinker.h"
 static Blinker blinker;
 
 
-int UtlSetupShell()
+void UtlSetupShell()
 {
     Timeline::Global().Event("UtlSetupShell");
 
     blinker.SetName("TIMER_BLINKER_UTL");
 
     Shell::AddCommand("blinker.set.pin", [](vector<string> argList){
-        uint8_t port = atoi(argList[0].c_str());
         uint8_t pin = atoi(argList[1].c_str());
 
-        blinker.SetPin({port, pin});
-    }, { .argCount = 2, .help = "set <port> <pin>"});
+        blinker.SetPin({pin});
+    }, { .argCount = 1, .help = "set <pin>"});
 
     Shell::AddCommand("blinker.set.onoff", [](vector<string> argList){
         uint32_t onMs = atoi(argList[0].c_str());
@@ -75,13 +75,5 @@ int UtlSetupShell()
     Shell::AddCommand("blinker.async.off", [](vector<string> argList){
         blinker.DisableAsyncBlink();
     }, { .argCount = 0, .help = ""});
-
-
-
-
-    return 1;
 }
 
-
-#include <zephyr/init.h>
-SYS_INIT(UtlSetupShell, APPLICATION, 80);

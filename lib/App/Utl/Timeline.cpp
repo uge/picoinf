@@ -233,17 +233,15 @@ Timeline &Timeline::Global()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-int TimelineInit()
+void TimelineInit()
 {
     Timeline::EnableCcGlobal();
     Timeline::Global().SetMaxEvents(80);
 
     Timeline::Global().Event("TimelineInit");
-
-    return 1;
 }
 
-int TimelineSetupShell()
+void TimelineSetupShell()
 {
     Timeline::Global().Event("TimelineSetupShell");
 
@@ -277,12 +275,5 @@ int TimelineSetupShell()
     Shell::AddCommand("t.reportnow", [&](vector<string> argList){
         Timeline::Global().ReportNow();
     }, { .argCount = 0, .help = "Global Timeline Report, Now" });
-
-    return 1;
 }
-
-
-#include <zephyr/init.h>
-SYS_INIT(TimelineInit, APPLICATION, 10);
-SYS_INIT(TimelineSetupShell, APPLICATION, 80);
 

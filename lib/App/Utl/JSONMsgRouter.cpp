@@ -8,16 +8,14 @@
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-int JSONMsgRouterInit()
+void JSONMsgRouterInit()
 {
     Timeline::Global().Event("JSONMsgRouterInit");
     
     JSONMsgRouter::Enable();
-
-    return 1;
 }
 
-int JSONMsgRouterSetupShell()
+void JSONMsgRouterSetupShell()
 {
     Timeline::Global().Event("JSONRouterSetupShell");
 
@@ -35,10 +33,21 @@ int JSONMsgRouterSetupShell()
         }
     }, { .argCount = -1, .help = "send <type> [<tag> <value> ...]"});
 
-    return 1;
+    Shell::AddCommand("json.list", [](vector<string> argList){
+        vector<string> typeList;
+        for (auto &hd : JSONMsgRouter::handlerDataList_)
+        {
+            typeList.push_back(hd.type);
+        }
+        sort(typeList.begin(), typeList.end());
+        for (auto &type : typeList)
+        {
+            Log(type);
+        }
+    }, { .argCount = 0, .help = "list json routing"});
 }
 
-int JSONMsgRouterSetupJSON()
+void JSONMsgRouterSetupJSON()
 {
     Timeline::Global().Event("JSONMsgRouterSetupJSON");
 
@@ -53,17 +62,7 @@ int JSONMsgRouterSetupJSON()
 
         out["timeNow"] = PAL.Micros();
     });
-
-    return 1;
 }
-
-
-
-#include <zephyr/init.h>
-SYS_INIT(JSONMsgRouterInit, APPLICATION, 50);
-SYS_INIT(JSONMsgRouterSetupShell, APPLICATION, 80);
-SYS_INIT(JSONMsgRouterSetupJSON, APPLICATION, 80);
-
 
 
 

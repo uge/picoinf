@@ -1,9 +1,5 @@
 #pragma once
 
-#include <stdlib.h>
-#include <string>
-using namespace std;
-
 #include "ClassTypes.h"
 #include "PAL.h"
 #include "Log.h"
@@ -11,6 +7,13 @@ using namespace std;
 #include "Utl.h"
 #include "Container.h"
 
+#include <stdlib.h>
+#include <string>
+using namespace std;
+
+
+extern void TimelineInit();
+extern void TimelineSetupShell();
 
 class Timeline
 : private NonCopyable

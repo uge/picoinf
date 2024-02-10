@@ -52,6 +52,18 @@ inline string& toupper(string &s)
     return s;
 }
 
+inline bool IsPrefix(const string &prefix, const string &target)
+{
+    bool retVal = false;
+    
+    if (prefix.length() <= target.length())
+    {
+        retVal = !strncmp(prefix.c_str(), target.c_str(), prefix.length());
+    }
+
+    return retVal;
+}
+
 
 // str is any string, optionally with delimiters
 // delim can be a string of any size
@@ -635,3 +647,4 @@ vector<T> &Rotate(vector<T> &valList, int count)
 
 
 
+extern void UtlSetupShell();

@@ -2,7 +2,7 @@
 
 target_include_directories(LibPico PUBLIC .)
 
-target_sources(LibPico PRIVATE Pin.cpp UART.cpp)
+target_sources(LibPico PRIVATE Pin.cpp UART.cpp WDT.cpp)
 
 # file(GLOB lib_sources *.cpp)
 # if (lib_sources)

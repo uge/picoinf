@@ -7,6 +7,10 @@ using namespace std;
 #include "hardware/sync.h"
 
 
+extern void PALInit();
+extern void PALSetupShell();
+extern void PALSetupJSON();
+
 class PlatformAbstractionLayer
 {
 public:

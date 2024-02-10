@@ -27,7 +27,6 @@ PAL
 - json 80
 
 Watchdog
-- init 14
 - shell 80
 
 ADCInternal

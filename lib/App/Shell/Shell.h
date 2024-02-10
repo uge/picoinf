@@ -11,6 +11,7 @@ using namespace std;
 
 
 extern void ShellInit();
+extern void ShellSetupJSON();
 
 class Shell
 {
@@ -30,7 +31,7 @@ private:
     };
 
 public:
-    static void Eval(string cmd);
+    static bool Eval(string cmd);
 
     // put implementation in .cpp because system would crash on startup 
     // no idea, moving on for now
@@ -38,7 +39,8 @@ public:
     static bool AddCommand(string name, function<void(vector<string> argList)> cbFn, CmdOptions cmdOptions);
     static bool RemoveCommand(string name);
 
-    static void ShowHelp();
+    static void ShowHelp(string prefix);
+    static bool RepeatPriorCommand();
 
 private:
 
@@ -47,5 +49,6 @@ private:
 private:
 
     inline static map<string, CmdData> cmdLookup_;	
+    inline static string cmdLast_;
 };
 

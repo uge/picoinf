@@ -1,7 +1,10 @@
 #include "PAL.h"
 #include "Log.h"
+#include "Timeline.h"
+#include "WDT.h"
 
 #include "pico/time.h"
+#include "pico/unique_id.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -14,23 +17,14 @@ using namespace std;
 
 string PlatformAbstractionLayer::GetAddress()
 {
-    string retVal = "0x0";
+    uint8_t BUF_SIZE = (2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES) + 1;
+    char buf[BUF_SIZE];
 
-    // const uint8_t BYTES = 32;
-    // array<uint8_t, BYTES + 1> arr;
-    // arr.fill(0);
+    pico_get_unique_board_id_string(buf, BUF_SIZE);
 
-    // ssize_t len = hwinfo_get_device_id(arr.data(), BYTES);
-
-    // if (len > 0)
-    // {
-    //     retVal = "0x";
-
-    //     for (int i = 0; i < len; ++i)
-    //     {
-    //         retVal += Format::ToHex(arr[i], false);
-    //     }
-    // }
+    string retVal;
+    retVal += "0x";
+    retVal += buf;
 
     return retVal;
 }
@@ -140,8 +134,7 @@ void PlatformAbstractionLayer::Fatal(const char *title)
     Log("Logging, then Resetting");
 
     // First the global timeline
-    // TODO
-    // Timeline::Global().ReportNow("Fatal Error");
+    Timeline::Global().ReportNow("Fatal Error");
 
     // Show how many handlers will get called
     size_t size = fatalHandlerDataList_.size();
@@ -174,17 +167,19 @@ void PlatformAbstractionLayer::Fatal(const char *title)
     PAL.Reset();
 }
 
+// https://forums.raspberrypi.com/viewtopic.php?t=318747
 void PlatformAbstractionLayer::Reset()
 {
-    // notably, the ROSC being on is required otherwise this hangs
+    volatile uint32_t *AIRCR_Register = ((volatile uint32_t*)(PPB_BASE + 0x0ED0C));
 
-    // TODO
-    // sys_reboot(SYS_REBOOT_COLD);
+    *AIRCR_Register = 0x5FA0004;
 }
 
+#include "pico/bootrom.h"
+// https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#function-documentation34
 void PlatformAbstractionLayer::ResetToBootloader()
 {
-    // NVIC_SystemReset();
+    reset_usb_boot(0, 0);
 }
 
 string PlatformAbstractionLayer::GetResetReason()
@@ -192,10 +187,11 @@ string PlatformAbstractionLayer::GetResetReason()
     return resetReason_;
 }
 
+// #include <hardware/flash.h>
+#include <hardware/structs/vreg_and_chip_reset.h>
+
 void PlatformAbstractionLayer::CaptureResetReasonAndClear()
 {
-    resetReason_ = "UNKNOWN";
-
     // https://github.com/zephyrproject-rtos/zephyr/pull/42558/commits/ee98c4e62458473b9953d83ccc0083ba47804f0c
     // at time of writing, rpi_pico only supported
     // RESET_POR
@@ -204,40 +200,43 @@ void PlatformAbstractionLayer::CaptureResetReasonAndClear()
     //
     // Not very granular...
 
-    // TODO
-    unordered_map<uint32_t, const char *> reasonMap = {};
-    // unordered_map<uint32_t, const char *> reasonMap = {
-    //     { RESET_PIN,            "RESET_PIN"            },
-    //     { RESET_SOFTWARE,       "RESET_SOFTWARE"       },
-    //     { RESET_BROWNOUT,       "RESET_BROWNOUT"       },
-    //     { RESET_POR,            "RESET_POR"            },
-    //     { RESET_WATCHDOG,       "RESET_WATCHDOG"       },
-    //     { RESET_DEBUG,          "RESET_DEBUG"          },
-    //     { RESET_SECURITY,       "RESET_SECURITY"       },
-    //     { RESET_LOW_POWER_WAKE, "RESET_LOW_POWER_WAKE" },
-    //     { RESET_CPU_LOCKUP,     "RESET_CPU_LOCKUP"     },
-    //     { RESET_PARITY,         "RESET_PARITY"         },
-    //     { RESET_PLL,            "RESET_PLL"            },
-    //     { RESET_CLOCK,          "RESET_CLOCK"          },
-    //     { RESET_HARDWARE,       "RESET_HARDWARE"       },
-    //     { RESET_USER,           "RESET_USER"           },
-    //     { RESET_TEMPERATURE,    "RESET_TEMPERATURE"    },
-    // };
+    resetReason_ = "";
+    string sep = "";
 
-    uint32_t cause;
-    // TODO
-    // int res = hwinfo_get_reset_cause(&cause);
-    int res = 0;
+	uint32_t reset_register = vreg_and_chip_reset_hw->chip_reset;
 
-    if (res == 0)
+	if (reset_register & VREG_AND_CHIP_RESET_CHIP_RESET_HAD_POR_BITS)
     {
-        if (reasonMap.contains(cause))
-        {
-            resetReason_ = reasonMap[cause];
-        }
+        resetReason_ += sep;
+        resetReason_ += "POWER_OR_BROWNOUT";
+        sep = ", ";
+	}
+
+	if (reset_register & VREG_AND_CHIP_RESET_CHIP_RESET_HAD_RUN_BITS)
+    {
+        resetReason_ += sep;
+        resetReason_ += "RESET_PIN";
+        sep = ", ";
+	}
+
+	if (reset_register & VREG_AND_CHIP_RESET_CHIP_RESET_HAD_PSM_RESTART_BITS)
+    {
+        resetReason_ += sep;
+        resetReason_ += "DEBUG_RESET";
+        sep = ", ";
+	}
+
+    if (Watchdog::CausedReboot())
+    {
+        resetReason_ += sep;
+        resetReason_ += "WATCHDOG";
+        sep = ", ";
     }
 
-    // hwinfo_clear_reset_cause();
+    if (resetReason_ == "")
+    {
+        resetReason_ = "UNKNOWN";
+    }
 }
 
 double PlatformAbstractionLayer::MeasureVCC()
@@ -256,32 +255,20 @@ PlatformAbstractionLayer PAL;
 // The default implementation of this function halts the system unconditionally.
 // I'm overriding it because why would I want to just hang?  Restart!
 
-// TODO
-// void k_sys_fatal_error_handler(unsigned int reason, const z_arch_esf_t *esf)
-// {
-//     PAL.Fatal("k_sys_fatal_error_handler");
-// }
-
-
 // stop hanging in the libc-hooks.c when, for example, and empty
 // function<> is called.
 extern "C" {
 void _exit(int status)
 {
     LogModeSync();
+
     Log("_exit(", status, ") from libc-hooks.c");
+
+    PAL.Fatal("k_sys_fatal_error_handler");
 
     while (true) {}
 }
 }
-
-// not implementing the following two, they are called instead of the more
-// useful zephyr error dumping.
-//
-// extern void assert_post_action(void);
-// extern void assert_post_action(const char *file, unsigned int line);
-
-
 
 
 
@@ -289,10 +276,8 @@ void _exit(int status)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO
-#if 0
-// #include "Shell.h"
-int PALInit()
+#include "Shell.h"
+void PALInit()
 {
     Timeline::Global().Event("PALInit");
 
@@ -305,13 +290,9 @@ int PALInit()
     Log("Reset reason: ", PAL.GetResetReason());
     Log("Device ID   : ", PAL.GetAddress());
     LogNL();
-
-    PAL.SetThreadPriority(-1);
-
-    return 1;
 }
 
-int PALSetupShell()
+void PALSetupShell()
 {
     Timeline::Global().Event("PALSetupShell");
 
@@ -346,19 +327,14 @@ int PALSetupShell()
     Shell::AddCommand("pal.test.fatal", [](vector<string> argList){
         PAL.Fatal("pal.test.fatal");
     }, { .argCount = 0, .help = "" });
-
-    return 1;
 }
 
 #include "JSONMsgRouter.h"
-int PALSetupJSON()
+void PALSetupJSON()
 {
     Timeline::Global().Event("PALSetupJSON");
 
     JSONMsgRouter::RegisterHandler("REQ_SYS_RESET", [](auto &in, auto &out){
         Shell::Eval("sys.reset");
     });
-
-    return 1;
 }
-#endif

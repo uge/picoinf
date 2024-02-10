@@ -133,7 +133,7 @@ void Evm::MainLoop()
             if (timeToSleep)
             {
                 uint64_t timeToWake = PAL.Micros() + timeToSleep;
-                sem_.Take(K_USEC(timeToSleep));
+                sem_.Take(timeToSleep);
                 int64_t timeDiff = timeToWake - PAL.Micros();
 
                 if (timeDiff < 0)
@@ -854,25 +854,17 @@ void Evm::SetupShell()
 }
 
 
-int EvmInit()
+void EvmInit()
 {
     Timeline::Global().Event("EvmInit");
 
     Evm::Init();
-
-    return 1;
 }
 
-int EvmSetupShell()
+void EvmSetupShell()
 {
     Timeline::Global().Event("EvmSetupShell");
 
     Evm::SetupShell();
-
-    return 1;
 }
 
-
-#include <zephyr/init.h>
-SYS_INIT(EvmInit, APPLICATION, 50);
-SYS_INIT(EvmSetupShell, APPLICATION, 80);

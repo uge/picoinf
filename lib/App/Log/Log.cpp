@@ -4,9 +4,10 @@
 #include <string.h>
 
 #include "PAL.h"
-// #include "Shell.h"
+#include "Shell.h"
 #include "UART.h"
 #include "Format.h"
+#include "Timeline.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,34 +472,27 @@ void LogBlob(const vector<uint8_t> &byteList, uint8_t showBin, uint8_t showHex)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO
-#if 0
-int LogInit()
+void LogInit()
 {
     Timeline::Global().Event("LogInit");
 
     LogModeSync();
-
-    return 1;
 }
 
-int LogSetupShell()
+void LogSetupShell()
 {
     Timeline::Global().Event("LogSetupShell");
 
     Shell::AddCommand("log.test", [](vector<string>){
-        Log("log.test");
+        Log("log.test success");
     }, { .help = "" });
 
     Shell::AddCommand("log.testnow", [](vector<string>){
         LogModeSync();
-        Log("log.testnow");
+        Log("log.testnow success");
         LogModeAsync();
     }, { .help = "" });
-
-    return 1;
 }
-#endif
 
 
 

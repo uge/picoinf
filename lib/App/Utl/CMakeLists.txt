@@ -2,7 +2,7 @@
 
 target_include_directories(LibPico PUBLIC .)
 
-# target_sources(LibPico PRIVATE Test.cpp)
+target_sources(LibPico PRIVATE Timeline.cpp Utl.cpp JSONMsgRouter.cpp)
 
 # file(GLOB lib_sources *.cpp)
 # if (lib_sources)

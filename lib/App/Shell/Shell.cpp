@@ -1,16 +1,33 @@
+#include "Evm.h"
 #include "Shell.h"
-// #include "Evm.h"
+#include "Timeline.h"
 #include "UART.h"
 #include "Utl.h"
 
-void Shell::Eval(string cmd)
+bool Shell::Eval(string cmd)
 {
+    bool didEval = false;
+
     cmd = trim(cmd);
 
     if (cmd.length())
     {
+        didEval = true;
+
         ShellCmdExecute(cmd);
+
+        if (cmd != ".")
+        {
+            cmdLast_ = cmd;
+        }
     }
+
+    return didEval;
+}
+
+bool Shell::RepeatPriorCommand()
+{
+    return Shell::Eval(cmdLast_);
 }
 
 bool Shell::AddCommand(string name, function<void(vector<string> argList)> cbFn)
@@ -30,7 +47,7 @@ bool Shell::RemoveCommand(string name)
     return 1 == cmdLookup_.erase(name);
 }
 
-void Shell::ShowHelp()
+void Shell::ShowHelp(string prefix)
 {
     vector<string> cmdList;
 
@@ -38,11 +55,14 @@ void Shell::ShowHelp()
     size_t maxLenCmd = 0;
     for (auto &[name, cmdData] : cmdLookup_)
     {
-        cmdList.push_back(name);
-
-        if (name.length() > maxLenCmd)
+        if (prefix == "" || IsPrefix(prefix, name))
         {
-            maxLenCmd = name.length();
+            cmdList.push_back(name);
+
+            if (name.length() > maxLenCmd)
+            {
+                maxLenCmd = name.length();
+            }
         }
     }
 
@@ -65,9 +85,15 @@ void Shell::ShowHelp()
 
         fnPrint("%%%us", maxLenCmd, cmd);
 
+        string argCount = to_string(cd.cmdOptions.argCount);
+        if (cd.cmdOptions.argCount == -1)
+        {
+            argCount = "*";
+        }
+
         Log(completedStr,
             " [",
-            cd.cmdOptions.argCount,
+            argCount,
             " / ",
             cd.cmdOptions.executeAsync ? "evm" : "syn",
             "] : ", 
@@ -142,10 +168,9 @@ void Shell::ShellCmdExecute(const string &line)
             else
             {
                 // register callback to execute
-                // TODO
-                // Evm::QueueWork("SHELL_EVM_QUEUE", [=](){
-                //     cmdData.cbFn_(argList);
-                // });
+                Evm::QueueWork("SHELL_EVM_QUEUE", [=](){
+                    cmdData.cbFn_(argList);
+                });
             }
         }
         else
@@ -165,27 +190,55 @@ void Shell::ShellCmdExecute(const string &line)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// TODO
 void ShellInit()
 {
-    // TODO
-    // Timeline::Global().Event("ShellInit");
+    Timeline::Global().Event("ShellInit");
 
-    Shell::AddCommand("?", [](vector<string>){
-        Shell::ShowHelp();
-    }, { .help = "Show Help" });
+    Shell::AddCommand(".", [](vector<string>){
+        Shell::RepeatPriorCommand();
+    }, { .help = "Repeat prior command" });
+
+    Shell::AddCommand("?", [](vector<string> argList){
+        string prefix = "";
+
+        if (argList.size())
+        {
+            prefix = argList[0];
+        }
+
+        Shell::ShowHelp(prefix);
+    }, { .argCount = -1, .help = "Show Help (filter by first argument)" });
+
+    Shell::AddCommand("help", [](vector<string> argList){
+        string prefix = "";
+
+        if (argList.size())
+        {
+            prefix = argList[0];
+        }
+
+        Shell::ShowHelp(prefix);
+    }, { .argCount = -1, .help = "Show Help (filter by first argument)" });
+
+    // https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character
+    Shell::AddCommand("clear", [](vector<string>){
+        Log("\033[2J"); // clear
+        Log("\033[H");  // move to home position
+    }, { .help = "Clear the screen" });
 
     UartAddLineStreamCallback(UART::UART_0, [](const string &line){
-        Shell::Eval(line);
+        if (Shell::Eval(line))
+        {
+            LogNL();
+        }
         LogNNL("> ");
     }, false);
     
     LogNNL("> ");
 }
 
-#if 0
 #include "JSONMsgRouter.h"
-int ShellSetupJSON()
+void ShellSetupJSON()
 {
     Timeline::Global().Event("ShellSetupJSON");
 
@@ -196,8 +249,5 @@ int ShellSetupJSON()
 
         Shell::Eval(eval);
     });
-
-    return 1;
 }
-#endif
 

@@ -8,12 +8,14 @@ using namespace std;
 
 #include "hardware/gpio.h"
 
-// #include "Evm.h"
+#include "Evm.h"
+
+extern void PinSetupShell();
 
 
 class Pin
 {
-    // friend class Evm;
+    friend class Evm;
 
 public:
     
@@ -233,15 +235,7 @@ public:
 
 private:
 
-    static void InterruptHandler(uint pin, uint32_t eventMask)
-    {
-        PinData &pd = GetPinData(pin);
-
-        if (pd.intEnabled_)
-        {
-            pd.cbFn_();
-        }
-    }
+    static void InterruptHandler(uint pin, uint32_t eventMask);
 
     inline static bool PinValid(uint8_t pin)
     {

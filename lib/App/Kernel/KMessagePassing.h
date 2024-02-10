@@ -6,7 +6,7 @@
 #include "queue.h"
 #include "semphr.h"
 
-// #include "KTime.h"
+#include "KTime.h"
 #include "PAL.h"
 
 
@@ -160,7 +160,7 @@ public:
         vSemaphoreDelete(sem_);
     }
 
-    bool Take(TickType_t timeout = portMAX_DELAY)
+    bool Take(uint32_t timeoutUs = portMAX_DELAY)
     {
         BaseType_t retVal;
         
@@ -170,7 +170,8 @@ public:
         }
         else
         {
-            retVal = xSemaphoreTake(sem_, timeout);
+
+            retVal = xSemaphoreTake(sem_, KTime{timeoutUs});
         }
 
         return retVal == pdTRUE;
@@ -193,5 +194,49 @@ private:
     StaticSemaphore_t pxSemaphoreBuffer_;
     SemaphoreHandle_t sem_;
 };
+
+
+
+// tried this -- didn't work
+
+// #include "pico/sem.h"
+// class KSemaphore
+// {
+// public:
+//     KSemaphore(uint32_t initialCount = 0,
+//                uint32_t countLimit   = UINT32_MAX)
+//     {
+//         sem_init(&sem_, (uint16_t)initialCount, (uint16_t)countLimit);
+//     }
+
+//     ~KSemaphore()
+//     {
+//     }
+
+//     bool Take(uint32_t timeoutUs = UINT32_MAX)
+//     {
+//         bool retVal = true;
+
+//         if (timeoutUs == UINT32_MAX)
+//         {
+//             sem_acquire_blocking(&sem_);
+//         }
+//         else
+//         {
+//             retVal = sem_acquire_timeout_us(&sem_, timeoutUs);
+//         }
+
+//         return retVal;
+//     }
+
+//     void Give()
+//     {
+//         sem_release(&sem_);
+//     }
+
+
+// private:
+//     semaphore_t sem_;
+// };
 
 
