@@ -71,6 +71,7 @@ private:
     bool     isInterval_;
     bool     isRigid_;
     uint64_t intervalTimeout_;
+    uint64_t calledCount_ = 0;
 
     inline static uint32_t idNext_ = 1;
     inline static uint32_t seqNoNext_ = 1;

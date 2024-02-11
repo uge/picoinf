@@ -421,6 +421,7 @@ uint32_t Evm::ServiceTimedEventHandlers()
                 timeline_.Event("EVM_TIMED_START");
                 teh->OnTimedEvent();
                 timeline_.Event("EVM_TIMED_END");
+                ++teh->calledCount_;
                 
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
@@ -619,7 +620,7 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
     LogNL();
     for (auto &teh : timedEventHandlerList_)
     {
-        uint64_t timeRemaining = teh->timeout_ - (timeNow - teh->timeQueued_);
+        int64_t timeRemaining = teh->timeout_ - (timeNow - teh->timeQueued_);
         uint64_t timeoutTime = teh->timeQueued_ + teh->timeout_;
 
         Log(teh->origin_);
@@ -629,6 +630,7 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
         Log("timeout_      ", StrUtl::PadLeft(Commas(teh->timeout_), ' ', 13));
         Log("timeoutTime   ", StrUtl::PadLeft(Commas(timeoutTime), ' ', 13));
         Log("timeRemaining ", StrUtl::PadLeft(Commas(timeRemaining), ' ', 13));
+        Log("calledCount   ", StrUtl::PadLeft(Commas(teh->calledCount_), ' ', 13));
 
         LogNL();
     }
