@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Evm.h"
 #include "Log.h"
 
 #include "tusb.h"
@@ -8,16 +9,24 @@ class USB
 {
 public:
 
+    // does this need to be its own KTask which uses
+    // FreeRTOS blocking (how?)
     static void Test()
     {
-        LogModeSync();
-
         tusb_init();
 
-        while (true)
-        {
+        static TimedEventHandlerDelegate tedRunOnce;
+        tedRunOnce.SetCallback([]{
+            // has to run after scheduler started for some reason
+            tud_init(0);
+        });
+        tedRunOnce.RegisterForTimedEvent(0);
+
+        static TimedEventHandlerDelegate tedRuntime;
+        tedRuntime.SetCallback([]{
             tud_task();
-        }
+        }, "TUD_TASK");
+        tedRuntime.RegisterForTimedEventInterval(5, 0);
     }
 
 private:

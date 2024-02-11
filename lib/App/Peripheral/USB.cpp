@@ -7,19 +7,19 @@ extern "C"
 {
 uint8_t const * tud_descriptor_device_cb(void)
 {
-    Log("1");
+    Log("Get Device Descriptor");
     return nullptr;
 }
 
 uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
 {
-    Log("2");
+    Log("Get Configuration Descriptor");
     return nullptr;
 }
 
 uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
-    Log("3");
+    Log("Get String Descriptor");
     return nullptr;
 }
 
