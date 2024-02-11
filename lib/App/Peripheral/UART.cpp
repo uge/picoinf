@@ -797,7 +797,7 @@ static void UartInitDevice(uart_inst_t *uart, uint8_t pinRx, uint8_t pinTx)
     uart_init(uart, BAUD_RATE);
 
     // Turn off FIFO's - we want to do this character by character
-    uart_set_fifo_enabled(uart, false);
+    // uart_set_fifo_enabled(uart, false);
 }
 
 static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
