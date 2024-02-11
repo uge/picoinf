@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
-set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../pico-sdk")
+set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../pico-sdk")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
@@ -31,6 +31,15 @@ pico_sdk_init()
 
 set(LIB_PICO ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(LibPico "")
+
+# Target TinyUSB with FreeRTOS
+set(TUSB_DIR ${PICO_SDK_PATH}/lib/tinyusb)
+file(GLOB lib_sources ${TUSB_DIR}/*.cpp)
+target_sources(LibPico PRIVATE ${lib_sources})
+target_include_directories(LibPico PRIVATE
+    ${TUSB_CONFIG_H_DIR}
+    ${TUSB_DIR}/src
+)
 
 # Target FreeRTOS
 target_sources(LibPico PRIVATE
@@ -58,5 +67,7 @@ target_link_libraries(LibPico
     pico_rand
     FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap4
+    tinyusb_device
+    tinyusb_host
     cmsis_core
 )
