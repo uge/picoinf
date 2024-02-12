@@ -94,6 +94,7 @@ struct IsrPoolHeapAllocator
 
         if (retVal == nullptr)
         {
+            LogModeSync();
             Log("ERR: IsrPoolHeapAllocator Alloc(", n, ", ", POOL_SIZE, ")");
             Validate();
         }
@@ -120,6 +121,7 @@ struct IsrPoolHeapAllocator
 
         if (!found)
         {
+            LogModeSync();
             Log("ERR: IsrPoolHeapAllocator Dealloc(", (uint32_t)p, ", ", n, ", ", POOL_SIZE, ")");
             Validate();
         }
@@ -129,7 +131,6 @@ public:
 
     void Validate(const char *msg = nullptr)
     {
-        PAL.Fatal("heap");
         if (msg)
         {
             Log(msg);
@@ -201,6 +202,8 @@ public:
         }
 
         LogNL();
+
+        PAL.Fatal("heap");
     }
 
 private:
