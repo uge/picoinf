@@ -108,10 +108,6 @@ private:
 
 public:
 
-
-
-public:
-
     static uint8_t const *tud_descriptor_configuration_cb(uint8_t index);
 
 
