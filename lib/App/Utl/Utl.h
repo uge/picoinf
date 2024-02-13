@@ -177,6 +177,48 @@ inline char *ToString(uint32_t num)
     return buf;
 }
 
+inline string ToHex(uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
+{
+    const char *hexList = "0123456789ABCDEF";
+
+    string retVal;
+
+    if (buf && bufLen)
+    {
+        if (addPrefix)
+        {
+            retVal = "0x";
+        }
+
+        for (int i = 0; i < bufLen; ++i)
+        {
+            char h1 = hexList[(buf[i] & 0xF0) >> 4];
+            char h2 = hexList[(buf[i] & 0x0F)];
+
+            retVal.push_back(h1);
+            retVal.push_back(h2);
+        }
+    }
+
+    return retVal;
+}
+
+inline uint16_t Flip2(uint16_t val)
+{
+    uint16_t retVal = 
+        ((val & 0xFF00) >> 8) |
+        ((val & 0x00FF) << 8);
+
+    return retVal;
+}
+
+inline string ToHex(uint16_t val, bool addPrefix = true)
+{
+    uint16_t valBigEndian = Flip2(val);
+
+    return ToHex((uint8_t *)&valBigEndian, 2);
+}
+
 inline string Commas(string num)
 {
     string retVal;
