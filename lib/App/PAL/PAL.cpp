@@ -108,12 +108,9 @@ void PlatformAbstractionLayer::SchedulerUnlock()
     // xTaskResumeAll();
 }
 
-// The pico platform will busy-sleep for the last remaining portion of a
-// timeout, which isn't what we want, we want to actually sleep hard enough
-// to yield to other procs, so make sure we're above the threshold
 void PlatformAbstractionLayer::YieldToAll()
 {
-    DelayUs(PICO_TIME_SLEEP_OVERHEAD_ADJUST_US + 50);   // 150 + 50 = 200
+    taskYIELD();
 }
 
 void PlatformAbstractionLayer::RegisterOnFatalHandler(const char *title, function<void()> cbFnOnFatal)
@@ -264,7 +261,7 @@ void _exit(int status)
 
     Log("_exit(", status, ") from libc-hooks.c");
 
-    PAL.Fatal("k_sys_fatal_error_handler");
+    PAL.Fatal("_exit");
 
     while (true) {}
 }
