@@ -60,6 +60,8 @@ public:
 
     void Run()
     {
+        USB::Init();
+
         KTask<1000> t("App", []{
             Evm::MainLoop();
         }, 10);
