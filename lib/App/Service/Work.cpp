@@ -118,7 +118,7 @@ static void ThreadFnWork()
 
 
 static const uint32_t STACK_SIZE = 1024;
-static const uint32_t PRIORITY  = 1;
+static const uint32_t PRIORITY  = 10;
 
 static KTask<STACK_SIZE> t("WORK", ThreadFnWork, PRIORITY);
 

@@ -6,12 +6,122 @@
 
 #include "tusb.h"
 
+#include <algorithm>
+using namespace std;
+
+
+/////////////////////////////////////////////////////////////////////
+// CDC Callback Handlers
+/////////////////////////////////////////////////////////////////////
+
+void USB_CDC::tud_cdc_rx_cb()
+{
+    uint32_t bytesAvailable = tud_cdc_n_available(instance_);
+
+    if (bytesAvailable)
+    {
+        vector<uint8_t> byteList(bytesAvailable);
+
+        tud_cdc_n_read(instance_, byteList.data(), bytesAvailable);
+
+        cbFnRx_(byteList);
+    }
+}
+
+void USB::tud_cdc_rx_cb(uint8_t itf)
+{
+    if (itf < cdcList_.size())
+    {
+        cdcList_[itf].tud_cdc_rx_cb();
+    }
+}
+
+// Invoked when received new data
+void tud_cdc_rx_cb(uint8_t itf)
+{
+    USB::tud_cdc_rx_cb(itf);
+}
+
+void USB_CDC::tud_cdc_tx_complete_cb()
+{
+    // nothing to do
+}
+
+void USB::tud_cdc_tx_complete_cb(uint8_t itf)
+{
+    if (itf < cdcList_.size())
+    {
+        cdcList_[itf].tud_cdc_tx_complete_cb();
+    }
+}
+
+// Invoked when a TX is complete and therefore space becomes available in TX buffer
+void tud_cdc_tx_complete_cb(uint8_t itf)
+{
+    USB::tud_cdc_tx_complete_cb(itf);
+}
+
+void USB_CDC::tud_cdc_line_state_cb(bool dtr, bool rts)
+{
+    dtr_ = dtr;
+}
+
+void USB::tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+    if (itf < cdcList_.size())
+    {
+        cdcList_[itf].tud_cdc_line_state_cb(dtr, rts);
+    }
+}
+
+// Invoked when line state DTR & RTS are changed via SET_CONTROL_LINE_STATE
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+    USB::tud_cdc_line_state_cb(itf, dtr, rts);
+}
+
+
+/////////////////////////////////////////////////////////////////////
+// CDC Interface
+/////////////////////////////////////////////////////////////////////
+
+void USB_CDC::Send(const uint8_t *buf, uint16_t bufLen)
+{
+    uint16_t bufMin = min((uint32_t)bufLen, tud_cdc_n_write_available(instance_));
+    tud_cdc_n_write(instance_, buf, bufMin);
+    tud_cdc_n_write_flush(instance_);
+}
+
+void USB_CDC::Clear()
+{
+    tud_cdc_n_write_clear(instance_);
+}
+
+
+/////////////////////////////////////////////////////////////////////
+// Task running TinyUSB code
+/////////////////////////////////////////////////////////////////////
+
+static KTask<1000> t("TinyUSB", []{
+    tusb_init();
+
+    // has to run after scheduler started for some reason
+    tud_init(0);
+
+    while (true)
+    {
+        // blocks via FreeRTOS task sync mechanisms
+        tud_task();
+    }
+}, 10);
+
+
+/////////////////////////////////////////////////////////////////////
+// TinyUSB Interfacing
+/////////////////////////////////////////////////////////////////////
 
 extern "C"
 {
-
-
-
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
@@ -37,9 +147,6 @@ tusb_desc_device_t const desc_device =
 
     // Use Interface Association Descriptor (IAD) for CDC
     // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
-    // .bDeviceClass       = TUSB_CLASS_MISC,
-    // .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
-    // .bDeviceProtocol    = MISC_PROTOCOL_IAD,
     .bDeviceClass       = 0,
     .bDeviceSubClass    = 0,
     .bDeviceProtocol    = 0,
@@ -57,9 +164,8 @@ tusb_desc_device_t const desc_device =
     .bNumConfigurations = 0x01
 };
 
-uint8_t const * tud_descriptor_device_cb(void)
+uint8_t const *tud_descriptor_device_cb(void)
 {
-    Log("Get Device Descriptor");
     return (uint8_t const *)&desc_device;
 }
 
@@ -102,11 +208,9 @@ uint8_t const desc_fs_configuration[] =
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
-uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
+uint8_t const *tud_descriptor_configuration_cb(uint8_t index)
 {
   (void) index; // for multiple configurations
-
-  Log("Get Configuration Descriptor ", index);
 
   return desc_fs_configuration;
 }
@@ -130,11 +234,9 @@ static uint16_t _desc_str[32];
 
 // Invoked when received GET STRING DESCRIPTOR request
 // Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
+uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 {
   (void) langid;
-
-  Log("Get String Descriptor ", index);
 
   uint8_t chr_count;
 
@@ -171,105 +273,6 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
 
 
-KMessagePipe<char, 1000U> pipe;
-static bool dtr0 = false;
-
-void SendToUsb(uint8_t itf)
-{
-    if (dtr0)
-    {
-        uint32_t count = 0;
-        while (pipe.Count() && tud_cdc_n_write_available(itf))
-        {
-            char c;
-            pipe.Get(c);
-            tud_cdc_n_write(itf, &c, 1);
-
-            ++count;
-        }
-
-        Log("SendToUsb ", itf, " - ", count, " bytes sent");
-
-        tud_cdc_n_write_flush(itf);
-    }
-    else
-    {
-        pipe.Flush();
-        tud_cdc_n_write_clear(itf);
-
-        Log("SendToUsb when dtr=false");
-    }
-}
-
-void Send(string str)
-{
-    if (str.length())
-    {
-        for (char c : str)
-        {
-            pipe.Put(c);
-        }
-
-        SendToUsb(0);
-    }
-}
-
-
-
-static KTask<1000> t("sender", []{
-    uint32_t count = 0;
-
-    Send("Just once");
-
-    // while (true) { PAL.Delay(5000); };
-
-    PAL.Delay(10000);
-
-    while (true)
-    {
-        for (int i = 0; i < 8; ++i)
-        {
-            Send(to_string(count) + "\n");
-            ++count;
-        }
-        PAL.Delay(5000);
-    }
-}, 10);
-
-
-/////////////////////////////////////////////////////////////////////
-// CDC Callbacks
-/////////////////////////////////////////////////////////////////////
-
-// Invoked when received new data
-void tud_cdc_rx_cb(uint8_t itf)
-{
-    uint32_t bytesAvailable = tud_cdc_n_available(itf);
-    uint8_t buf[bytesAvailable + 1];
-
-    tud_cdc_n_read(itf, buf, bytesAvailable);
-
-    buf[bytesAvailable] = '\0';
-
-    Log("RX (", bytesAvailable, " bytes): \"", (char *)buf, "\"");
-
-    Log("Write capacity: ", tud_cdc_n_write_available(itf));
-}
-
-// Invoked when a TX is complete and therefore space becomes available in TX buffer
-void tud_cdc_tx_complete_cb(uint8_t itf)
-{
-    Log("TX Complete");
-    SendToUsb(itf);
-}
-
-// Invoked when line state DTR & RTS are changed via SET_CONTROL_LINE_STATE
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-    Log("Line State: dtr(", dtr, "), rts(", rts, ")");
-
-    dtr0 = dtr;
-}
 
 
 
@@ -280,25 +283,25 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-    Log("Mounted");
+    // Log("Mounted");
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-    Log("Unmounted");
+    // Log("Unmounted");
 }
 
 // Invoked when usb bus is suspended
 void tud_suspend_cb(bool remote_wakeup_en)
 {
-    Log("Suspended");
+    // Log("Suspended");
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-    Log("Resumed");
+    // Log("Resumed");
 }
 }
 
@@ -334,3 +337,28 @@ void tud_resume_cb(void)
 
 
 */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

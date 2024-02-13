@@ -16,7 +16,7 @@
 // #include "PWM.h"
 #include "Shell.h"
 #include "Timeline.h"
-// #include "USB.h"
+#include "USB.h"
 #include "Utl.h"
 // #include "VersionStr.h"
 #include "WDT.h"

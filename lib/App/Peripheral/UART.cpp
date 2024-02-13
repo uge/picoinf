@@ -1,10 +1,11 @@
+#include "Evm.h"
+#include "IDMaker.h"
 #include "KMessagePassing.h"
 #include "KTask.h"
-#include "Evm.h"
 #include "PAL.h"
 #include "Shell.h"
 #include "UART.h"
-#include "IDMaker.h"
+#include "USB.h"
 
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
@@ -21,6 +22,7 @@ using namespace std;
 // UART Init state
 ////////////////////////////////////////////////////////////////////////////////
 
+static USB_CDC *cdc0 = USB::GetCdcInstance(0);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +32,6 @@ using namespace std;
 static const uint16_t UART_OUTPUT_PIPE_SIZE = 1000;
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_1_OUTPUT_PIPE;
-static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_USB_OUTPUT_PIPE;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +159,7 @@ public:
         {
             char c = data[i];
 
-            if (c == '\n' || inputStream_.size() == maxLineLen_)
+            if (c == '\n' || c == '\r' || inputStream_.size() == maxLineLen_)
             {
                 // remember if max line len hit
                 bool wasMaxLine = inputStream_.size() == maxLineLen_;
@@ -216,6 +217,11 @@ public:
         return id__data_.size();
     }
 
+    uint32_t Size() const
+    {
+        return inputStream_.size();
+    }
+
     uint32_t Clear()
     {
         uint32_t size = inputStream_.size();
@@ -259,9 +265,7 @@ static LineStreamDistributor UART_1_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_1, 
 static KSemaphore UART_1_INPUT_SEM;
 
 static DataStreamDistributor UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_USB);
-static vector<uint8_t> UART_USB_INPUT_VEC;
 static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
-static KSemaphore UART_USB_INPUT_SEM;
 
 static const uint8_t READ_BUF_SIZE = 50;
 static uint8_t READ_BUF[READ_BUF_SIZE];
@@ -271,28 +275,13 @@ static uint8_t READ_BUF[READ_BUF_SIZE];
 // UART Output
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<UART> uartStack = { UART::UART_0 };
-
-static uart_inst_t *UartGetActiveInstance()
-{
-    uart_inst_t *activeInstance = uart0;
-
-    UART uart = uartStack.back();
-
-    if      (uart == UART::UART_1)   { activeInstance = uart1; }
-    // else if (uart == UART::UART_USB) { activeInstance = DEV_UART_USB; }
-    
-    return activeInstance;
-}
-
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> &UartGetPipe()
 {
     KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> *ptr = &UART_0_OUTPUT_PIPE;
 
-    UART uart = uartStack.back();
+    UART uart = UartCurrent();
 
     if      (uart == UART::UART_1)   { ptr = &UART_1_OUTPUT_PIPE; }
-    else if (uart == UART::UART_USB) { ptr = &UART_USB_OUTPUT_PIPE; }
     
     return *ptr;
 }
@@ -412,84 +401,38 @@ static void ThreadFnUART1Input()
 }
 
 static const uint32_t STACK_SIZE = 1024;
-static const uint8_t  PRIORITY   = 1;
+static const uint8_t  PRIORITY   = 10;
 static KTask<STACK_SIZE> uart0Input("UART0_INPUT", ThreadFnUART0Input, PRIORITY);
 static KTask<STACK_SIZE> uart1Input("UART1_INPUT", ThreadFnUART1Input, PRIORITY);
 
 
-#if 0
-//
-// UART USB
-//
-static void ThreadFnUARTUSBOutput()
-{
-    bool skippedLast = false;
-    while (true)
-    {
-        char c;
-        if (UART_USB_OUTPUT_PIPE.Get(c, K_FOREVER))
-        {
-            // consume the bytes, but only attempt to output if USB serial connected
-            uint32_t dtr;
-            uart_line_ctrl_get(DEV_UART_USB, UART_LINE_CTRL_DTR, &dtr);
-            if (dtr)
-            {
-                // sad kludge to protect against:
-                // - sending a stream of data to an endpoint which disconnects midway through
-                // - unknowingly queuing a few additional bytes in the USB output buffer
-                // - those bytes lingering and later getting sent on a new connection, corrupting the stream
-                //
-                // this approach hopes:
-                // - the other side is line-oriented and simply discards the malformed message
-                // - too few bytes get in the buffer to form a complete message
-                if (skippedLast)
-                {
-                    skippedLast = false;
+////////////////////////////////////////////////////////////////////////////////
+// Handlers for USB
+////////////////////////////////////////////////////////////////////////////////
 
-                    for (int i = 0; i < 6; ++i)
-                    {
-                        uart_poll_out(DEV_UART_USB, '\n');
-                    }
-                }
-                uart_poll_out(DEV_UART_USB, c);
-            }
-            else
-            {
-                skippedLast = true;
-            }
-        }
+static void UsbOnRx(vector<uint8_t> &byteList)
+{
+    UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR.Distribute(byteList);
+}
+
+static void UsbSend(const uint8_t *buf, uint16_t bufLen)
+{
+    if (cdc0->GetDtr())
+    {
+        cdc0->Send(buf, bufLen);
+    }
+    else
+    {
+        cdc0->Clear();
     }
 }
-K_THREAD_DEFINE(ThreadUARTUSBOutput, STACKSIZE, ThreadFnUARTUSBOutput, NULL, NULL, NULL, PRIORITY, 0, 0);
 
-static void ThreadFnUARTUSBInput()
-{
-    while (true)
-    {
-        if (UART_USB_INPUT_SEM.Take(K_FOREVER))
-        {
-            // lock out interrupts so we can safely manipulate the captured data vector
-            IrqLock lock;
-            PAL.SchedulerLock();
-
-            // pass all the data to the line stream
-            UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR.Distribute(UART_USB_INPUT_VEC);
-
-            // erase all data
-            UART_USB_INPUT_VEC.clear();
-            PAL.SchedulerUnlock();
-
-            // reset the semaphore, all data is drained by now
-            UART_USB_INPUT_SEM.Reset();
-        }
-    }
-}
-K_THREAD_DEFINE(ThreadUARTUSBInput, STACKSIZE, ThreadFnUARTUSBInput, NULL, NULL, NULL, PRIORITY, 0, 0);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // UART External API
 ////////////////////////////////////////////////////////////////////////////////
+
+static vector<UART> uartStack = { UART::UART_0 };
 
 void UartPush(UART uart)
 {
@@ -516,26 +459,20 @@ UART UartCurrent()
 
 void UartOut(char c)
 {
-    uart_inst_t *activeInstance = UartGetActiveInstance();
+    UART uart = UartCurrent();
 
-    if (activeInstance == uart0 || activeInstance == uart1)
+    if (uart == UART::UART_0)
     {
-        uart_putc_raw(activeInstance, c);
+        uart_putc_raw(uart0, c);
     }
-    #if 0
-    else
+    else if (uart == UART::UART_1)
     {
-        // protect against synchronous logging clogging up the
-        // usb serial output
-
-        uint32_t dtr;
-        uart_line_ctrl_get(activeInstance, UART_LINE_CTRL_DTR, &dtr);
-        if (dtr)
-        {
-            uart_poll_out(activeInstance, c);
-        }
+        uart_putc_raw(uart1, c);
     }
-    #endif
+    else if (uart == UART::UART_USB)
+    {
+        UsbSend((uint8_t *)&c, 1);
+    }
 }
 
 void UartOut(const char *str)
@@ -557,31 +494,40 @@ void UartSend(const uint8_t *buf, uint16_t bufLen)
     }
     else
     {
-        if (bufLen <= UART_OUTPUT_PIPE_SIZE)
+        UART uart = UartCurrent();
+
+        if (uart == UART::UART_0 || uart == UART::UART_1)
         {
-            PAL.SchedulerLock();
-
-            // Make sure the output isn't disabled before sending
-            bool sendOk = true;
-
-            auto *pipe = &UartGetPipe();
-            // if (pipe == &UART_1_OUTPUT_PIPE)
-            // {
-            //     sendOk = UartIsEnabled(UART::UART_1);
-            // }
-
-            if (sendOk)
+            if (bufLen <= UART_OUTPUT_PIPE_SIZE)
             {
-                // Should be ok without an IRQ lock given guarantees around the pipe
-                pipe->Put((char *)buf, bufLen);
-                irq_set_pending(UartGetActiveInstance() == uart0 ? UART0_IRQ : UART1_IRQ);
-            }
+                PAL.SchedulerLock();
 
-            PAL.SchedulerUnlock();
+                // Make sure the output isn't disabled before sending
+                bool sendOk = true;
+
+                auto *pipe = &UartGetPipe();
+                // if (pipe == &UART_1_OUTPUT_PIPE)
+                // {
+                //     sendOk = UartIsEnabled(UART::UART_1);
+                // }
+
+                if (sendOk)
+                {
+                    // Should be ok without an IRQ lock given guarantees around the pipe
+                    pipe->Put((char *)buf, bufLen);
+                    irq_set_pending(UartCurrent() == UART::UART_0 ? UART0_IRQ : UART1_IRQ);
+                }
+
+                PAL.SchedulerUnlock();
+            }
+            else
+            {
+                // I guess it's not going then
+            }
         }
-        else
+        else if (uart == UART::UART_USB)
         {
-            // I guess it's not going then
+            UsbSend(buf, bufLen);
         }
     }
 }
@@ -590,6 +536,11 @@ void UartSend(const vector<uint8_t> &byteList)
 {
     UartSend(byteList.data(), byteList.size());
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+// UART DataStream Interface
+////////////////////////////////////////////////////////////////////////////////
 
 pair<bool, uint8_t> UartAddDataStreamCallback(UART uart, function<void(const vector<uint8_t> &data)> cbFn)
 {
@@ -673,6 +624,11 @@ bool UartRemoveDataStreamCallback(UART uart, uint8_t id)
     return retVal;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// UART LineStream Interface
+////////////////////////////////////////////////////////////////////////////////
+
 pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, function<void(const string &line)> cbFn, bool hideBlankLines)
 {
     bool retValOk = false;
@@ -755,6 +711,11 @@ bool UartRemoveLineStreamCallback(UART uart, uint8_t id)
     return retVal;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// UART Clear Buffer Interface
+////////////////////////////////////////////////////////////////////////////////
+
 void UartClearRxBuffer(UART uart)
 {
     // clear the queues seen below
@@ -773,7 +734,6 @@ void UartClearTxBuffer(UART uart)
         UART_1_OUTPUT_PIPE.Flush();
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -828,7 +788,6 @@ void UartInit()
     // pre-allocate buffer so no need to do so under ISR
     UART_0_INPUT_VEC.reserve(UART_INPUT_PIPE_SIZE);
     UART_1_INPUT_VEC.reserve(UART_INPUT_PIPE_SIZE);
-    UART_USB_INPUT_VEC.reserve(UART_INPUT_PIPE_SIZE);
 
     // register the line distributors with the binary distributors -- daisy chain
     UART_0_INPUT_DATA_STREAM_DISTRIBUTOR.AddDataStreamCallback([](const vector<uint8_t> &data){
@@ -847,21 +806,12 @@ void UartInit()
     UartInitDeviceInterrupts(uart0, UartInterruptHandlerUart0);
     UartInitDeviceInterrupts(uart1, UartInterruptHandlerUart1);
 
-    // Set up USB serial interface
-    // const device *chosenShell = DEVICE_DT_GET_OR_NULL(DT_CHOSEN(zephyr_shell_uart));
-    // if (chosenShell == DEV_UART_USB)
-    // {
-    //     UartSetDefault(UART::UART_USB);
-    // }
-    // else
-    // {
-    //     uart_irq_callback_set(DEV_UART_USB, UartInputIrqHandler);
-    //     uart_irq_rx_enable(DEV_UART_USB);
-    // }
-
     // trigger interrupts to kick off any already-queued data
     irq_set_pending(UART0_IRQ);
     irq_set_pending(UART1_IRQ);
+
+    // Set up USB serial interface
+    cdc0->SetCallbackOnRx(UsbOnRx);
 }
 
 void UartSetupShell()
@@ -884,21 +834,22 @@ void UartSetupShell()
 
     Shell::AddCommand("uart.stats", [](vector<string> argList){
         Log("UART_0");
-        Log("- input queued    : N/A");
-        Log("  - raw listeners : N/A");
-        Log("  - line listeners: N/A");
-
-        Log("UART_1");
-        Log("- input queued    : ", UART_1_INPUT_VEC.size());
-        Log("  - raw listeners : ", UART_1_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
-        Log("  - line listeners: ", UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
-
-        Log("UART_USB");
-        Log("- input queued    : ", UART_USB_INPUT_VEC.size());
-        Log("  - raw listeners : ", UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
-        Log("  - line listeners: ", UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
-
+        Log("- irq queued    : ", UART_0_INPUT_VEC.size());
+        Log("- raw listeners : ", UART_0_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
+        Log("- line listeners: ", UART_0_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
+        Log("  - queued      : ", UART_0_INPUT_LINE_STREAM_DISTRIBUTOR.Size());
         LogNL();
+        Log("UART_1");
+        Log("- irq queued    : ", UART_1_INPUT_VEC.size());
+        Log("- raw listeners : ", UART_1_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
+        Log("- line listeners: ", UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
+        Log("  - queued      : ", UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.Size());
+        LogNL();
+        Log("UART_USB");
+        Log("- irq queued    : -");
+        Log("- raw listeners : ", UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
+        Log("- line listeners: ", UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
+        Log("  - queued      : ", UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR.Size());
     }, { .argCount = 0, .help = "UART stats"});
 
     // Shell::AddCommand("uart.uart1", [](vector<string> argList){
