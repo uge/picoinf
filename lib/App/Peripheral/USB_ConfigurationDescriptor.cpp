@@ -7,13 +7,6 @@
 // Configuration Descriptor
 /////////////////////////////////////////////////////////////////////
 
-enum
-{
-  ITF_NUM_CDC = 0,
-  ITF_NUM_CDC_DATA,
-//   ITF_NUM_VENDOR,
-  ITF_NUM_TOTAL
-};
 
 #define EPNUM_CDC_NOTIF   0x81
 #define EPNUM_CDC_OUT     0x02
@@ -22,10 +15,8 @@ enum
 #define EPNUM_VENDOR_OUT  0x03
 #define EPNUM_VENDOR_IN   0x83
 
+#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
 
-// #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_MSC_DESC_LEN)
-#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
-// #define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
 
 static uint8_t const desc_fs_configuration[] =
 {
@@ -36,11 +27,13 @@ static uint8_t const desc_fs_configuration[] =
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
 
   // Interface number, string index, EP Out & IN address, EP size
-//   TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR, 5, EPNUM_VENDOR_OUT, 0x80 | EPNUM_VENDOR_IN, 64)
+  TUD_VENDOR_DESCRIPTOR(ITF_NUM_VENDOR, 5, EPNUM_VENDOR_OUT, EPNUM_VENDOR_IN, 64)
 };
 
 uint8_t const *USB::tud_descriptor_configuration_cb(uint8_t index)
 {
+    // Log("Config Descriptor");
+
     return desc_fs_configuration;
 }
 

@@ -1,7 +1,6 @@
 #include "USB.h"
 #include "Log.h"
 #include "KTask.h"
-#include "KMessagePassing.h"
 #include "Timeline.h"
 
 #include "tusb.h"
@@ -13,6 +12,8 @@
 
 void USB::Init()
 {
+    Timeline::Global().Event("USB::Init");
+
     if (serial_ == "")
     {
         // have to wait until now to set this, address not available
@@ -21,11 +22,12 @@ void USB::Init()
     }
 
     Log("USB Init");
-    Log("VID: ", ToHex(vid_), ", PID: ", ToHex(pid_));
-    Log("Manufacturer : ", manufacturer_);
-    Log("Product      : ", product_);
-    Log("Serial       : ", serial_);
-    Log("CDC Interface: ", cdcInterface_);
+    Log("VID: ", ToHex(vid_), ", PID: ", ToHex(pid_), ", Device: ", ToHex(device_));
+    Log("Manufacturer    : ", manufacturer_);
+    Log("Product         : ", product_);
+    Log("Serial          : ", serial_);
+    Log("CDC Interface   : ", cdcInterface_);
+    Log("Vendor Interface: ", vendorInterface_);
     LogNL();
 
     static KTask<1000> t("TinyUSB", []{
@@ -53,25 +55,25 @@ extern "C"
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-    Log("USB Mounted");
+    // Log("USB Mounted");
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-    Log("Unmounted");
+    // Log("USB Unmounted");
 }
 
 // Invoked when usb bus is suspended
 void tud_suspend_cb(bool remote_wakeup_en)
 {
-    Log("Suspended");
+    // Log("USB Suspended");
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-    Log("Resumed");
+    // Log("USB Resumed");
 }
 
 }   // extern "C"

@@ -16,6 +16,8 @@ uint16_t const *USB::tud_descriptor_string_cb(uint8_t index, uint16_t langid)
     // no null terminator
     static vector<uint8_t> byteList;
 
+    // Log("String Descriptor ", index);
+
     uint16_t const *retVal = nullptr;
     
     byteList.clear();
@@ -26,8 +28,8 @@ uint16_t const *USB::tud_descriptor_string_cb(uint8_t index, uint16_t langid)
         // put it in little-endian
 
         byteList.resize(2 + 2);
-        byteList[1] = 0x09;
-        byteList[2] = 0x04;
+        byteList[2] = 0x09;
+        byteList[3] = 0x04;
 
         retVal = (uint16_t const *)byteList.data();
     }
@@ -51,6 +53,14 @@ uint16_t const *USB::tud_descriptor_string_cb(uint8_t index, uint16_t langid)
             }
 
             retVal = (uint16_t const *)byteList.data();
+        }
+        else
+        {
+            // https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
+            if (index == 0xEE)
+            {
+                // do nothing, let null be returned
+            }
         }
     }
 

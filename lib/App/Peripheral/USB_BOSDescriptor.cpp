@@ -43,7 +43,7 @@
 
 
 
-#if 0
+#if 1
 
 
 
@@ -88,13 +88,13 @@ static uint8_t const desc_bos[] =
 
 uint8_t const *USB::tud_descriptor_bos_cb()
 {
-    Log("BOS Requested");
+    // Log("BOS Descriptor");
     return desc_bos;
 }
 
-uint8_t const * tud_descriptor_bos_cb(void)
+uint8_t const *tud_descriptor_bos_cb(void)
 {
-  return USB::tud_descriptor_bos_cb();
+    return USB::tud_descriptor_bos_cb();
 }
 
 
@@ -111,6 +111,7 @@ static tusb_desc_webusb_url_t desc_url =
   .bScheme         = 1, // 0: http, 1: https
   .url             = URL
 };
+
 
 
 uint8_t const desc_ms_os_20[] =
@@ -152,6 +153,8 @@ uint8_t const desc_ms_os_20[] =
 // return false to stall control endpoint (e.g unsupported request)
 bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request)
 {
+    // Log("tud_vendor_control_xfer_cb");
+
   // nothing to with DATA & ACK stage
   if (stage != CONTROL_STAGE_SETUP) return true;
 
@@ -161,13 +164,13 @@ bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control
       switch (request->bRequest)
       {
         case VENDOR_REQUEST_WEBUSB:
-            Log("VENDOR_REQUEST_WEBUSB");
+            // Log("VENDOR_REQUEST_WEBUSB");
           // match vendor request in BOS descriptor
           // Get landing page url
           return tud_control_xfer(rhport, request, (void*)(uintptr_t) &desc_url, desc_url.bLength);
 
         case VENDOR_REQUEST_MICROSOFT:
-            Log("VENDOR_REQUEST_MICROSOFT ", request->wIndex);
+            // Log("VENDOR_REQUEST_MICROSOFT ", request->wIndex);
           if ( request->wIndex == 7 )
           {
             // Get Microsoft OS 2.0 compatible descriptor
@@ -185,7 +188,7 @@ bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control
     break;
 
     case TUSB_REQ_TYPE_CLASS:
-    Log("TUSB_REQ_TYPE_CLASS ", request->bRequest);
+    // Log("TUSB_REQ_TYPE_CLASS ", request->bRequest);
       if (request->bRequest == 0x22)
       {
         // // Webserial simulate the CDC_REQUEST_SET_CONTROL_LINE_STATE (0x22) to connect and disconnect.

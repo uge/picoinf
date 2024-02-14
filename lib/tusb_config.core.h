@@ -4,6 +4,12 @@
 // for the core library.  Per-app configuration should include
 // this and override and supplement if needed.
 
+
+
+
+
+
+
 /////////////////////////////////////////////////////////////////////
 // Enable Device and/or Host stacks
 // TUD = TinyUSB Device
@@ -29,13 +35,22 @@
 
 
 /////////////////////////////////////////////////////////////////////
+// Vendor Class CDC Configuration
+/////////////////////////////////////////////////////////////////////
+
+#define CFG_TUD_VENDOR  1
+
+#define CFG_TUD_VENDOR_RX_BUFSIZE  256
+#define CFG_TUD_VENDOR_TX_BUFSIZE  256
+
+
+/////////////////////////////////////////////////////////////////////
 // Other Device Class Configuration
 /////////////////////////////////////////////////////////////////////
 
 #define CFG_TUD_MSC     0
 #define CFG_TUD_HID     0
 #define CFG_TUD_MIDI    0
-#define CFG_TUD_VENDOR  0
 
 // MSC Buffer size of Device Mass storage
 #define CFG_TUD_MSC_EP_BUFSIZE   512
@@ -73,3 +88,13 @@
 #undef CFG_TUSB_OS
 #endif
 #define CFG_TUSB_OS   OPT_OS_FREERTOS
+
+
+// nevermind I'm just overriding it like this here.
+// I don't want to forever see a modified file in the
+// repo when I do a git status.
+// hopefully they fix this one day
+#ifdef CFG_TUSB_OS
+  #undef CFG_TUSB_OS
+#endif
+#define CFG_TUSB_OS OPT_OS_FREERTOS

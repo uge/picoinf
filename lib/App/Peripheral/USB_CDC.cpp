@@ -35,6 +35,7 @@ void USB::tud_cdc_rx_cb(uint8_t itf)
 // Invoked when received new data
 void tud_cdc_rx_cb(uint8_t itf)
 {
+    // Log("tud_cdc_rx_cb");
     USB::tud_cdc_rx_cb(itf);
 }
 
@@ -54,6 +55,7 @@ void USB::tud_cdc_tx_complete_cb(uint8_t itf)
 // Invoked when a TX is complete and therefore space becomes available in TX buffer
 void tud_cdc_tx_complete_cb(uint8_t itf)
 {
+    // Log("tud_cdc_tx_complete_cb");
     USB::tud_cdc_tx_complete_cb(itf);
 }
 
@@ -73,6 +75,7 @@ void USB::tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 // Invoked when line state DTR & RTS are changed via SET_CONTROL_LINE_STATE
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 {
+    // Log("tud_cdc_line_state_cb");
     USB::tud_cdc_line_state_cb(itf, dtr, rts);
 }
 

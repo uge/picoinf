@@ -7,6 +7,9 @@
 // Device Descriptors
 /////////////////////////////////////////////////////////////////////
 
+
+
+
 static tusb_desc_device_t desc_device =
 {
     .bLength            = sizeof(tusb_desc_device_t),
@@ -14,16 +17,17 @@ static tusb_desc_device_t desc_device =
     .bcdUSB             = 0x0200,
 
     // Use Interface Association Descriptor (IAD) for CDC
-    // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
-    .bDeviceClass       = 0,
-    .bDeviceSubClass    = 0,
-    .bDeviceProtocol    = 0,
+    // As required by USB Specs IAD's subclass must be
+    // common class (2) and protocol must be IAD (1)
+    .bDeviceClass       = TUSB_CLASS_MISC,
+    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
 
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
     .idVendor           = 0,
     .idProduct          = 0,
-    .bcdDevice          = 0x0100,
+    .bcdDevice          = 0,
 
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
@@ -36,8 +40,11 @@ static tusb_desc_device_t desc_device =
 // Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
 uint8_t const *USB::tud_descriptor_device_cb()
 {
+    // Log("Device Descriptor");
+
     desc_device.idVendor = vid_;
     desc_device.idProduct = pid_;
+    desc_device.bcdDevice = device_;
 
     return (uint8_t const *)&desc_device;
 }

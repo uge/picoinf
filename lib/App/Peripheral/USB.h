@@ -91,6 +91,11 @@ public:
         pid_ = pid;
     }
 
+    static void SetDevice(uint16_t device)
+    {
+        device_ = device;
+    }
+
 
 public:
 
@@ -98,8 +103,9 @@ public:
 
 private:
 
-    inline static uint16_t vid_ = 0x0000;
-    inline static uint16_t pid_ = 0x0000;
+    inline static uint16_t vid_    = 0x0000;
+    inline static uint16_t pid_    = 0x0000;
+    inline static uint16_t device_ = 0x0000;
 
 
     /////////////////////////////////////////////
@@ -152,6 +158,11 @@ public:
         cdcInterface_ = str;
     }
 
+    static void SetStringVendorInterface(string str)
+    {
+        vendorInterface_ = str;
+    }
+
 
 public:
 
@@ -165,12 +176,14 @@ private:
         "Product",
         "",
         "CDC Interface",
+        "Vendor Interface",
     };
 
-    inline static string &manufacturer_ = strList_[0];
-    inline static string &product_      = strList_[1];
-    inline static string &serial_       = strList_[2];;
-    inline static string &cdcInterface_ = strList_[3];
+    inline static string &manufacturer_    = strList_[0];
+    inline static string &product_         = strList_[1];
+    inline static string &serial_          = strList_[2];;
+    inline static string &cdcInterface_    = strList_[3];
+    inline static string &vendorInterface_ = strList_[4];
 
 
     /////////////////////////////////////////////
@@ -204,3 +217,11 @@ private:
     inline static vector<USB_CDC> cdcList_ = { 0 };
 };
 
+
+enum
+{
+    ITF_NUM_CDC = 0,
+    ITF_NUM_CDC_DATA,
+    ITF_NUM_VENDOR,
+    ITF_NUM_TOTAL
+};
