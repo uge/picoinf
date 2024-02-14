@@ -58,6 +58,14 @@ target_include_directories(LibPico PRIVATE
     ${FRTOS}/portable/GCC/ARM_CM0
 )
 
+# Target LittleFS
+set(LITTLEFS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../littlefs")
+file(GLOB lib_sources ${LITTLEFS_DIR}/*.c)
+target_sources(LibPico PRIVATE ${lib_sources})
+target_include_directories(LibPico PRIVATE
+    ${LITTLEFS_DIR}
+)
+
 add_subdirectory(${LIB_PICO}/App)
 # add_subdirectory(Ble)
 # add_subdirectory(ESB)
