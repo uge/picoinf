@@ -38,7 +38,6 @@ public:
         // FlashStoreInit();
         EvmInit();
         JSONMsgRouterInit();
-        ShellInit();
 
         // Shell
         EvmSetupShell();
@@ -61,6 +60,7 @@ public:
     void Run()
     {
         USB::Init();
+        ShellInit();
 
         KTask<1000> t("App", []{
             Evm::MainLoop();

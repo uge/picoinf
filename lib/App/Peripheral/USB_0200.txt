@@ -1,0 +1,128 @@
+USBD init on controller 0
+sizeof(usbd_device_t) = 83
+sizeof(tu_fifo_t) = 20
+sizeof(tu_edpt_stream_t) = 116
+CDC init
+VENDOR init
+sizeof(hw_endpoint_t) = 32
+BUS RESET
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 80 06 00 01 00 00 40 00
+  Get Descriptor Device
+  Queue EP 80 with 18 bytes ...
+  Prepare BufCtrl: [0] = 0xf412  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6012  [1] = 0x0000
+  Short packet on buffer 0 with 18 bytes
+Completed transfer of 18 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 18 bytes
+  Queue EP 00 with 0 bytes ...
+  Prepare BufCtrl: [0] = 0x7400  [1] = 0x0000
+buf_status = 0x00000002
+  Sync BufCtrl: [0] = 0xe000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 out
+BUS RESET
+USBD Xfer Complete on EP 00 with 0 bytes
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 00 05 31 00 00 00 00 00
+  Set Address
+  Prepare BufCtrl: [0] = 0xf400  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 0 bytes
+BUS RESET
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 80 06 00 01 00 00 40 00
+  Get Descriptor Device
+  Queue EP 80 with 18 bytes ...
+  Prepare BufCtrl: [0] = 0xf412  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6012  [1] = 0x0000
+  Short packet on buffer 0 with 18 bytes
+Completed transfer of 18 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 18 bytes
+  Queue EP 00 with 0 bytes ...
+  Prepare BufCtrl: [0] = 0x7400  [1] = 0x0000
+buf_status = 0x00000002
+  Sync BufCtrl: [0] = 0xe000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 out
+BUS RESET
+USBD Xfer Complete on EP 00 with 0 bytes
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 00 05 32 00 00 00 00 00
+  Set Address
+  Prepare BufCtrl: [0] = 0xf400  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 0 bytes
+BUS RESET
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 80 06 00 01 00 00 40 00
+  Get Descriptor Device
+  Queue EP 80 with 18 bytes ...
+  Prepare BufCtrl: [0] = 0xf412  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6012  [1] = 0x0000
+  Short packet on buffer 0 with 18 bytes
+Completed transfer of 18 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 18 bytes
+  Queue EP 00 with 0 bytes ...
+  Prepare BufCtrl: [0] = 0x7400  [1] = 0x0000
+buf_status = 0x00000002
+  Sync BufCtrl: [0] = 0xe000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 out
+BUS RESET
+USBD Xfer Complete on EP 00 with 0 bytes
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 00 05 33 00 00 00 00 00
+  Set Address
+  Prepare BufCtrl: [0] = 0xf400  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 0 bytes
+BUS RESET
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 80 06 00 01 00 00 40 00
+  Get Descriptor Device
+  Queue EP 80 with 18 bytes ...
+  Prepare BufCtrl: [0] = 0xf412  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6012  [1] = 0x0000
+  Short packet on buffer 0 with 18 bytes
+Completed transfer of 18 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 18 bytes
+  Queue EP 00 with 0 bytes ...
+  Prepare BufCtrl: [0] = 0x7400  [1] = 0x0000
+buf_status = 0x00000002
+  Sync BufCtrl: [0] = 0xe000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 out
+BUS RESET
+USBD Xfer Complete on EP 00 with 0 bytes
+USBD Bus Reset : Full Speed
+
+USBD Setup Received 00 05 34 00 00 00 00 00
+  Set Address
+  Prepare BufCtrl: [0] = 0xf400  [1] = 0x0000
+buf_status = 0x00000001
+  Sync BufCtrl: [0] = 0x6000  [1] = 0x0000
+  Short packet on buffer 0 with 0 bytes
+Completed transfer of 0 bytes on ep 0 in
+USBD Xfer Complete on EP 80 with 0 bytes
+USBD Suspend : Remote Wakeup = 0
