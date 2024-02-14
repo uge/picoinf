@@ -115,14 +115,21 @@ def ProcessFile(file):
     RPI_PICO_FLASH_CAPACITY = 0x200000
     RPI_PICO_RAM_CAPACITY   = 0x040000
 
-    pctRom = math.ceil(100.0 * rom / RPI_PICO_FLASH_CAPACITY)
-    pctRam = math.ceil(100.0 * ram / RPI_PICO_RAM_CAPACITY)
+    pctRomUsed = math.ceil(100.0 * rom / RPI_PICO_FLASH_CAPACITY)
+    pctRamUsed = math.ceil(100.0 * ram / RPI_PICO_RAM_CAPACITY)
+
+    romRemaining = RPI_PICO_FLASH_CAPACITY - rom
+    ramRemaining = RPI_PICO_RAM_CAPACITY - ram
+
+    pctRomRemaining = 100 - pctRomUsed
+    pctRamRemaining = 100 - pctRamUsed
+
 
     def Commas(val):
         return "{:,}".format(val)
     
-    print("ROM: %9s / %9s = %2s %%" % (Commas(rom), Commas(RPI_PICO_FLASH_CAPACITY), pctRom))
-    print("RAM: %9s / %9s = %2s %%" % (Commas(ram), Commas(RPI_PICO_RAM_CAPACITY), pctRam))
+    print("ROM: %9s / %9s = %2s %% Used | %9s = %2s %% Remaining" % (Commas(rom), Commas(RPI_PICO_FLASH_CAPACITY), pctRomUsed, Commas(romRemaining), pctRomRemaining))
+    print("RAM: %9s / %9s = %2s %% Used | %9s = %2s %% Remaining" % (Commas(ram), Commas(RPI_PICO_RAM_CAPACITY),   pctRamUsed, Commas(ramRemaining), pctRamRemaining))
     print("")
 
 
