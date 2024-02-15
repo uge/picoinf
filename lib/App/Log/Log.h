@@ -119,7 +119,7 @@ void LogNNL(const vector<T> &valList)
 {
     LogNNL("[");
     const char *sep = "";
-    for (const auto val : valList)
+    for (const auto &val : valList)
     {
         LogNNL(sep);
         LogNNL(val);
@@ -141,7 +141,7 @@ void LogNNL(const array<T, S> &valList)
 {
     LogNNL("[");
     const char *sep = "";
-    for (const auto val : valList)
+    for (const auto &val : valList)
     {
         LogNNL(sep);
         LogNNL(val);
