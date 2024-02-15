@@ -80,7 +80,7 @@ target_link_libraries(LibPico
     pico_stdlib
     pico_rand
     FreeRTOS-Kernel
-    FreeRTOS-Kernel-Heap4
+    FreeRTOS-Kernel-Heap3
     tinyusb_device
     tinyusb_host
     cmsis_core
