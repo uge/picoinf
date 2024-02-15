@@ -55,15 +55,15 @@ public:
         // JSON
         JSONMsgRouterSetupJSON();
         PALSetupJSON();
-        ShellSetupJSON();
+        Shell::SetupJSON();
     }
 
     void Run()
     {
         LogNL();
-        
+
         USB::Init();
-        ShellInit();
+        Shell::Init();
 
         KTask<1000> t("App", []{
             Evm::MainLoop();

@@ -47,58 +47,103 @@ bool Shell::RemoveCommand(string name)
     return 1 == cmdLookup_.erase(name);
 }
 
-void Shell::ShowHelp(string prefix)
+void Shell::ShowHelp(string prefixExtra)
 {
-    vector<string> cmdList;
+    // track command length
+    size_t maxLenCmd = 0;
+
+    // build list of internal commands and note maximum lengths
+    vector<string> cmdListInternal;
+    for (auto &name : internalCommandSet_)
+    {
+        cmdListInternal.push_back(name);
+
+        if (name.length() > maxLenCmd)
+        {
+            maxLenCmd = name.length();
+        }
+    }
+
+    sort(cmdListInternal.begin(), cmdListInternal.end());
 
     // get list of commands and note some maximum lengths
-    size_t maxLenCmd = 0;
+    // apply any active prefix filtering
+    vector<string> cmdListExternal;
+
+    string prefix = prefix_;
+    prefix += prefixExtra;
+    uint32_t prefixLen = prefix.length();
+
     for (auto &[name, cmdData] : cmdLookup_)
     {
-        if (prefix == "" || IsPrefix(prefix, name))
+        if (IsPrefix(prefix, name) && internalCommandSet_.contains(name) == false)
         {
-            cmdList.push_back(name);
+            string nameNoPrefix = name.substr(prefixLen);
 
-            if (name.length() > maxLenCmd)
+            if (nameNoPrefix.length())
             {
-                maxLenCmd = name.length();
+                cmdListExternal.push_back(nameNoPrefix);
+
+                int32_t cmdLen = nameNoPrefix.length();
+                if (cmdLen > maxLenCmd)
+                {
+                    maxLenCmd = cmdLen;
+                }
             }
         }
     }
 
     // put commands in sorted order
-    sort(cmdList.begin(), cmdList.end());
+    sort(cmdListExternal.begin(), cmdListExternal.end());
 
-    // print it up nicely
-    const uint8_t BUF_SIZE = 150;
-    char formatStr[BUF_SIZE];
-    char completedStr[BUF_SIZE];
+    auto FnShow = [&](string msg, vector<string> &cmdList, bool addPrefix)
+    {
+        Log(msg);
+        Log("----------------------------------------");
 
-    auto fnPrint = [&](const char *fmt, size_t len, string val) {
-        snprintf(formatStr,    BUF_SIZE, fmt, len);
-        snprintf(completedStr, BUF_SIZE, formatStr, val.c_str());
+        // print it up nicely
+        const uint8_t BUF_SIZE = 150;
+        char formatStr[BUF_SIZE];
+        char completedStr[BUF_SIZE];
+
+        auto fnPrint = [&](const char *fmt, size_t len, string val) {
+            snprintf(formatStr,    BUF_SIZE, fmt, len);
+            snprintf(completedStr, BUF_SIZE, formatStr, val.c_str());
+        };
+
+        for (auto &cmd : cmdList)
+        {
+            CmdData &cd = addPrefix ? cmdLookup_[prefix + cmd] : cmdLookup_[cmd];
+
+            fnPrint("%%-%us", maxLenCmd, cmd);
+
+            string argCount = to_string(cd.cmdOptions.argCount);
+            if (cd.cmdOptions.argCount == -1)
+            {
+                argCount = "*";
+            }
+
+            Log(completedStr,
+                " [",
+                argCount,
+                " / ",
+                cd.cmdOptions.executeAsync ? "evm" : "syn",
+                "] : ", 
+                cd.cmdOptions.help);
+        }
     };
 
-    for (auto &cmd : cmdList)
+    LogNL();
+    FnShow("Shell Commands", cmdListInternal, false);
+    LogNL();
+    string moduleMsg = "Module Commands";
+    if (prefix != "")
     {
-        CmdData &cd = cmdLookup_[cmd];
-
-        fnPrint("%%%us", maxLenCmd, cmd);
-
-        string argCount = to_string(cd.cmdOptions.argCount);
-        if (cd.cmdOptions.argCount == -1)
-        {
-            argCount = "*";
-        }
-
-        Log(completedStr,
-            " [",
-            argCount,
-            " / ",
-            cd.cmdOptions.executeAsync ? "evm" : "syn",
-            "] : ", 
-            cd.cmdOptions.help);
+        moduleMsg += " (filtered by \"";
+        moduleMsg += prefix;
+        moduleMsg += "\")";
     }
+    FnShow(moduleMsg, cmdListExternal, true);
 }
 
 void Shell::ShellCmdExecute(const string &line)
@@ -108,6 +153,11 @@ void Shell::ShellCmdExecute(const string &line)
     vector<string> linePartList = Split(line);
 
     string cmd = linePartList[0];
+
+    if (internalCommandSet_.contains(cmd) == false)
+    {
+        cmd = prefix_ + cmd;
+    }
 
     auto it = cmdLookup_.find(cmd);
     if (it != cmdLookup_.end())
@@ -175,12 +225,12 @@ void Shell::ShellCmdExecute(const string &line)
         }
         else
         {
-            Log("ERR: ", name, " requires ", cmdData.cmdOptions.argCount, " args");
+            Log("ERR: \"", name, "\" requires ", cmdData.cmdOptions.argCount, " args");
         }
     }
     else
     {
-        Log("ERR: Could not find command ", cmd);
+        Log("ERR: Could not find command \"", cmd, "\"");
     }
 }
 
@@ -190,9 +240,9 @@ void Shell::ShellCmdExecute(const string &line)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void ShellInit()
+void Shell::Init()
 {
-    Timeline::Global().Event("ShellInit");
+    Timeline::Global().Event("Shell::Init");
 
     Shell::AddCommand(".", [](vector<string>){
         Shell::RepeatPriorCommand();
@@ -220,6 +270,23 @@ void ShellInit()
         Shell::ShowHelp(prefix);
     }, { .argCount = -1, .help = "Show Help (filter by first argument)" });
 
+    Shell::AddCommand("prefix", [](vector<string> argList){
+        string prefix = argList[0];
+
+        if (prefix == "\"\"")
+        {
+            prefix_ = "";
+        }
+        else
+        {
+            prefix_ = prefix;
+        }
+
+        Log("Prefix now \"", prefix_, "\"");
+        LogNL();
+        Shell::ShowHelp();
+    }, { .argCount = 1, .help = "Add prefix <x> to all commands before evaluation" });
+
     // https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character
     Shell::AddCommand("clear", [](vector<string>){
         Log("\033[2J"); // clear
@@ -231,16 +298,16 @@ void ShellInit()
         {
             LogNL();
         }
-        LogNNL("> ");
+        LogNNL(prefix_.length() ? prefix_ + " > ": "> ");
     }, false);
     
-    LogNNL("> ");
+    LogNNL(prefix_.length() ? prefix_ + " > ": "> ");
 }
 
 #include "JSONMsgRouter.h"
-void ShellSetupJSON()
+void Shell::SetupJSON()
 {
-    Timeline::Global().Event("ShellSetupJSON");
+    Timeline::Global().Event("Shell::SetupJSON");
 
     JSONMsgRouter::RegisterHandler("SHELL_COMMAND", [](auto &in, auto &out){
         UartTarget target(UART::UART_0);
