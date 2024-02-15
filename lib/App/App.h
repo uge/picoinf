@@ -3,7 +3,7 @@
 // #include "Ble.h"
 // #include "Esb.h"
 #include "Evm.h"
-// #include "Filesystem.h"
+#include "FilesystemLittleFS.h"
 // #include "Flash.h"
 // #include "I2C.h"
 #include "JSONMsgRouter.h"
@@ -28,13 +28,14 @@ class App
 public:
     App()
     {
-        NukeAppStorageFlashIfFirmwareChanged();
-
         // Init
         TimelineInit();
         LogInit();
         UartInit();
         PALInit();
+        FilesystemLittleFS::Init();
+        USB::PreInit();
+        NukeAppStorageFlashIfFirmwareChanged();
         // FlashStoreInit();
         EvmInit();
         JSONMsgRouterInit();
@@ -59,6 +60,8 @@ public:
 
     void Run()
     {
+        LogNL();
+        
         USB::Init();
         ShellInit();
 

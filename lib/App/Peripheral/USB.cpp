@@ -10,7 +10,7 @@
 // Task running TinyUSB code
 /////////////////////////////////////////////////////////////////////
 
-void USB::Init()
+void USB::PreInit()
 {
     Timeline::Global().Event("USB::Init");
 
@@ -29,7 +29,10 @@ void USB::Init()
     Log("CDC Interface   : ", cdcInterface_);
     Log("Vendor Interface: ", vendorInterface_);
     LogNL();
+}
 
+void USB::Init()
+{
     static KTask<1000> t("TinyUSB", []{
         tusb_init();
 

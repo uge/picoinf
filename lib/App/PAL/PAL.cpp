@@ -268,6 +268,24 @@ void _exit(int status)
 }
 
 
+// ISR hard fault handler
+// https://forums.raspberrypi.com/viewtopic.php?t=335571
+// https://forums.raspberrypi.com/viewtopic.php?t=335571
+extern "C"
+{
+void HardFault_Handler()
+{
+    LogModeSync();
+
+    Log("HardFault_Handler");
+
+    PAL.Fatal("HardFault_Handler");
+
+    while (true) {}
+}
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initilization

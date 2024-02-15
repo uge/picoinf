@@ -108,12 +108,15 @@ def ProcessFile(file):
     ram = section__data[".data"]["size"] + \
           section__data[".bss"]["size"]
 
+    APP_FLASH_FILESYSTEM_SIZE = 4 * 4096
+
     rom = section__data[".text"]["size"] + \
           section__data[".data"]["size"] + \
-          section__data[".rodata"]["size"]
+          section__data[".rodata"]["size"] + \
+          APP_FLASH_FILESYSTEM_SIZE
 
-    RPI_PICO_FLASH_CAPACITY = 0x200000
-    RPI_PICO_RAM_CAPACITY   = 0x040000
+    RPI_PICO_FLASH_CAPACITY = 2 * 1024 * 1024
+    RPI_PICO_RAM_CAPACITY   = 264 * 1024
 
     pctRomUsed = math.ceil(100.0 * rom / RPI_PICO_FLASH_CAPACITY)
     pctRamUsed = math.ceil(100.0 * ram / RPI_PICO_RAM_CAPACITY)
