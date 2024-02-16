@@ -1,66 +1,70 @@
 #pragma once
 
-#include <zephyr/drivers/flash.h>
-#include <zephyr/fs/nvs.h>
-
+#include "FilesystemLittleFS.h"
 #include "Log.h"
-
-
-class FlashStore
-{
-public:
-
-    static void Init();
-
-    static uint16_t GetSectorCount();
-    static uint16_t GetBytesPerSector();
-    static uint16_t GetTotalSpace();
-    static uint16_t GetFreeSpace();
-
-    static uint16_t GetNextId();
-    static int EraseAll();
-    static ssize_t Read(uint16_t id, void *buf, size_t bufLen, bool hideWarningIfNotFound = false);
-    static ssize_t Write(uint16_t id, void *buf, size_t bufLen);
-    static int Delete(uint16_t id);
-
-    static void SetupShell();
-
-private:
-
-    inline static const uint16_t DEFAULT_ID_NEXT = 1;
-
-    inline static flash_pages_info flashPageInfo_;
-    inline static nvs_fs fs_;
-    inline static bool initDone_ = false;
-    inline static uint16_t idNext_ = DEFAULT_ID_NEXT;
-};
-
-
 
 
 template <typename T>
 class Flashable
 : public T
 {
+    using DirEnt = FilesystemLittleFS::DirEnt;
+
 public:
     Flashable()
-    : id_(FlashStore::GetNextId())
+    : id_(to_string(nextId_))
     {
-        // Nothing to do
+        ++nextId_;
     }
 
     bool Get(bool hideWarningIfNotFound = false)
     {
-        // only modify the wrapped type if the lookup worked
-        T tmp;
-        bool retVal = sizeof(T) == FlashStore::Read(id_, (void *)&tmp, sizeof(T), hideWarningIfNotFound);
+        bool retVal = false;
 
-        if (retVal)
+        DirEnt dirEnt;
+        if (FilesystemLittleFS::Stat(id_, dirEnt))
         {
-            // get reference to the wrapped type
-            T &ref = *(T *)this;
+            if (dirEnt.type != DirEnt::Type::FILE)
+            {
+                Log("Get ERR: Flashable object not a file in storage");
+            }
+            else if (dirEnt.size != sizeof(T))
+            {
+                Log("Get ERR: Flashable object is the wrong size in storage to, should be ", sizeof(T), ", but is ", dirEnt.size);
+            }
+            else
+            {
+                auto f = FilesystemLittleFS::GetFile(id_);
 
-            ref = tmp;
+                if (f.Open())
+                {
+                    T tmp;
+
+                    retVal = f.Read((uint8_t *)&tmp, sizeof(T));
+
+                    // only modify the wrapped type if the lookup worked
+                    if (retVal)
+                    {
+                        // get reference to the wrapped type
+                        T &ref = *(T *)this;
+
+                        ref = tmp;
+                    }
+                    else
+                    {
+                        Log("Get ERR: Flashable object could not be read");
+                    }
+
+                    f.Close();
+                }
+            }
+        }
+        else
+        {
+            if (hideWarningIfNotFound == false)
+            {
+                Log("ERR: Flashable object does not exist");
+            }
         }
 
         return retVal;
@@ -68,22 +72,54 @@ public:
 
     bool Put()
     {
-        // get reference to the wrapped type
-        T &ref = *(T *)this;
+        bool retVal = false;
 
-        ssize_t ret = FlashStore::Write(id_, (void *)&ref, sizeof(T));
+        bool okToTry = true;
 
-        return ret == 0 || sizeof(T) == ret;
+        DirEnt dirEnt;
+        if (FilesystemLittleFS::Stat(id_, dirEnt))
+        {
+            if (dirEnt.type != DirEnt::Type::FILE)
+            {
+                okToTry = false;
+
+                Log("Put ERR: Flashable object not a file in storage");
+            }
+            else if (dirEnt.size != sizeof(T))
+            {
+                okToTry = false;
+
+                Log("Put ERR: Flashable object is the wrong size in storage to, should be ", sizeof(T), ", but is ", dirEnt.size);
+            }
+        }
+
+        if (okToTry)
+        {
+            auto f = FilesystemLittleFS::GetFile(id_);
+            if (f.Open())
+            {
+                // get reference to the wrapped type
+                T &ref = *(T *)this;
+
+                retVal = f.Write((uint8_t *)&ref, sizeof(T));
+
+                f.Close();
+            }
+        }
+
+        return retVal;
     }
 
     bool Delete()
     {
-        return 0 == FlashStore::Delete(id_);
+        return FilesystemLittleFS::Remove(id_);
     }
 
 private:
 
-    uint16_t id_ = 0;
+    static inline uint16_t nextId_ = 0;
+
+    string id_;
 };
 
 
