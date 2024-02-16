@@ -72,7 +72,6 @@ class USB
 
 public:
 
-    static void PreInit();
     static void Init();
 
 

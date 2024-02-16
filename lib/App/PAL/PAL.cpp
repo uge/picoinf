@@ -304,7 +304,6 @@ void PALInit()
     LogNL();
     Log("Reset reason: ", PAL.GetResetReason());
     Log("Device ID   : ", PAL.GetAddress());
-    LogNL();
 }
 
 void PALSetupShell()

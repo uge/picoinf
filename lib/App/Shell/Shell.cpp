@@ -255,7 +255,7 @@ void Shell::ShellCmdExecute(const string &line)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void Shell::PreInit()
+void Shell::Init()
 {
     Timeline::Global().Event("Shell::PreInit");
 
@@ -341,7 +341,7 @@ void Shell::PreInit()
     }, false);
 }
 
-void Shell::Init()
+void Shell::DisplayOn()
 {
     LogNNL(prefix_.length() ? prefix_ + " > ": "> ");
 }

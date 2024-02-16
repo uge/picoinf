@@ -29,8 +29,8 @@ private:
     };
 
 public:
-    static void PreInit();
     static void Init();
+    static void DisplayOn();
     static void SetupJSON();
 
     static bool Eval(string cmd);
