@@ -215,6 +215,7 @@ void LogX(T &&val, uint8_t count)
 // LogBlob
 ////////////////////////////////////////////////////////////////////////////////
 
+extern uint8_t LogBlobRow(uint16_t byteCount, uint8_t *buf, uint16_t bufSize, uint8_t showBin = 0, uint8_t showHex = 1);
 extern void LogBlob(uint8_t *buf, uint16_t bufSize, uint8_t showBin = 0, uint8_t showHex = 1);
 
 extern void LogBlob(const vector<uint8_t> &byteList, uint8_t showBin = 0, uint8_t showHex = 1);

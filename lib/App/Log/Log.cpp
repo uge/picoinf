@@ -369,90 +369,104 @@ void LogNNL()
 // LogBlob
 ////////////////////////////////////////////////////////////////////////////////
 
+// only print up to 8 bytes
+uint8_t LogBlobRow(uint16_t  byteCount,
+                   uint8_t  *buf,
+                   uint16_t  bufSize,
+                   uint8_t   showBin,
+                   uint8_t   showHex)
+{
+    char bufSprintf[9];
+
+    sprintf(bufSprintf, "%08X", byteCount);
+    
+    // Print byte start
+    LogNNL("0x", bufSprintf, ": ");
+    
+    // Calculate how many real vs pad bytes to output
+    uint8_t realBytes = min(8, (int)bufSize);
+    uint8_t padBytes = 8 - realBytes;
+    
+    // Print hex
+    if (showHex)
+    {
+        for (uint8_t i = 0; i < realBytes; ++i)
+        {
+            uint8_t b = buf[i];
+            
+            sprintf(bufSprintf, "%02X", b);
+            LogNNL(bufSprintf);
+            LogNNL(' ');
+        }
+        
+        for (uint8_t i = 0; i < padBytes; ++i)
+        {
+            LogXNNL(' ', 3);
+        }
+        
+        LogNNL("| ");
+    }
+    
+    // Print binary
+    if (showBin)
+    {
+        for (uint8_t i = 0; i < realBytes; ++i)
+        {
+            uint8_t b = buf[i];
+            
+            for (uint8_t j = 0; j < 8; ++j)
+            {
+                LogNNL((uint8_t)((b & 0x80) ? 1 : 0));
+                
+                b <<= 1;
+            }
+            
+            LogNNL(' ');
+        }
+        
+        for (uint8_t i = 0; i < padBytes; ++i)
+        {
+            LogXNNL(' ', 9);
+        }
+        
+        LogNNL("| ");
+    }
+    
+    // Print visible
+    for (uint8_t i = 0; i < realBytes; ++i)
+    {
+        char b = buf[i];
+        
+        if (isprint(b))
+        {
+            LogNNL(b);
+        }
+        else
+        {
+            LogNNL('.');
+        }
+    }
+
+    LogNL();
+
+    return realBytes;
+}
+
 void LogBlob(uint8_t  *buf,
              uint16_t  bufSize,
              uint8_t   showBin,
              uint8_t   showHex)
 {
-    char bufSprintf[9];
-    
     uint16_t bufSizeRemaining = bufSize;
     uint16_t byteCount        = 0;
     
     while (bufSizeRemaining)
     {
-        sprintf(bufSprintf, "%08X", byteCount);
-        
-        // Print byte start
-        LogNNL("0x", bufSprintf, ": ");
-        
-        // Calculate how many real vs pad bytes to output
-        uint8_t realBytes = (byteCount + 8 > bufSize) ?
-                            (bufSize - byteCount)     :
-                            8;
-        uint8_t padBytes = 8 - realBytes;
-        
-        // Print hex
-        if (showHex)
-        {
-            for (uint8_t i = 0; i < realBytes; ++i)
-            {
-                uint8_t b = buf[byteCount + i];
-                
-                sprintf(bufSprintf, "%02X", b);
-                LogNNL(bufSprintf);
-                LogNNL(' ');
-            }
-            
-            for (uint8_t i = 0; i < padBytes; ++i)
-            {
-                LogXNNL(' ', 3);
-            }
-            
-            LogNNL("| ");
-        }
-        
-        // Print binary
-        if (showBin)
-        {
-            for (uint8_t i = 0; i < realBytes; ++i)
-            {
-                uint8_t b = buf[byteCount + i];
-                
-                for (uint8_t j = 0; j < 8; ++j)
-                {
-                    LogNNL((uint8_t)((b & 0x80) ? 1 : 0));
-                    
-                    b <<= 1;
-                }
-                
-                LogNNL(' ');
-            }
-            
-            for (uint8_t i = 0; i < padBytes; ++i)
-            {
-                LogXNNL(' ', 9);
-            }
-            
-            LogNNL("| ");
-        }
-        
-        // Print visible
-        for (uint8_t i = 0; i < realBytes; ++i)
-        {
-            char b = buf[byteCount + i];
-            
-            if (isprint(b))
-            {
-                LogNNL(b);
-            }
-            else
-            {
-                LogNNL('.');
-            }
-        }
+        uint8_t realBytes = LogBlobRow(byteCount, buf, bufSize, showBin, showHex);
 
-        LogNL();
+        // work through the buffer
+        buf += realBytes;
+        bufSize -= realBytes;
         
         // Account for used data
         byteCount += realBytes;
