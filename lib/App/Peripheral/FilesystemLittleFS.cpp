@@ -1,5 +1,6 @@
 #include "FilesystemLittleFS.h"
 #include "Format.h"
+#include "Timeline.h"
 
 
 bool FilesystemLittleFS::Mount()
@@ -118,13 +119,32 @@ void FilesystemLittleFS::SetupShell()
     // General commands
     /////////////////////////////////////////
 
+    static bool showTimeline_ = false;
+
+    Shell::AddCommand("lfs.timeline", [](vector<string> argList){
+        showTimeline_ = argList[0] == "on";
+
+        Log("Timeline now ", showTimeline_ ? "on" : "off");
+    }, { .argCount = 1, .help = "timeline on/off" });
+
     Shell::AddCommand("lfs.format", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         FilesystemLittleFS::UnMount();
+        t.Event("UnMount");
         FilesystemLittleFS::Format();
+        t.Event("Format");
         FilesystemLittleFS::Mount();
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 0, .help = "format the entire system" });
 
     Shell::AddCommand("lfs.ls", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         vector<DirEnt> dirEntList;
 
         string path = "/";
@@ -159,9 +179,15 @@ void FilesystemLittleFS::SetupShell()
 
             Log(size, " ", dirEnt.name, dirEnt.type == DirEnt::Type::DIR ? "/" : "");
         }
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = -1, .help = "ls -la [optional <x> target]" });
 
     Shell::AddCommand("lfs.stat", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         string path = argList[0];
 
         Log("Stat ", path);
@@ -177,6 +203,9 @@ void FilesystemLittleFS::SetupShell()
         {
             Log("Could not stat ", path);
         }
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 1, .help = "stat path <x>" });
 
 
@@ -185,19 +214,31 @@ void FilesystemLittleFS::SetupShell()
     /////////////////////////////////////////
 
     Shell::AddCommand("lfs.touch", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         string fileName = argList[0];
 
         LogNNL("Touch file ", fileName);
 
         FilesystemLittleFS::Touch(fileName);
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 1, .help = "touch file <x>" });
 
     Shell::AddCommand("lfs.trunc", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         string path = argList[0];
         uint32_t size = atoi(argList[1].c_str());
 
         Log("Trunc ", path, " to ", size);
         FilesystemLittleFS::Trunc(path, size);
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 2, .help = "trunc <x> file to <y> bytes" });
 
     Shell::AddCommand("lfs.cat", [](vector<string> argList){
@@ -251,12 +292,18 @@ void FilesystemLittleFS::SetupShell()
     /////////////////////////////////////////
 
     Shell::AddCommand("lfs.mkdir", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         string path = argList[0];
 
         Log("MkDir ", path);
         bool ok = FilesystemLittleFS::MkDir(path);
 
         Log(ok ? "Success" : "Failure");
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 1, .help = "mkdir <x>" });
 
 
@@ -265,10 +312,16 @@ void FilesystemLittleFS::SetupShell()
     /////////////////////////////////////////
 
     Shell::AddCommand("lfs.rm", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
         string fileName = argList[0];
 
         Log("Remove ", fileName);
         FilesystemLittleFS::Remove(fileName);
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 1, .help = "rm <x>" });
 }
 

@@ -4,7 +4,7 @@
 // #include "Esb.h"
 #include "Evm.h"
 #include "FilesystemLittleFS.h"
-// #include "Flash.h"
+#include "Flashable.h"
 // #include "I2C.h"
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
