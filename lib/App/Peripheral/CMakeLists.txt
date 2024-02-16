@@ -4,6 +4,7 @@ target_include_directories(LibPico PUBLIC .)
 
 target_sources(LibPico PRIVATE
     Pin.cpp
+    FilesystemLittleFS.cpp
     UART.cpp
     WDT.cpp
     USB.cpp

@@ -41,7 +41,9 @@ public:
         JSONMsgRouterInit();
 
         // Shell
+        Shell::PreInit();
         EvmSetupShell();
+        FilesystemLittleFS::SetupShell();
         JSONMsgRouterSetupShell();
         LogSetupShell();
         PALSetupShell();
