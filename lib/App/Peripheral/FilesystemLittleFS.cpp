@@ -109,8 +109,6 @@ void FilesystemLittleFS::Init()
     // mount filesystem
     Log("Mounting LittleFS (", Commas(FS_SIZE / 1024), " KB)");
     Mount();
-
-    LogNL();
 }
 
 void FilesystemLittleFS::SetupShell()
@@ -169,7 +167,17 @@ void FilesystemLittleFS::SetupShell()
             totalSize += dirEnt.size;
         }
 
-        Log(dirEntList.size(), " elements found, ", Commas(totalSize), " bytes");
+        string sizeHeader = "Bytes";
+        if (sizeHeader.length() > maxLen)
+        {
+            maxLen = sizeHeader.length();
+        }
+
+        Log(dirEntList.size(), " element", dirEntList.size() == 1 ? "" : "s", " found, ", Commas(totalSize), " bytes");
+        LogNL();
+        Log(sizeHeader, "  Name");
+        LogXNNL('-', maxLen);
+        Log("------");
 
         string formatString = Format::Str("%%%is", maxLen);
 
@@ -177,7 +185,7 @@ void FilesystemLittleFS::SetupShell()
         {
             string size = Format::Str(formatString, Commas(dirEnt.size).c_str());
 
-            Log(size, " ", dirEnt.name, dirEnt.type == DirEnt::Type::DIR ? "/" : "");
+            Log(size, "  ", dirEnt.name, dirEnt.type == DirEnt::Type::DIR ? "/" : "");
         }
 
         t.Event("end");

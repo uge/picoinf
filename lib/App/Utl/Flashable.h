@@ -11,10 +11,18 @@ class Flashable
     using DirEnt = FilesystemLittleFS::DirEnt;
 
 public:
-    Flashable()
-    : id_(to_string(nextId_))
+    Flashable(int32_t id = -1)
     {
-        ++nextId_;
+        if (id == -1)
+        {
+            id_ = to_string(nextId_);
+
+            ++nextId_;
+        }
+        else
+        {
+            id_ = to_string(id);
+        }
     }
 
     bool Get(bool hideWarningIfNotFound = false)
@@ -26,11 +34,11 @@ public:
         {
             if (dirEnt.type != DirEnt::Type::FILE)
             {
-                Log("Get ERR: Flashable object not a file in storage");
+                Log("Get ERR: Flashable object ", id_, " not a file in storage");
             }
             else if (dirEnt.size != sizeof(T))
             {
-                Log("Get ERR: Flashable object is the wrong size in storage to, should be ", sizeof(T), ", but is ", dirEnt.size);
+                Log("Get ERR: Flashable object ", id_, " is the wrong size in storage, should be ", sizeof(T), ", but is ", dirEnt.size);
             }
             else
             {
@@ -52,7 +60,7 @@ public:
                     }
                     else
                     {
-                        Log("Get ERR: Flashable object could not be read");
+                        Log("Get ERR: Flashable object ", id_, " could not be read");
                     }
 
                     f.Close();
@@ -63,7 +71,7 @@ public:
         {
             if (hideWarningIfNotFound == false)
             {
-                Log("ERR: Flashable object does not exist");
+                Log("ERR: Flashable object ", id_, " does not exist");
             }
         }
 
@@ -83,13 +91,13 @@ public:
             {
                 okToTry = false;
 
-                Log("Put ERR: Flashable object not a file in storage");
+                Log("Put ERR: Flashable object ", id_, " not a file in storage");
             }
             else if (dirEnt.size != sizeof(T))
             {
                 okToTry = false;
 
-                Log("Put ERR: Flashable object is the wrong size in storage to, should be ", sizeof(T), ", but is ", dirEnt.size);
+                Log("Put ERR: Flashable object ", id_, " is the wrong size in storage, should be ", sizeof(T), ", but is ", dirEnt.size);
             }
         }
 
@@ -117,7 +125,7 @@ public:
 
 private:
 
-    static inline uint16_t nextId_ = 0;
+    static inline uint16_t nextId_ = 1;
 
     string id_;
 };

@@ -54,6 +54,13 @@ public:
     // General Commands
     /////////////////////////////////////////////////////////////////
 
+    static void NukeFilesystem()
+    {
+        UnMount();
+        Format();
+        Mount();
+    }
+
     struct DirEnt
     {
         enum class Type : uint8_t

@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 23)
 # add_definitions(-O0)
 
 
+add_definitions(-DAPP_BUILD_VERSION="${APP_BUILD_VERSION}")
 
 
 # Initialise pico_sdk from installed location

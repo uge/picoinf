@@ -162,7 +162,6 @@ public:
 
     bool Write(uint8_t *buf, uint32_t bufSize, uint32_t *bytesWritten = nullptr)
     {
-        Log("Writing ", bufSize, " bytes to ", state_->fileName);
         bool retVal = false;
 
         if (state_->open)

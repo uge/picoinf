@@ -18,11 +18,12 @@
 #include "Timeline.h"
 #include "USB.h"
 #include "Utl.h"
-// #include "VersionStr.h"
+#include "VersionStr.h"
 #include "WDT.h"
 #include "Work.h"
 
 
+template <typename T>
 class App
 {
 public:
@@ -33,15 +34,15 @@ public:
         LogInit();
         UartInit();
         PALInit();
+        LogNL();
         FilesystemLittleFS::Init();
-        USB::PreInit();
+        LogNL();
         NukeAppStorageFlashIfFirmwareChanged();
-        // FlashStoreInit();
         EvmInit();
         JSONMsgRouterInit();
 
         // Shell
-        Shell::PreInit();
+        Shell::Init();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
         JSONMsgRouterSetupShell();
@@ -62,12 +63,23 @@ public:
 
     void Run()
     {
+        // let app instantiate and potentially configure
+        // some core systems
+        T t;
+
+        // init configurable core systems
+        USB::Init();
         LogNL();
 
-        USB::Init();
-        Shell::Init();
+        // run app code which depends on prior init
+        t.Run();
 
-        KTask<1000> t("App", []{
+        // make shell visible
+        LogNL();
+        Shell::DisplayOn();
+
+        // start whole application
+        KTask<1000> task("App", []{
             Evm::MainLoop();
         }, 10);
 
@@ -75,10 +87,9 @@ public:
     }
 
 private:
-    // TODO
+    
     void NukeAppStorageFlashIfFirmwareChanged()
     {
-    #if 0
         // We of course want app settings to persist across reboots.
         //
         // But we don't want that if the firmware gets upgraded.
@@ -106,30 +117,34 @@ private:
 
         uint64_t version = Version::GetVersionAsInt();
 
-        uint64_t versionStored;
+        // uint64_t versionStored;
+        struct VersionData
+        {
+            uint64_t version = 0;
+        };
+        Flashable<VersionData> versionData(0);
 
         // try to read the stored version, if there is one
         bool hideWarningIfNotFound = true;
-        ssize_t ret = FlashStore::Read(0, &versionStored, sizeof(versionStored), hideWarningIfNotFound);
+        bool ret = versionData.Get(hideWarningIfNotFound);
 
         // keep track of the upcoming decision about whether to store current version
         bool storeCurrentVersion = false;
 
         // evaluate attempt to get stored version number
-        if (ret > 0)    // found
+        if (ret)    // found
         {
-            if (versionStored == version)
+            if (versionData.version == version)
             {
                 // do nothing, this is ok
             }
             else
             {
                 Log("INF: Firmware upgrade detected, deleting app flash storage");
-                Log("  Old version: ", versionStored);
+                Log("  Old version: ", versionData.version);
                 Log("  New version: ", version);
-                LogNL();
 
-                FlashStore::EraseAll();
+                FilesystemLittleFS::NukeFilesystem();
 
                 LogNL();
 
@@ -138,14 +153,20 @@ private:
         }
         else    // not found
         {
+            Log("INF: Firmware first run, formatting app flash storage");
+
+            FilesystemLittleFS::NukeFilesystem();
+
+            LogNL();
+
             storeCurrentVersion = true;
         }
 
         if (storeCurrentVersion)
         {
-            FlashStore::Write(0, &version, sizeof(version));
+            versionData.version = version;
+            versionData.Put();
         }
-    #endif
     }
 };
 

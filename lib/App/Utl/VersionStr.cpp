@@ -10,18 +10,18 @@ using namespace std;
 
 string Version::GetVersion()
 {
-    // YYYY-MM-DD_HH:MM:SS
-    return MY_VERSION_TOSTRING(APP_BUILD_VERSION);
+    // YYYY-MM-DD HH:MM:SS
+    return string{MY_VERSION_TOSTRING(APP_BUILD_VERSION)}.substr(1, 19);
 }
 
 string Version::GetVersionShort()
 {
-    return Split(GetVersion(), "_")[0];
+    return Split(GetVersion(), " ")[0];
 }
 
 uint64_t Version::GetVersionAsInt()
 {
-    vector<string> partList     = Split(GetVersion(), "_");
+    vector<string> partList     = Split(GetVersion(), " ");
     vector<string> datePartList = Split(partList[0], "-");
     vector<string> timePartList = Split(partList[1], ":");
 
