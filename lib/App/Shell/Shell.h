@@ -11,9 +11,6 @@
 using namespace std;
 
 
-extern void ShellInit();
-extern void ShellSetupJSON();
-
 class Shell
 {
 public:
@@ -32,6 +29,7 @@ private:
     };
 
 public:
+    static void PreInit();
     static void Init();
     static void SetupJSON();
 
@@ -59,9 +57,9 @@ private:
     inline static unordered_set<string> internalCommandSet_ = {
         ".",
         "?",
-        "help",
-        "prefix",
         "clear",
+        "help",
+        "scope",
     };
 };
 

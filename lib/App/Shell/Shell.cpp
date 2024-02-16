@@ -71,7 +71,14 @@ void Shell::ShowHelp(string prefixExtra)
     vector<string> cmdListExternal;
 
     string prefix = prefix_;
-    prefix += prefixExtra;
+    if (prefixExtra == "\"\"")
+    {
+        prefix = "";
+    }
+    else
+    {
+        prefix += prefixExtra;
+    }
     uint32_t prefixLen = prefix.length();
 
     for (auto &[name, cmdData] : cmdLookup_)
@@ -139,7 +146,7 @@ void Shell::ShowHelp(string prefixExtra)
     string moduleMsg = "Module Commands";
     if (prefix != "")
     {
-        moduleMsg += " (filtered by \"";
+        moduleMsg += " (scoped by \"";
         moduleMsg += prefix;
         moduleMsg += "\")";
     }
@@ -152,14 +159,22 @@ void Shell::ShellCmdExecute(const string &line)
 
     vector<string> linePartList = Split(line);
 
-    string cmd = linePartList[0];
-
-    if (internalCommandSet_.contains(cmd) == false)
+    string cmdOrig = linePartList[0];
+    string cmd     = cmdOrig;
+    if (internalCommandSet_.contains(cmdOrig) == false)
     {
         cmd = prefix_ + cmd;
     }
 
+    // try the prefixed command
     auto it = cmdLookup_.find(cmd);
+
+    // if that didn't work, try the global level (as a convenience)
+    if (it == cmdLookup_.end())
+    {
+        it = cmdLookup_.find(cmdOrig);
+    }
+
     if (it != cmdLookup_.end())
     {
         // pack arguments
@@ -240,9 +255,9 @@ void Shell::ShellCmdExecute(const string &line)
 ////////////////////////////////////////////////////////////////////////////////
 
 
-void Shell::Init()
+void Shell::PreInit()
 {
-    Timeline::Global().Event("Shell::Init");
+    Timeline::Global().Event("Shell::PreInit");
 
     Shell::AddCommand(".", [](vector<string>){
         Shell::RepeatPriorCommand();
@@ -257,7 +272,7 @@ void Shell::Init()
         }
 
         Shell::ShowHelp(prefix);
-    }, { .argCount = -1, .help = "Show Help (filter by first argument)" });
+    }, { .argCount = -1, .help = "Show Help (scope by optional first argument)" });
 
     Shell::AddCommand("help", [](vector<string> argList){
         string prefix = "";
@@ -268,9 +283,9 @@ void Shell::Init()
         }
 
         Shell::ShowHelp(prefix);
-    }, { .argCount = -1, .help = "Show Help (filter by first argument)" });
+    }, { .argCount = -1, .help = "Show Help (scope by optional first argument)" });
 
-    Shell::AddCommand("prefix", [](vector<string> argList){
+    Shell::AddCommand("scope", [](vector<string> argList){
         string prefix = argList[0];
 
         if (prefix == "\"\"")
@@ -279,13 +294,13 @@ void Shell::Init()
         }
         else
         {
-            prefix_ = prefix;
+            prefix_ = prefix + ".";
         }
 
-        Log("Prefix now \"", prefix_, "\"");
+        Log("Command scope now \"", prefix_, "\"");
         LogNL();
         Shell::ShowHelp();
-    }, { .argCount = 1, .help = "Add prefix <x> to all commands before evaluation" });
+    }, { .argCount = 1, .help = "Scope all commands within <x> as a prefix" });
 
     // https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character
     Shell::AddCommand("clear", [](vector<string>){
@@ -300,7 +315,10 @@ void Shell::Init()
         }
         LogNNL(prefix_.length() ? prefix_ + " > ": "> ");
     }, false);
-    
+}
+
+void Shell::Init()
+{
     LogNNL(prefix_.length() ? prefix_ + " > ": "> ");
 }
 
