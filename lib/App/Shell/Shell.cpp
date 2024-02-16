@@ -286,21 +286,45 @@ void Shell::PreInit()
     }, { .argCount = -1, .help = "Show Help (scope by optional first argument)" });
 
     Shell::AddCommand("scope", [](vector<string> argList){
-        string prefix = argList[0];
-
-        if (prefix == "\"\"")
+        if (argList.size() == 0)
         {
-            prefix_ = "";
+            if (prefix_ == "")
+            {
+                Log("Not currently scoped");
+            }
+            else
+            {
+                Log("Current scope is \"", prefix_, "\"");
+            }
         }
         else
         {
-            prefix_ = prefix + ".";
-        }
+            if (argList.size() >= 1)
+            {
+                string prefix = argList[0];
 
-        Log("Command scope now \"", prefix_, "\"");
-        LogNL();
-        Shell::ShowHelp();
-    }, { .argCount = 1, .help = "Scope all commands within <x> as a prefix" });
+                if (prefix == "\"\"")
+                {
+                    prefix_ = "";
+                }
+                else
+                {
+                    prefix_ = prefix + ".";
+                }
+
+                Log("Command scope now \"", prefix_, "\"");
+                LogNL();
+            }
+
+            if (argList.size() >= 2)
+            {
+                if (argList[1] != "0")
+                {
+                    Shell::ShowHelp();
+                }
+            }
+        }
+    }, { .argCount = -1, .help = "Scope all commands within <x> as a prefix" });
 
     // https://stackoverflow.com/questions/37774983/clearing-the-screen-by-printing-a-character
     Shell::AddCommand("clear", [](vector<string>){
