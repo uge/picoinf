@@ -212,6 +212,12 @@ inline uint16_t Flip2(uint16_t val)
     return retVal;
 }
 
+// we are a little endian device, net is big endian, so flip
+inline uint16_t ntohs(uint16_t val)
+{
+    return Flip2(val);
+}
+
 inline string ToHex(uint16_t val, bool addPrefix = true)
 {
     uint16_t valBigEndian = Flip2(val);

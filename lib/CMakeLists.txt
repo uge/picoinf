@@ -72,7 +72,7 @@ target_include_directories(LibPico PRIVATE
 )
 
 add_subdirectory(${LIB_PICO}/App)
-# add_subdirectory(Ble)
+add_subdirectory(${LIB_PICO}/Ble)
 # add_subdirectory(ESB)
 # add_subdirectory(GPS)
 # add_subdirectory(Motor)

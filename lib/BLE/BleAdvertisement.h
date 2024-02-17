@@ -1,15 +1,17 @@
 #pragma once
 
+#include "BleAdvertisementDataConverter.h"
+
 #include <string>
 #include <vector>
 using namespace std;
 
 
-class BleAdvertisementSource
+class BleAdvertisement
 {
 public:
 
-    BleAdvertisementSource &SetName(string name)
+    BleAdvertisement &SetName(string name)
     {
         name_ = name;
 
@@ -21,7 +23,7 @@ public:
         return name_;
     }
 
-    BleAdvertisementSource &SetIsConnectable(bool isConnectable)
+    BleAdvertisement &SetIsConnectable(bool isConnectable)
     {
         isConnectable_ = isConnectable;
 
@@ -33,7 +35,7 @@ public:
         return isConnectable_;
     }
 
-    BleAdvertisementSource &SetAdvertisingUuidList(vector<string> advUuidList)
+    BleAdvertisement &SetAdvertisingUuidList(vector<string> advUuidList)
     {
         advUuidList_ = advUuidList;
 
@@ -45,14 +47,14 @@ public:
         return advUuidList_;
     }
 
-    BleAdvertisementSource &SetAdvertisingMfrData(vector<uint8_t> mfrData)
+    BleAdvertisement &SetAdvertisingMfrData(vector<uint8_t> mfrData)
     {
         mfrData_ = mfrData;
 
         return *this;
     }
 
-    BleAdvertisementSource &SetAdvertisingMfrData(uint8_t *buf, uint8_t bufLen)
+    BleAdvertisement &SetAdvertisingMfrData(uint8_t *buf, uint8_t bufLen)
     {
         vector<uint8_t> mfrData;
 
@@ -73,7 +75,7 @@ public:
     }
 
     // not the http(s):// prefix, just the stuff after
-    BleAdvertisementSource &SetAdvertisingWebAddress(string webAddress)
+    BleAdvertisement &SetAdvertisingWebAddress(string webAddress)
     {
         webAddress_ = webAddress;
 
@@ -84,6 +86,8 @@ public:
     {
         return webAddress_;
     }
+
+    const vector<uint8_t> &GetRawAdvertisingDataStructure();
 
     // runtime toggle
     void StartAdvertising()
@@ -121,3 +125,8 @@ private:
     // subsequently it's a runtime decision
     bool advStarted_ = true;
 };
+
+
+
+
+
