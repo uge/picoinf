@@ -151,8 +151,10 @@ uint8_t const desc_ms_os_20[] =
 // Invoked when a control transfer occurred on an interface of this class
 // Driver response accordingly to the request and the transfer stage (setup/data/ack)
 // return false to stall control endpoint (e.g unsupported request)
-bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request)
+bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, void *requestVoidPtr)
 {
+    tusb_control_request_t const *request = (tusb_control_request_t const *)requestVoidPtr;
+
     // Log("tud_vendor_control_xfer_cb");
 
   // nothing to with DATA & ACK stage
@@ -221,7 +223,7 @@ bool USB::tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request)
 {
-    return USB::tud_vendor_control_xfer_cb(rhport, stage, request);
+    return USB::tud_vendor_control_xfer_cb(rhport, stage, (void *)request);
 }
 
 #endif

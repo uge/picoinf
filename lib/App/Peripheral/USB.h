@@ -4,8 +4,6 @@
 #include "KTask.h"
 #include "Log.h"
 
-#include "tusb.h"
-
 #include <functional>
 using namespace std;
 
@@ -128,7 +126,7 @@ public:
 public:
 
     static uint8_t const *tud_descriptor_bos_cb();
-    static bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const *request);
+    static bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, void *request);
 
 
 
