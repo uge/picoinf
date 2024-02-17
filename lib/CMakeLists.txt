@@ -10,8 +10,6 @@ set(CMAKE_CXX_STANDARD 23)
 # add_definitions(-O0)
 
 
-add_definitions(-DAPP_BUILD_VERSION="${APP_BUILD_VERSION}")
-
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
@@ -67,6 +65,12 @@ target_include_directories(LibPico PRIVATE
     ${LITTLEFS_DIR}
 )
 
+# Target BTstack
+set(BTSTACK_ROOT ${PICO_SDK_PATH}/lib/btstack)
+target_include_directories(LibPico PRIVATE
+    ${BTSTACK_ROOT}/src
+)
+
 add_subdirectory(${LIB_PICO}/App)
 # add_subdirectory(Ble)
 # add_subdirectory(ESB)
@@ -84,5 +88,13 @@ target_link_libraries(LibPico
     FreeRTOS-Kernel-Heap3
     tinyusb_device
     tinyusb_host
+    pico_cyw43_arch_none
+    pico_btstack_cyw43
+    pico_btstack_ble
     cmsis_core
+)
+
+target_compile_definitions(LibPico PRIVATE
+    PICO_FLASH_ASSUME_CORE1_SAFE=1
+    APP_BUILD_VERSION="${APP_BUILD_VERSION}"
 )
