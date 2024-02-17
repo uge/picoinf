@@ -4,11 +4,16 @@
 // started from https://github.com/raspberrypi/pico-examples/blob/master/pico_w/bt/config/btstack_config.h
 
 // BTstack features that can be enabled
-#ifdef ENABLE_BLE
 #define ENABLE_LE_PERIPHERAL
 #define ENABLE_LE_CENTRAL
 #define ENABLE_L2CAP_LE_CREDIT_BASED_FLOW_CONTROL_MODE
-#endif
+#define ENABLE_LE_DATA_LENGTH_EXTENSION
+#define ENABLE_LE_ENHANCED_CONNECTION_COMPLETE_EVENT
+#define ENABLE_LE_EXTENDED_ADVERTISING
+#define ENABLE_LE_PERIODIC_ADVERTISING
+#define ENABLE_CONTROLLER_WARM_BOOT
+
+
 #define ENABLE_LOG_INFO
 #define ENABLE_LOG_ERROR
 #define ENABLE_PRINTF_HEXDUMP
