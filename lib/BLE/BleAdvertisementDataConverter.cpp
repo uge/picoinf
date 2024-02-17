@@ -7,6 +7,8 @@
 using namespace std;
 
 
+// format is STV (size, type, value)
+// size does not count itself, but does count type + value
 class AdvertisingData
 {
     static const uint8_t ADV_BYTES = 31;
@@ -32,11 +34,11 @@ public:
             }
         }
 
-        Log("Adding record type ", type, ", size ", dataLen, " - ", retVal ? "OK" : "ERR");
-        if (retVal)
-        {
-            LogBlob(&byteList_.data()[byteList_.size() - (dataLen + 2)], dataLen + 2);
-        }
+        // Log("Adding record type ", type, ", size ", dataLen, " - ", retVal ? "OK" : "ERR");
+        // if (retVal)
+        // {
+        //     LogBlob(&byteList_.data()[byteList_.size() - (dataLen + 2)], dataLen + 2);
+        // }
 
         return retVal;
     }
@@ -172,19 +174,19 @@ static void PackUuids(AdvertisingData &advData,
 static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidStrList)
 {
     size_t len = advUuidStrList.size();
-    if (len)
-    {
-        LogNNL("  UUID List (", len, "):");
-        for (auto &uuidStr : advUuidStrList)
-        {
-            LogNNL(" ", uuidStr);
-        }
-        LogNL();
-    }
-    else
-    {
-        Log("  UUID List empty, not using");
-    }
+    // if (len)
+    // {
+    //     LogNNL("  UUID List (", len, "):");
+    //     for (auto &uuidStr : advUuidStrList)
+    //     {
+    //         LogNNL(" ", uuidStr);
+    //     }
+    //     LogNL();
+    // }
+    // else
+    // {
+    //     Log("  UUID List empty, not using");
+    // }
 
     // separate them into two buckets
     vector<UUID> advUuid16List;
@@ -242,7 +244,7 @@ static void FillOutMfrData(AdvertisingData &advData, const vector<uint8_t> &byte
 
     if (len)
     {
-        LogNNL("  MFR Data (", len, "): ");
+        // LogNNL("  MFR Data (", len, "): ");
         LogHex(byteList.data(), byteList.size());
 
         advData.AddRecord(BT_DATA_MANUFACTURER_DATA,
@@ -251,7 +253,7 @@ static void FillOutMfrData(AdvertisingData &advData, const vector<uint8_t> &byte
     }
     else
     {
-        Log("  MFR Data empty, not using");
+        // Log("  MFR Data empty, not using");
     }
 }
 
@@ -261,7 +263,7 @@ static void FillOutWebAddress(AdvertisingData &advData, const string &webAddress
 
     if (webAddress.length())
     {
-        Log("  Web Address: ", webAddress);
+        // Log("  Web Address: ", webAddress);
 
         vector<uint8_t> byteList;
 
@@ -279,7 +281,7 @@ static void FillOutWebAddress(AdvertisingData &advData, const string &webAddress
     }
     else
     {
-        Log("  Web Address empty, not using");
+        // Log("  Web Address empty, not using");
     }
 }
 
