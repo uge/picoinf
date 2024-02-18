@@ -140,6 +140,18 @@ public:
         return buf_.size();
     }
 
+    vector<uint8_t> GetByteList()
+    {
+        vector<uint8_t> byteList;
+
+        for (int i = 0; i < buf_.size(); ++i)
+        {
+            byteList.push_back(buf_[i]);
+        }
+
+        return byteList;
+    }
+
     // Taking from a BLE formatted payload and reverse-formatting it
     void SetBytesReversed(const uint8_t *buf, uint8_t bufLen)
     {

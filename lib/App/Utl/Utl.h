@@ -19,6 +19,29 @@
 using namespace std;
 
 
+// RP2040 is Little Endian
+// Some other things are also, want to be able to not know host endianness
+inline uint16_t ltohs(uint16_t val) { return val; }
+inline uint32_t ltohl(uint32_t val) { return val; }
+inline uint16_t htols(uint16_t val) { return val; }
+inline uint32_t htoll(uint32_t val) { return val; }
+
+inline uint16_t Flip2(uint16_t val)
+{
+    uint16_t retVal = 
+        ((val & 0xFF00) >> 8) |
+        ((val & 0x00FF) << 8);
+
+    return retVal;
+}
+
+// we are a little endian device, net is big endian, so flip
+inline uint16_t ntohs(uint16_t val)
+{
+    return Flip2(val);
+}
+
+
 // thanks to (but lightly modified from)
 // https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
 
@@ -203,26 +226,16 @@ inline string ToHex(uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
     return retVal;
 }
 
-inline uint16_t Flip2(uint16_t val)
-{
-    uint16_t retVal = 
-        ((val & 0xFF00) >> 8) |
-        ((val & 0x00FF) << 8);
-
-    return retVal;
-}
-
-// we are a little endian device, net is big endian, so flip
-inline uint16_t ntohs(uint16_t val)
-{
-    return Flip2(val);
-}
-
 inline string ToHex(uint16_t val, bool addPrefix = true)
 {
     uint16_t valBigEndian = Flip2(val);
 
-    return ToHex((uint8_t *)&valBigEndian, 2);
+    return ToHex((uint8_t *)&valBigEndian, 2, addPrefix);
+}
+
+inline string ToHex(uint8_t val, bool addPrefix = true)
+{
+    return ToHex(&val, 1, addPrefix);
 }
 
 inline string Commas(string num)
@@ -503,44 +516,6 @@ inline uint32_t RandInRange(int32_t rangeLow, int32_t rangeHigh)
 }
 
 
-// uint16_t Swap2(uint16_t val)
-// {
-//     uint16_t retVal;
-
-//     uint8_t *from = (uint8_t *)&val;
-//     uint8_t *to   = (uint8_t *)&retVal;
-
-//     to[0] = from[1];
-//     to[1] = from[0];
-
-//     return retVal;
-// }
-
-// uint32_t Swap4(uint32_t val)
-// {
-//     uint32_t retVal;
-
-//     uint8_t *from = (uint8_t *)&val;
-//     uint8_t *to   = (uint8_t *)&retVal;
-
-//     to[0] = from[3];
-//     to[1] = from[2];
-//     to[2] = from[1];
-//     to[3] = from[0];
-
-//     return retVal;
-// }
-
-// nRF52840 is Little Endian
-// Some other things are also, want to be able to not know host endianness
-inline uint16_t ltohs(uint16_t val) { return val; }
-inline uint32_t ltohl(uint32_t val) { return val; }
-inline uint16_t htols(uint16_t val) { return val; }
-inline uint32_t htoll(uint32_t val) { return val; }
-
-
-
-
 // meant to extract a range of bits from a bitfield and shift them to
 // all the way to the right.
 // high and low bit are inclusive
@@ -691,8 +666,30 @@ vector<T> &Rotate(vector<T> &valList, int count)
 
 
 
+template <typename T>
+void Append(T &a, T &b)
+{
+    a.insert(end(a), begin(b), end(b));
+}
+
+template <typename T>
+void Append(T &a, T &&b)
+{
+    Append(a, b);
+}
 
 
+
+inline vector<uint8_t> ToByteList(uint16_t val)
+{
+    vector<uint8_t> byteList;
+
+    uint8_t *p = (uint8_t *)&val;
+    byteList.push_back(p[0]);
+    byteList.push_back(p[1]);
+
+    return byteList;
+}
 
 
 extern void UtlSetupShell();
