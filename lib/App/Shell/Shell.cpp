@@ -133,8 +133,6 @@ void Shell::ShowHelp(string prefixExtra)
             Log(completedStr,
                 " [",
                 argCount,
-                " / ",
-                cd.cmdOptions.executeAsync ? "evm" : "syn",
                 "] : ", 
                 cd.cmdOptions.help);
         }
@@ -190,53 +188,7 @@ void Shell::ShellCmdExecute(const string &line)
         if (cmdData.cmdOptions.argCount == -1 ||
             cmdData.cmdOptions.argCount == (int)argList.size())
         {
-            if (!cmdData.cmdOptions.executeAsync)
-            {
-                // the only way the shell thread gets time is when the main
-                // thread is sleeping, so it is safe to call main code here
-                // provided this thread doesn't get pre-empted by
-                // the main thread.  we prevent this here.
-                //
-                // and actually this is probably what all calls should do?
-                //
-                // is that true?
-                // injecting operations that create async action, what happens
-                // then?
-                //
-                // eg function does a thing, sets a timer.
-                //   then this function returns pretty quickly, and when the
-                //   main thread sees the timer, it handles it in the main
-                //   thread, so yes this is ok.
-                //
-                // what about literally calling Delay or DelayBusy here?
-                //
-                // when async Delay
-                // - is later handled in main thread, blocking other timed
-                //   events.  this function here returns immediately.
-                // when sync (here) Delay
-                // - this thread is held up, main thread unimpacted
-                //
-                // when async DelayBusy
-                // - later handled in main thread, holding other timed
-                //   events, but letting other threads run.  this function
-                //   returns immediately.
-                // when sync DelayBusy
-                // - this thread becomes unresponsive but others can run.
-                // 
-                // so, unless you're looking for a particular behavior to
-                // influence the main thread, safe to call from here.  this
-                // should be the norm.
-                PAL.SchedulerLock();
-                cmdData.cbFn_(argList);
-                PAL.SchedulerUnlock();
-            }
-            else
-            {
-                // register callback to execute
-                Evm::QueueWork("SHELL_EVM_QUEUE", [=](){
-                    cmdData.cbFn_(argList);
-                });
-            }
+            cmdData.cbFn_(argList);
         }
         else
         {

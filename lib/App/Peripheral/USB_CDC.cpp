@@ -1,3 +1,4 @@
+#include "Evm.h"
 #include "USB.h"
 
 #include "tusb.h"
@@ -12,16 +13,18 @@ using namespace std;
 
 void USB_CDC::tud_cdc_rx_cb()
 {
-    uint32_t bytesAvailable = tud_cdc_n_available(instance_);
+    Evm::QueueWork("USB_CDC::tud_cdc_rx_cb", [this]{
+        uint32_t bytesAvailable = tud_cdc_n_available(instance_);
 
-    if (bytesAvailable)
-    {
-        vector<uint8_t> byteList(bytesAvailable);
+        if (bytesAvailable)
+        {
+            vector<uint8_t> byteList(bytesAvailable);
 
-        tud_cdc_n_read(instance_, byteList.data(), bytesAvailable);
+            tud_cdc_n_read(instance_, byteList.data(), bytesAvailable);
 
-        cbFnRx_(byteList);
-    }
+            cbFnRx_(byteList);
+        }
+    });
 }
 
 void USB::tud_cdc_rx_cb(uint8_t itf)

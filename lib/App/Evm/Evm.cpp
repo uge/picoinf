@@ -128,7 +128,7 @@ void Evm::MainLoop()
         // Ensure no other ISRs have fired since we last checked, we wouldn't want
         // to sleep a long time not realizing we have a pending update
         IrqLock lock;
-        if (fnWorkList_.empty())
+        if (fnWorkList_.Count() == 0)
         {
             if (timeToSleep)
             {
@@ -202,15 +202,10 @@ void Evm::QueueWork(const char *label, FnWork &&fnWork)
 
 void Evm::QueueWorkInternal(const char *label, FnWork &fnWork)
 {
-    unsigned int key = PAL.IrqLock();
-
     timeline_.Event(label);
 
-    fnWorkList_.emplace_back(fnWork);
-    // typical 30-90 us between this and wakeup on other side (no load)
+    fnWorkList_.Put(fnWork);
     sem_.Give();
-
-    PAL.IrqUnlock(key);
 }
 
 uint32_t Evm::ServiceWork()
@@ -220,31 +215,19 @@ uint32_t Evm::ServiceWork()
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
     // Suppress interrupts during critical sections of code
-    unsigned int key = PAL.IrqLock();
-    while (!fnWorkList_.empty() && remainingEvents)
+    while (fnWorkList_.Count() && remainingEvents)
     {
-        FnWork fnWork = fnWorkList_.front();
-        fnWorkList_.pop_front();
-        PAL.IrqUnlock(key);
+        FnWork fnWork;
+        fnWorkList_.Get(fnWork);
         
-        // No need to disable interrupts here, ISR-invoked code only modifies
-        // the fnWorkList_.
-        //
-        // Everything else behaves like normal.
         timeline_.Event("EVM_WORK_START");
         fnWork();
         timeline_.Event("EVM_WORK_END");
  
         // Keep track of remaining events willing to handle
         --remainingEvents;
-        
-        // Suppress interrupts, about to loop around and look at list again
-        key = PAL.IrqLock();
     }
     
-    // Re-Enable interrupts
-    PAL.IrqUnlock(key);
-
     // Return number handled
     return MAX_EVENTS_HANDLED - remainingEvents;
 }
@@ -265,63 +248,55 @@ void Evm::QueueLowPriorityWork(const char *label, FnWork &&fnWork)
 
 void Evm::QueueLowPriorityWorkInternal(const char *label, FnWork &fnWork)
 {
-    unsigned int key = PAL.IrqLock();
-
     timeline_.Event(label);
 
     // if full, drop the oldest to make room for newest
-    if (fnLowPriorityWorkList_.size() == MAX_WORK_ITEMS)
+    if (fnLowPriorityWorkList_.IsFull())
     {
-        fnLowPriorityWorkList_.pop_front();
+        WorkData tmp;
+        fnLowPriorityWorkList_.Get(tmp, 0);
     }
 
-    fnLowPriorityWorkList_.emplace_back(WorkData{label, fnWork});
-    // typical 30-90 us between this and wakeup on other side (no load)
+    fnLowPriorityWorkList_.Put(WorkData{label, fnWork});
     sem_.Give();
-
-    PAL.IrqUnlock(key);
-}
-
-vector<list<Evm::WorkData, IsrPoolHeapAllocator<Evm::WorkData, Evm::MAX_WORK_ITEMS>>::const_iterator> Evm::GetLowPriorityWorkByLabel(const char *label)
-{
-    vector<list<WorkData, IsrPoolHeapAllocator<WorkData, MAX_WORK_ITEMS>>::const_iterator> itList;
-
-    if (label)
-    {
-        string labelStr = label;
-
-        for (auto it = fnLowPriorityWorkList_.begin(); it != fnLowPriorityWorkList_.end(); ++it)
-        {
-            if ((*it).label)
-            {
-                string workLabel = (*it).label;
-
-                if (labelStr == workLabel)
-                {
-                    itList.push_back(it);
-                }
-            }
-        }
-    }
-
-    return itList;
-}
-
-uint32_t Evm::CountLowPriorityWorkByLabel(const char *label)
-{
-    return GetLowPriorityWorkByLabel(label).size();
 }
 
 uint32_t Evm::ClearLowPriorityWorkByLabel(const char *label)
 {
-    auto itList = GetLowPriorityWorkByLabel(label);
+    uint32_t numDeleted = 0;
 
-    for (auto it : itList)
+    IrqLock lock;
+    PAL.SchedulerLock();
+
+    // get a list of the work you want to keep
+    vector<WorkData> wdListKeep;
+    while (fnLowPriorityWorkList_.Count())
     {
-        fnLowPriorityWorkList_.erase(it);
+        WorkData wd;
+        fnLowPriorityWorkList_.Get(wd, 0);
+
+        if (wd.label != label)
+        {
+            wdListKeep.push_back(wd);
+        }
+        else
+        {
+            ++numDeleted;
+        }
     }
 
-    return itList.size();
+    // should be empty but why not
+    fnLowPriorityWorkList_.Flush();
+
+    // re-populate
+    for (auto &wd : wdListKeep)
+    {
+        fnLowPriorityWorkList_.Put(wd, 0);
+    }
+
+    PAL.SchedulerUnlock();
+
+    return numDeleted;
 }
 
 uint32_t Evm::ServiceLowPriorityWork()
@@ -331,13 +306,11 @@ uint32_t Evm::ServiceLowPriorityWork()
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
     // Suppress interrupts during critical sections of code
-    unsigned int key = PAL.IrqLock();
-    while (!fnLowPriorityWorkList_.empty() && remainingEvents)
+    while (fnLowPriorityWorkList_.Count() && remainingEvents)
     {
-        WorkData workData = fnLowPriorityWorkList_.front();
+        WorkData workData;
+        fnLowPriorityWorkList_.Get(workData);
         FnWork &fnWork = workData.fnWork;
-        fnLowPriorityWorkList_.pop_front();
-        PAL.IrqUnlock(key);
         
         // No need to disable interrupts here, ISR-invoked code only modifies
         // the fnLowPriorityWorkList_.
@@ -349,14 +322,8 @@ uint32_t Evm::ServiceLowPriorityWork()
  
         // Keep track of remaining events willing to handle
         --remainingEvents;
-        
-        // Suppress interrupts, about to loop around and look at list again
-        key = PAL.IrqLock();
     }
     
-    // Re-Enable interrupts
-    PAL.IrqUnlock(key);
-
     // Return number handled
     return MAX_EVENTS_HANDLED - remainingEvents;
 }
@@ -676,8 +643,8 @@ void Evm::TestTimedEventHandler()
 // Storage
 //////////////////////////////////////////////////////////////////////
 
-list<Evm::FnWork, IsrPoolHeapAllocator<Evm::FnWork, Evm::MAX_WORK_ITEMS>> Evm::fnWorkList_;
-list<Evm::WorkData, IsrPoolHeapAllocator<Evm::WorkData, Evm::MAX_WORK_ITEMS>> Evm::fnLowPriorityWorkList_;
+KMessagePipe<Evm::FnWork,   Evm::MAX_WORK_ITEMS> Evm::fnWorkList_;
+KMessagePipe<Evm::WorkData, Evm::MAX_WORK_ITEMS> Evm::fnLowPriorityWorkList_;
 
 KSemaphore Evm::sem_;
 multiset<TimedEventHandler *, Evm::CmpTimedEventHandler> Evm::timedEventHandlerList_;
@@ -818,7 +785,7 @@ void Evm::SetupShell()
             Log("evm.test.timer.ms handled - ", Commas(timeNow - timeStart), " us");
         }, "TIMER_EVM_TEST_TIMER_MS");
         tedTest_.RegisterForTimedEvent(ms);
-    }, { .argCount = 1, .help = "test submitting an <x> ms timer to get serviced", .executeAsync = true });
+    }, { .argCount = 1, .help = "test submitting an <x> ms timer to get serviced" });
 
     Shell::AddCommand("evm.test.timer.us", [&](vector<string> argList){
         uint64_t us = atoi(argList[0].c_str());
@@ -831,7 +798,7 @@ void Evm::SetupShell()
             Log("evm.test.timer.us handled - ", Commas(timeNow - timeStart), " us");
         }, "TIMER_EVM_TEST_TIMER_US");
         tedTest_.RegisterForTimedEvent(Micros{us});
-    }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced", .executeAsync = true });
+    }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
 
     Shell::AddCommand("evm.timer.cancel", [&](vector<string> argList){
         uint32_t id = atoi(argList[0].c_str());

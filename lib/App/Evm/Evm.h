@@ -60,10 +60,6 @@ public:
     static void QueueWork(const char *label, FnWork &&fnWork);
     static void QueueLowPriorityWork(const char *label, FnWork &fnWork);
     static void QueueLowPriorityWork(const char *label, FnWork &&fnWork);
-private:
-    static vector<list<WorkData, IsrPoolHeapAllocator<WorkData, MAX_WORK_ITEMS>>::const_iterator> GetLowPriorityWorkByLabel(const char *label);
-public:
-    static uint32_t CountLowPriorityWorkByLabel(const char *label);
     static uint32_t ClearLowPriorityWorkByLabel(const char *label);
 
 private:
@@ -73,8 +69,8 @@ private:
     static uint32_t ServiceLowPriorityWork();
 
 private:
-    static list<FnWork, IsrPoolHeapAllocator<FnWork, MAX_WORK_ITEMS>> fnWorkList_;
-    static list<WorkData, IsrPoolHeapAllocator<WorkData, MAX_WORK_ITEMS>> fnLowPriorityWorkList_;
+    static KMessagePipe<FnWork,   MAX_WORK_ITEMS> fnWorkList_;
+    static KMessagePipe<WorkData, MAX_WORK_ITEMS> fnLowPriorityWorkList_;
     static KSemaphore sem_;
 
 

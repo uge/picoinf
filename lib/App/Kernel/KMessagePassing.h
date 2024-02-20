@@ -74,7 +74,11 @@ public:
 
         if (PAL.InIsrReal())
         {
-            retVal = xQueueSendToBackFromISR(msgPipe_, (void *)&val, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            retVal = xQueueSendToBackFromISR(msgPipe_, (void *)&val, &xHigherPriorityTaskWoken);
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {
@@ -101,7 +105,11 @@ public:
         
         if (PAL.InIsrReal())
         {
-            retVal = xQueueReceiveFromISR(msgPipe_, (void *)&val, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            retVal = xQueueReceiveFromISR(msgPipe_, (void *)&val, &xHigherPriorityTaskWoken);
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {
@@ -126,6 +134,11 @@ public:
 
         return retVal;
     } 
+
+    bool IsFull()
+    {
+        return uxQueueSpacesAvailable(msgPipe_) == 0;
+    }
 
     void Flush()
     {
@@ -166,7 +179,11 @@ public:
         
         if (PAL.InIsrReal())
         {
-            retVal = xSemaphoreTakeFromISR(sem_, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            retVal = xSemaphoreTakeFromISR(sem_, &xHigherPriorityTaskWoken);
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {
@@ -181,7 +198,11 @@ public:
     {
         if (PAL.InIsrReal())
         {
-            xSemaphoreGiveFromISR(sem_, nullptr);
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            xSemaphoreGiveFromISR(sem_, &xHigherPriorityTaskWoken);
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
         else
         {

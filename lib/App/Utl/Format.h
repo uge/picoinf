@@ -14,15 +14,17 @@ using namespace std;
 // let's just be safe and go big though
 class FormatIsrBase
 {
-protected:
+public:
     inline static const uint8_t BUF_SIZE = 64;
+protected:
     inline static char BUF[BUF_SIZE];
 };
 
 class FormatBase
 {
-protected:
+public:
     inline static const uint8_t BUF_SIZE = 64;
+protected:
     inline static char BUF[BUF_SIZE];
 };
 
@@ -38,12 +40,19 @@ public:
     // ISRs ok.
     ///////////////////////////////////////////////////////////////////////////
 
+
+    template <typename T>
+    static pair<const char *, int> StrC(const char *buf, uint8_t bufSizeIn, const char *fmt, T val)
+    {
+        int bufSize = snprintf((char *) buf, bufSizeIn, fmt, val);
+
+        return { buf, bufSize }; 
+    }
+
     template <typename T>
     static pair<const char *, int> StrC(const char *fmt, T val)
     {
-        int bufSize = snprintf(FormatTemplateBase::BUF, FormatTemplateBase::BUF_SIZE, fmt, val);
-
-        return { FormatTemplateBase::BUF, bufSize }; 
+        return StrC(FormatTemplateBase::BUF, FormatTemplateBase::BUF_SIZE, fmt, val);
     }
 
     ///////////////////////////////////////////////////////////////////////////

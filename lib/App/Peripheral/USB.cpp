@@ -29,7 +29,7 @@ void USB::Init()
     Log("CDC Interface   : ", cdcInterface_);
     Log("Vendor Interface: ", vendorInterface_);
     
-    static KTask<1000> t("TinyUSB", []{
+    static KTask<256> t("TinyUSB", []{
         tusb_init();
 
         // has to run after scheduler started for some reason

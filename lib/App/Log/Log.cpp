@@ -58,25 +58,12 @@ void LogModeAsync()
 template <typename T>
 void FormatAndUartSend(const char *fmt, T val)
 {
-    if (PAL.InIsr())
-    {
-        auto [buf, bufSize] = FormatISR::StrC(fmt, val);
-        if (bufSize > 0)
-        {
-            UartSend((uint8_t *)buf, bufSize);
-        }
-    }
-    else
-    {
-        PAL.SchedulerLock();
+    char bufFmt[FormatBase::BUF_SIZE];
 
-        auto [buf, bufSize] = Format::StrC(fmt, val);
-        if (bufSize > 0)
-        {
-            UartSend((uint8_t *)buf, bufSize);
-        }
-
-        PAL.SchedulerUnlock();
+    auto [buf, bufSize] = Format::StrC(bufFmt, FormatBase::BUF_SIZE, fmt, val);
+    if (bufSize > 0)
+    {
+        UartSend((uint8_t *)buf, bufSize);
     }
 }
 

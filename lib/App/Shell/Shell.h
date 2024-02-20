@@ -18,7 +18,6 @@ public:
     {
         int    argCount = 0;	// -1 means allow any
         string help     = "";
-        bool   executeAsync = false;
     };
 
 private:

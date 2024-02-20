@@ -1,5 +1,13 @@
 #pragma once
 
+#include "IDMaker.h"
+#include "UART.h"
+
+#include <functional>
+#include <unordered_map>
+#include <utility>
+using namespace std;
+
 
 class LineStreamDistributor
 {
@@ -59,31 +67,28 @@ public:
                 // remember if max line len hit
                 bool wasMaxLine = inputStream_.size() == maxLineLen_;
 
-                // make a copy (move) of the input stream on the way in
-                Evm::QueueLowPriorityWork(name_, [this, inputStream = move(inputStream_)](){
-                    // distribute
+                // distribute
 
-                    // handle case where the callback leads to the caller
-                    // de-registering itself and invalidating the id and callback fn
-                    // itself.
-                    //
-                    // this was happening with gps getting a lock, bubbling the lock
-                    // event, which then says ok no need to listen anymore, which
-                    // found its way back to deregistering, all while the initial
-                    // callback was still executing
-                    auto tmp = id__data_;
-                    for (auto &[id, data] : tmp)
+                // handle case where the callback leads to the caller
+                // de-registering itself and invalidating the id and callback fn
+                // itself.
+                //
+                // this was happening with gps getting a lock, bubbling the lock
+                // event, which then says ok no need to listen anymore, which
+                // found its way back to deregistering, all while the initial
+                // callback was still executing
+                auto tmp = id__data_;
+                for (auto &[id, data] : tmp)
+                {
+                    if (inputStream_.size() || data.hideBlankLines == false)
                     {
-                        if (inputStream.size() || data.hideBlankLines == false)
-                        {
-                            // default to writing back to the uart that sent the data
-                            UartTarget target(uart_);
+                        // default to writing back to the uart that sent the data
+                        UartTarget target(uart_);
 
-                            // fire callback
-                            data.cbFn(inputStream);
-                        }
+                        // fire callback
+                        data.cbFn(inputStream_);
                     }
-                });
+                }
 
                 // clear line cache
                 inputStream_.clear();

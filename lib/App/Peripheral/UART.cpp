@@ -1,9 +1,12 @@
 #include "Evm.h"
+#include "DataStreamDistributor.h"
 #include "IDMaker.h"
 #include "KMessagePassing.h"
 #include "KTask.h"
+#include "LineStreamDistributor.h"
 #include "PAL.h"
 #include "Shell.h"
+#include "Timeline.h"
 #include "UART.h"
 #include "USB.h"
 
@@ -26,249 +29,25 @@ static USB_CDC *cdc0 = USB::GetCdcInstance(0);
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// UART Output state
+// UART Input / Output state
 ////////////////////////////////////////////////////////////////////////////////
 
-static const uint16_t UART_OUTPUT_PIPE_SIZE = 1000;
-static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
-static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_1_OUTPUT_PIPE;
-
-
-////////////////////////////////////////////////////////////////////////////////
-// UART Input state
-////////////////////////////////////////////////////////////////////////////////
-
-class DataStreamDistributor
-{
-public:
-    DataStreamDistributor(UART uart)
-    : uart_(uart)
-    {
-        // Reserve id of 0 for special purposes
-        idMaker_.GetNextId();   // 0
-    }
-
-    pair<bool, uint8_t> AddDataStreamCallback(function<void(const vector<uint8_t> &data)> cbFn)
-    {
-        auto [ok, id] = idMaker_.GetNextId();
-
-        if (ok)
-        {
-            id__cbFn_[id] = cbFn;
-        }
-
-        return { ok, id };
-    }
-
-    bool SetDataStreamCallback(uint8_t id, function<void(const vector<uint8_t> &data)> cbFn)
-    {
-        bool retVal = false;
-
-        if (id__cbFn_.contains(id) || id == 0)
-        {
-            id__cbFn_[id] = cbFn;
-
-            retVal = true;
-        }
-
-        return retVal;
-    }
-
-    bool RemoveDataStreamCallback(uint8_t id)
-    {
-        idMaker_.ReturnId(id);
-
-        return id__cbFn_.erase(id);
-    }
-
-    void Distribute(const vector<uint8_t> &data)
-    {
-        // distribute
-        for (auto &[id, cbFn] : id__cbFn_)
-        {
-            // default to writing back to the uart that sent the data
-            // UartTarget target(uart_);    // ehh, let's keep this functionality very simple
-
-            // fire callback
-            cbFn(data);
-        }
-    }
-
-    uint8_t GetCallbackCount()
-    {
-        return id__cbFn_.size();
-    }
-
-private:
-
-    UART uart_;
-    IDMaker<32> idMaker_;
-    unordered_map<uint8_t, function<void(const vector<uint8_t> &data)>> id__cbFn_;
-};
-
-class LineStreamDistributor
-{
-public:
-    LineStreamDistributor(UART uart, uint16_t maxLineLen, const char *name)
-    : uart_(uart)
-    , maxLineLen_(maxLineLen)
-    , name_(name)
-    {
-        // Reserve id of 0 for special purposes
-        idMaker_.GetNextId();   // 0
-    }
-
-    pair<bool, uint8_t> AddLineStreamCallback(function<void(const string &line)> cbFn, bool hideBlankLines = true)
-    {
-        auto [ok, id] = idMaker_.GetNextId();
-
-        if (ok)
-        {
-            id__data_[id] = Data{cbFn, hideBlankLines};
-        }
-
-        return { ok, id };
-    }
-
-    bool SetLineStreamCallback(uint8_t id, function<void(const string &line)> cbFn, bool hideBlankLines = true)
-    {
-        bool retVal = false;
-
-        if (id__data_.contains(id) || id == 0)
-        {
-            id__data_[id] = Data{cbFn, hideBlankLines};
-
-            retVal = true;
-        }
-
-        return retVal;
-    }
-
-    bool RemoveLineStreamCallback(uint8_t id)
-    {
-        idMaker_.ReturnId(id);
-        
-        return id__data_.erase(id);
-    }
-
-    void AddData(const vector<uint8_t> &data)
-    {
-        if (id__data_.empty()) { return; }
-
-        for (int i = 0; i < (int)data.size(); ++i)
-        {
-            char c = data[i];
-
-            if (c == '\n' || c == '\r' || inputStream_.size() == maxLineLen_)
-            {
-                // remember if max line len hit
-                bool wasMaxLine = inputStream_.size() == maxLineLen_;
-
-                // make a copy (move) of the input stream on the way in
-                Evm::QueueLowPriorityWork(name_, [this, inputStream = move(inputStream_)](){
-                    // distribute
-
-                    // handle case where the callback leads to the caller
-                    // de-registering itself and invalidating the id and callback fn
-                    // itself.
-                    //
-                    // this was happening with gps getting a lock, bubbling the lock
-                    // event, which then says ok no need to listen anymore, which
-                    // found its way back to deregistering, all while the initial
-                    // callback was still executing
-                    auto tmp = id__data_;
-                    for (auto &[id, data] : tmp)
-                    {
-                        if (inputStream.size() || data.hideBlankLines == false)
-                        {
-                            // default to writing back to the uart that sent the data
-                            UartTarget target(uart_);
-
-                            // fire callback
-                            data.cbFn(inputStream);
-                        }
-                    }
-                });
-
-                // clear line cache
-                inputStream_.clear();
-
-                // wind forward to next newline if needed
-                if (wasMaxLine)
-                {
-                    for (; i < (int)data.size(); ++i)
-                    {
-                        if (data[i] == '\n')
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-            else if ((isprint(c) || c == ' ' || c == '\t'))
-            {
-                inputStream_.push_back(c);
-            }
-        }
-    }
-
-    uint8_t GetCallbackCount()
-    {
-        return id__data_.size();
-    }
-
-    uint32_t Size() const
-    {
-        return inputStream_.size();
-    }
-
-    uint32_t Clear()
-    {
-        uint32_t size = inputStream_.size();
-
-        inputStream_.clear();
-
-        return size;
-    }
-
-    uint32_t ClearInFlight()
-    {
-        return Evm::ClearLowPriorityWorkByLabel(name_);
-    }
-
-private:
-    UART uart_;
-    uint16_t maxLineLen_;
-    const char *name_;
-    IDMaker<32> idMaker_;
-    struct Data
-    {
-        function<void(const string &)> cbFn = [](const string &){};
-        bool hideBlankLines = true;
-    };
-    unordered_map<uint8_t, Data> id__data_;
-    string inputStream_;
-};
-
-
-static const uint16_t UART_INPUT_PIPE_SIZE = 1002;
+static const uint16_t UART_OUTPUT_PIPE_SIZE   = 1000;
+static const uint16_t UART_INPUT_PIPE_SIZE    = 1002;
 static const uint16_t UART_INPUT_MAX_LINE_LEN = 1000;
 
+static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
+static KMessagePipe<char, UART_INPUT_PIPE_SIZE>  UART_0_INPUT_PIPE;
 static DataStreamDistributor UART_0_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_0);
-static vector<uint8_t> UART_0_INPUT_VEC;
 static LineStreamDistributor UART_0_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_0, UART_INPUT_MAX_LINE_LEN, "UART_0_LINE_STREAM_DISTRIBUTOR");
-static KSemaphore UART_0_INPUT_SEM;
 
+static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_1_OUTPUT_PIPE;
+static KMessagePipe<char, UART_INPUT_PIPE_SIZE>  UART_1_INPUT_PIPE;
 static DataStreamDistributor UART_1_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_1);
-static vector<uint8_t> UART_1_INPUT_VEC;
 static LineStreamDistributor UART_1_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_1, UART_INPUT_MAX_LINE_LEN, "UART_1_LINE_STREAM_DISTRIBUTOR");
-static KSemaphore UART_1_INPUT_SEM;
 
 static DataStreamDistributor UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_USB);
 static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
-
-static const uint8_t READ_BUF_SIZE = 50;
-static uint8_t READ_BUF[READ_BUF_SIZE];
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,31 +66,30 @@ static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> &UartGetPipe()
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // UART Input Handling
 ////////////////////////////////////////////////////////////////////////////////
 
 // https://stackoverflow.com/questions/76367736/uart-tx-produce-endless-interrupts-how-to-acknowlage-the-interrupt
 // https://forums.raspberrypi.com/viewtopic.php?t=343110
-static void UartInterruptHandlerUartX(uart_inst_t               *uart,
-                                      vector<uint8_t>           &vec,
-                                      DataStreamDistributor     &dist,
-                                      KMessagePipe<char, 1000U> &pipe,
-                                      KSemaphore                &sem)
+static void UartInterruptHandlerUartX(const char                                *workLabel,
+                                      uart_inst_t                               *uart,
+                                      KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> &pipeOut,
+                                      KMessagePipe<char, UART_INPUT_PIPE_SIZE>  &pipeIn,
+                                      DataStreamDistributor                     &distIn)
 {
     // do some writing
-    while (pipe.Count() && uart_is_writable(uart))
+    while (pipeOut.Count() && uart_is_writable(uart))
     {
         char ch;
-        if (pipe.Get(ch))
+        if (pipeOut.Get(ch))
         {
             uart_putc_raw(uart, ch);
         }
     }
 
-    // clear "tell me when to feed the next bpyte" interrupt
-    if (pipe.Count() == 0)
+    // clear "tell me when to feed the next byte" interrupt
+    if (pipeOut.Count() == 0)
     {
         uart_get_hw(uart)->icr = UART_UARTICR_TXIC_BITS ;
     }
@@ -323,13 +101,13 @@ static void UartInterruptHandlerUartX(uart_inst_t               *uart,
         uint8_t ch = uart_getc(uart);
 
         // is there someone who wants it and a place to put it?
-        if (dist.GetCallbackCount() == 0)
+        if (distIn.GetCallbackCount() == 0)
         {
-            vec.clear();
+            pipeIn.Flush();
         }
-        else if (vec.size() < UART_INPUT_PIPE_SIZE)
+        else
         {
-            vec.push_back(ch);
+            pipeIn.Put(ch, 0);
 
             dataReady = true;
         }
@@ -337,73 +115,46 @@ static void UartInterruptHandlerUartX(uart_inst_t               *uart,
 
     if (dataReady)
     {
-        sem.Give();
+        Evm::QueueLowPriorityWork(workLabel, [&]{
+            if (pipeIn.Count())
+            {
+                vector<uint8_t> byteList;
+
+                char ch;
+                bool ok = pipeIn.Get(ch, 0);
+                while (ok)
+                {
+                    byteList.push_back(ch);
+
+                    ok = pipeIn.Get(ch, 0);
+                }
+
+                if (byteList.size())
+                {
+                    distIn.Distribute(byteList);
+                }
+            }
+        });
     }
 }
 
 static void UartInterruptHandlerUart0()
 {
-    UartInterruptHandlerUartX(uart0,
-                              UART_0_INPUT_VEC,
-                              UART_0_INPUT_DATA_STREAM_DISTRIBUTOR,
+    UartInterruptHandlerUartX("UART::uart0",
+                              uart0,
                               UART_0_OUTPUT_PIPE,
-                              UART_0_INPUT_SEM);
+                              UART_0_INPUT_PIPE,
+                              UART_0_INPUT_DATA_STREAM_DISTRIBUTOR);
 }
 
 static void UartInterruptHandlerUart1()
 {
-    UartInterruptHandlerUartX(uart1,
-                              UART_1_INPUT_VEC,
-                              UART_1_INPUT_DATA_STREAM_DISTRIBUTOR,
+    UartInterruptHandlerUartX("UART::uart1",
+                              uart1,
                               UART_1_OUTPUT_PIPE,
-                              UART_1_INPUT_SEM);
+                              UART_1_INPUT_PIPE,
+                              UART_1_INPUT_DATA_STREAM_DISTRIBUTOR);
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Threads dedicated to dealing with uart at low priority
-////////////////////////////////////////////////////////////////////////////////
-
-static void ThreadFnUartXInput(vector<uint8_t>       &vec,
-                               DataStreamDistributor &dist,
-                               KSemaphore            &sem)
-{
-    while (true)
-    {
-        if (sem.Take())
-        {
-            // lock out interrupts so we can safely manipulate the captured data vector
-            IrqLock lock;
-            PAL.SchedulerLock();
-
-            // pass all the data to the line stream
-            dist.Distribute(vec);
-
-            // erase all data
-            vec.clear();
-            PAL.SchedulerUnlock();
-        }
-    }
-}
-
-static void ThreadFnUART0Input()
-{
-    ThreadFnUartXInput(UART_0_INPUT_VEC,
-                       UART_0_INPUT_DATA_STREAM_DISTRIBUTOR,
-                       UART_0_INPUT_SEM);
-}
-
-static void ThreadFnUART1Input()
-{
-    ThreadFnUartXInput(UART_1_INPUT_VEC,
-                       UART_1_INPUT_DATA_STREAM_DISTRIBUTOR,
-                       UART_1_INPUT_SEM);
-}
-
-static const uint32_t STACK_SIZE = 1024;
-static const uint8_t  PRIORITY   = 10;
-static KTask<STACK_SIZE> uart0Input("UART0_INPUT", ThreadFnUART0Input, PRIORITY);
-static KTask<STACK_SIZE> uart1Input("UART1_INPUT", ThreadFnUART1Input, PRIORITY);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,8 +251,6 @@ void UartSend(const uint8_t *buf, uint16_t bufLen)
         {
             if (bufLen <= UART_OUTPUT_PIPE_SIZE)
             {
-                PAL.SchedulerLock();
-
                 // Make sure the output isn't disabled before sending
                 bool sendOk = true;
 
@@ -517,8 +266,6 @@ void UartSend(const uint8_t *buf, uint16_t bufLen)
                     pipe->Put((char *)buf, bufLen);
                     irq_set_pending(UartCurrent() == UART::UART_0 ? UART0_IRQ : UART1_IRQ);
                 }
-
-                PAL.SchedulerUnlock();
             }
             else
             {
@@ -721,7 +468,7 @@ void UartClearRxBuffer(UART uart)
     // clear the queues seen below
     if (uart == UART::UART_1)
     {
-        UART_1_INPUT_VEC.clear();
+        UART_1_INPUT_PIPE.Flush();
         UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.Clear();
         UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.ClearInFlight();
     }
@@ -785,10 +532,6 @@ void UartInit()
     // Set up stdio
     stdio_init_all();
 
-    // pre-allocate buffer so no need to do so under ISR
-    UART_0_INPUT_VEC.reserve(UART_INPUT_PIPE_SIZE);
-    UART_1_INPUT_VEC.reserve(UART_INPUT_PIPE_SIZE);
-
     // register the line distributors with the binary distributors -- daisy chain
     UART_0_INPUT_DATA_STREAM_DISTRIBUTOR.AddDataStreamCallback([](const vector<uint8_t> &data){
         UART_0_INPUT_LINE_STREAM_DISTRIBUTOR.AddData(data);
@@ -834,13 +577,13 @@ void UartSetupShell()
 
     Shell::AddCommand("uart.stats", [](vector<string> argList){
         Log("UART_0");
-        Log("- irq queued    : ", UART_0_INPUT_VEC.size());
+        Log("- irq queued    : ", UART_0_INPUT_PIPE.Count());
         Log("- raw listeners : ", UART_0_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
         Log("- line listeners: ", UART_0_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
         Log("  - queued      : ", UART_0_INPUT_LINE_STREAM_DISTRIBUTOR.Size());
         LogNL();
         Log("UART_1");
-        Log("- irq queued    : ", UART_1_INPUT_VEC.size());
+        Log("- irq queued    : ", UART_1_INPUT_PIPE.Count());
         Log("- raw listeners : ", UART_1_INPUT_DATA_STREAM_DISTRIBUTOR.GetCallbackCount() - 1);
         Log("- line listeners: ", UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.GetCallbackCount());
         Log("  - queued      : ", UART_1_INPUT_LINE_STREAM_DISTRIBUTOR.Size());

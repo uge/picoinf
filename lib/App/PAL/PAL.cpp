@@ -89,23 +89,13 @@ void PlatformAbstractionLayer::EnableForcedInIsrYes(bool force)
     }
 }
 
-// These two functions are being left in place but muted.
-// Their function was originally to indicate that the running thread should
-// not be interrupted by another thread, given the operations in question.
-// However, because this works differently (and inconveniently) in FreeRTOS,
-// I will simply be ensuring threads are prioritized equally where needed
-// and that the scheduler is in cooperative mode and not preemptive mode.
-// These functions will be left in the code so in the future I can more
-// easily find areas affected by a potential switch to SMP where more than
-// one core can be running code at a time and that this problem would
-// re-arise.
 void PlatformAbstractionLayer::SchedulerLock()
 {
-    // vTaskSuspendAll();
+    vTaskSuspendAll();
 }
 void PlatformAbstractionLayer::SchedulerUnlock()
 {
-    // xTaskResumeAll();
+    xTaskResumeAll();
 }
 
 void PlatformAbstractionLayer::YieldToAll()
@@ -331,12 +321,12 @@ void PALSetupShell()
     Shell::AddCommand("pal.delay", [](vector<string> argList){
         PAL.Delay(atoi(argList[0].c_str()));
         Log("done");
-    }, { .argCount = 1, .help = "delay x ms", .executeAsync = true });
+    }, { .argCount = 1, .help = "delay x ms" });
 
     Shell::AddCommand("pal.delaybusy", [](vector<string> argList){
         PAL.DelayBusy(atoi(argList[0].c_str()));
         Log("done");
-    }, { .argCount = 1, .help = "delaybusy x ms", .executeAsync = true });
+    }, { .argCount = 1, .help = "delaybusy x ms" });
 
     Shell::AddCommand("pal.test.fatal", [](vector<string> argList){
         PAL.Fatal("pal.test.fatal");
