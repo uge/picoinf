@@ -40,7 +40,7 @@ void USB::Init()
             // blocks via FreeRTOS task sync mechanisms
             tud_task();
         }
-    }, 10);
+    }, 5);
 }
 
 
