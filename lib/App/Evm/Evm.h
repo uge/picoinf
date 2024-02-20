@@ -216,4 +216,5 @@ private:
 
 
     static TimedEventHandlerDelegate tedTest_;
+    static TimedEventHandlerDelegate tedTest2_;
 };

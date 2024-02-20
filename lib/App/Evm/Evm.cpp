@@ -123,13 +123,11 @@ void Evm::MainLoop()
         stats_.HANDLED_TIMED += ServiceTimedEventHandlers();
         uint64_t timePostTimed = PAL.Micros();
 
-        uint64_t timeToSleep = GetTimeToNextTimedEvent();
-
-        // Ensure no other ISRs have fired since we last checked, we wouldn't want
-        // to sleep a long time not realizing we have a pending update
-        IrqLock lock;
-        if (fnWorkList_.Count() == 0)
+        // Determine whether to keep processing or if sleep is an option
+        if (fnWorkList_.Count() == 0 && fnLowPriorityWorkList_.Count() == 0)
         {
+            // is there time to sleep?
+            uint64_t timeToSleep = GetTimeToNextTimedEvent();
             if (timeToSleep)
             {
                 uint64_t timeToWake = PAL.Micros() + timeToSleep;
@@ -142,17 +140,9 @@ void Evm::MainLoop()
                     stats_.TIME_SUM_LATENT += -timeDiff;
                 }
             }
-            else
-            {
-                // Ensure a repeating 0-length timer can't starve out other threads
-                PAL.YieldToAll();
-            }
         }
         else
         {
-            // Ensure ISR storm can't starve out other threads?
-            // PAL.YieldToAll();
-
             ++stats_.SKIPPED_SLEEP_FOR_WORK;
         }
 
@@ -214,12 +204,12 @@ uint32_t Evm::ServiceWork()
     
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
-    // Suppress interrupts during critical sections of code
     while (fnWorkList_.Count() && remainingEvents)
     {
         FnWork fnWork;
         fnWorkList_.Get(fnWork);
         
+        // Execute
         timeline_.Event("EVM_WORK_START");
         fnWork();
         timeline_.Event("EVM_WORK_END");
@@ -305,17 +295,13 @@ uint32_t Evm::ServiceLowPriorityWork()
     
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
-    // Suppress interrupts during critical sections of code
     while (fnLowPriorityWorkList_.Count() && remainingEvents)
     {
         WorkData workData;
         fnLowPriorityWorkList_.Get(workData);
         FnWork &fnWork = workData.fnWork;
         
-        // No need to disable interrupts here, ISR-invoked code only modifies
-        // the fnLowPriorityWorkList_.
-        //
-        // Everything else behaves like normal.
+        // Execute
         timeline_.Event("EVM_LOW_PRIO_WORK_START");
         fnWork();
         timeline_.Event("EVM_LOW_PRIO_WORK_END");
@@ -655,6 +641,7 @@ TimedEventHandlerDelegate Evm::tedStats_;
 TimedEventHandlerDelegate Evm::tedWatchdog_;
 
 TimedEventHandlerDelegate Evm::tedTest_;
+TimedEventHandlerDelegate Evm::tedTest2_;
 
 
 
@@ -775,29 +762,39 @@ void Evm::SetupShell()
     }, { .argCount = 0, .help = "test submitting work to the evm queue" });
 
     Shell::AddCommand("evm.test.timer.ms", [&](vector<string> argList){
+        static uint64_t timeStart;
+
         uint64_t ms = atoi(argList[0].c_str());
 
         Log("Setting timer for ", ms, " ms");
+        tedTest2_.SetCallback([=]{
+            tedTest_.SetCallback([=]{
+                uint64_t timeNow = PAL.Micros();
+                Log("evm.test.timer.ms handled - ", Commas((timeNow - timeStart) / 1'000), " ms, ", Commas(timeNow - timeStart), " us");
+            }, "TIMER_EVM_TEST_TIMER_MS");
 
-        uint64_t timeStart = PAL.Micros();
-        tedTest_.SetCallback([=]{
-            uint64_t timeNow = PAL.Micros();
-            Log("evm.test.timer.ms handled - ", Commas(timeNow - timeStart), " us");
-        }, "TIMER_EVM_TEST_TIMER_MS");
-        tedTest_.RegisterForTimedEvent(ms);
+            timeStart = PAL.Micros();
+            tedTest_.RegisterForTimedEvent(ms);
+        }, "TIMER_EVM_TEST_TIMER_MS_CALLER");
+        tedTest2_.RegisterForTimedEvent(0);
     }, { .argCount = 1, .help = "test submitting an <x> ms timer to get serviced" });
 
     Shell::AddCommand("evm.test.timer.us", [&](vector<string> argList){
+        static uint64_t timeStart;
+
         uint64_t us = atoi(argList[0].c_str());
 
         Log("Setting timer for ", us, " us");
+        tedTest2_.SetCallback([=]{
+            tedTest_.SetCallback([=]{
+                uint64_t timeNow = PAL.Micros();
+                Log("evm.test.timer.us handled - ", Commas(timeNow - timeStart), " us");
+            }, "TIMER_EVM_TEST_TIMER_US");
 
-        uint64_t timeStart = PAL.Micros();
-        tedTest_.SetCallback([=]{
-            uint64_t timeNow = PAL.Micros();
-            Log("evm.test.timer.us handled - ", Commas(timeNow - timeStart), " us");
-        }, "TIMER_EVM_TEST_TIMER_US");
-        tedTest_.RegisterForTimedEvent(Micros{us});
+            timeStart = PAL.Micros();
+            tedTest_.RegisterForTimedEvent(Micros{us});
+        }, "TIMER_EVM_TEST_TIMER_US_CALLER");
+        tedTest2_.RegisterForTimedEvent(0);
     }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
 
     Shell::AddCommand("evm.timer.cancel", [&](vector<string> argList){
