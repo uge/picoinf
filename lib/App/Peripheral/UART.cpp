@@ -198,11 +198,6 @@ void UartPop()
     }
 }
 
-static void UartSetDefault(UART uart)
-{
-    uartStack[0] = uart;
-}
-
 UART UartCurrent()
 {
     return uartStack.back();

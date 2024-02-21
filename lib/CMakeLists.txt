@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 # set(PICO_DEOPTIMIZED_DEBUG 1)
 # add_definitions(-O0)
+add_definitions(-Wall)
 
 
 
@@ -73,6 +74,7 @@ target_include_directories(LibPico PRIVATE
 
 add_subdirectory(${LIB_PICO}/App)
 add_subdirectory(${LIB_PICO}/Ble)
+add_subdirectory(${LIB_PICO}/Compiler)
 # add_subdirectory(ESB)
 # add_subdirectory(GPS)
 # add_subdirectory(Motor)

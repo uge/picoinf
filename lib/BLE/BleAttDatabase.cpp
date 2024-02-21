@@ -5,6 +5,9 @@
 #include <unordered_map>
 using namespace std;
 
+#include "StrictMode.h"
+
+
 // https://bluekitchen-gmbh.com/btstack/#profiles/#gatt-server
 // https://github.com/bluekitchen/btstack/blob/master/tool/compile_gatt.py
 
@@ -89,7 +92,7 @@ static uint32_t parseProperties(string &properties)
     return retVal;
 }
 
-static uint16_t att_flags(uint32_t propertiesIn)
+static uint32_t att_flags(uint32_t propertiesIn)
 {
     // # drop Broadcast (0x01), Notify (0x10), Indicate (0x20), Extended Properties (0x80) - not used for flags 
     uint32_t properties = (propertiesIn & 0xffffff4e);
@@ -205,7 +208,7 @@ BleAttDatabase::BleAttDatabase(string deviceName)
     vector<uint8_t> byteList;
     for (int i = 0; i < 16; ++i)
     {
-        byteList.push_back(RandInRange(0, 255));
+        byteList.push_back((uint8_t)RandInRange(0, 255));
     }
     AddCharacteristic("0x2B2A", "READ", byteList);
 }
@@ -245,7 +248,7 @@ vector<uint16_t> BleAttDatabase::AddCharacteristic(string uuidStr, string proper
     vector<uint16_t> retVal;
 
     // used in multiple places
-    uint16_t readOnlyAnybodyFlags = property_flags["READ"];
+    uint16_t readOnlyAnybodyFlags = (uint16_t)property_flags["READ"];
     UUID uuid(uuidStr);
     uuid.ReverseBytes();
     vector<uint8_t> byteListUuid = uuid.GetByteList();
@@ -284,11 +287,11 @@ vector<uint16_t> BleAttDatabase::AddCharacteristic(string uuidStr, string proper
     // add entry for dynamic
     ///////////////////////////////////////////////////
 
-    uint16_t valueFlags = att_flags(properties);
+    uint16_t valueFlags = (uint16_t)att_flags(properties);
 
     if (uuid.GetBitCount() == 128)
     {
-        valueFlags |= property_flags["LONG_UUID"];
+        valueFlags |= (uint16_t)property_flags["LONG_UUID"];
     }
 
     uint16_t handle2 = AddEntry(valueFlags, uuidStr, value);
@@ -304,11 +307,11 @@ vector<uint16_t> BleAttDatabase::AddCharacteristic(string uuidStr, string proper
         const string UUID_TYPE_CCC = "0x2902";
 
         // # use write permissions and encryption key size from attribute value and set READ_ANYBODY | READ | WRITE | DYNAMIC
-        uint16_t ccdFlags  = write_permissions_and_key_size_flags_from_properties(properties);
-        ccdFlags |= property_flags["READ"];
-        ccdFlags |= property_flags["WRITE"];
-        ccdFlags |= property_flags["WRITE_WITHOUT_RESPONSE"];
-        ccdFlags |= property_flags["DYNAMIC"];
+        uint16_t ccdFlags = (uint16_t)write_permissions_and_key_size_flags_from_properties(properties);
+        ccdFlags |= (uint16_t)property_flags["READ"];
+        ccdFlags |= (uint16_t)property_flags["WRITE"];
+        ccdFlags |= (uint16_t)property_flags["WRITE_WITHOUT_RESPONSE"];
+        ccdFlags |= (uint16_t)property_flags["DYNAMIC"];
 
         uint16_t cccData = 0;
 
@@ -350,14 +353,15 @@ uint16_t BleAttDatabase::AddEntry(uint16_t flags, string uuidTypeStr, vector<uin
 
     UUID uuidType(uuidTypeStr);
     bool is128Bit = uuidType.GetBitCount() != 16;
+    uint16_t uuidSize = is128Bit ? 16u : 2u;
 
     // fill out size
     uint16_t size = 0;
-    size += 2;                      // for itself
-    size += 2;                      // for flags
-    size += 2;                      // for handle
-    size += is128Bit ? 16 : 2;      // for uuid
-    size += valueByteList.size();   // for value
+    size += 2;                                  // for itself
+    size += 2;                                  // for flags
+    size += 2;                                  // for handle
+    size += uuidSize;                           // for uuid
+    size += (uint16_t)valueByteList.size();     // for value
     Append(rowByteList, ToByteList(size));
     // Log("Size: ", size, ": ", ToByteList(size));
 
@@ -471,14 +475,14 @@ void BleAttDatabase::ReadDatabaseData(uint8_t *buf)
         }
 
         vector<uint8_t> valueByteList;
-        uint8_t valueBytesToConsume = rowSize - (uuidByteList.size() + 2 + 2 + 2);
+        uint8_t valueBytesToConsume = (uint8_t)((int)rowSize - ((int)uuidByteList.size() + 2 + 2 + 2));
         for (int i = 0; i < valueBytesToConsume; ++i)
         {
-            valueByteList.push_back(row[6 + uuidByteList.size() + i]);
+            valueByteList.push_back(row[6 + (int)uuidByteList.size() + i]);
         }
 
         UUID uuid;
-        uuid.SetBytesReversed(uuidByteList.data(), uuidByteList.size());    // I think reversed?
+        uuid.SetBytesReversed(uuidByteList.data(), (uint8_t)uuidByteList.size());    // I think reversed?
 
         string value;
         for (auto &b : valueByteList)

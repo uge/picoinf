@@ -91,7 +91,7 @@ void Shell::ShowHelp(string prefixExtra)
             {
                 cmdListExternal.push_back(nameNoPrefix);
 
-                int32_t cmdLen = nameNoPrefix.length();
+                size_t cmdLen = nameNoPrefix.length();
                 if (cmdLen > maxLenCmd)
                 {
                     maxLenCmd = cmdLen;

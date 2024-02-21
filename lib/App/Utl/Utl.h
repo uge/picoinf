@@ -195,7 +195,7 @@ inline char *ToString(uint32_t num)
     static const uint8_t BUF_SIZE = 11;
     static char buf[BUF_SIZE];
 
-    snprintf(buf, BUF_SIZE, "%u", num);
+    snprintf(buf, BUF_SIZE, "%lu", num);
 
     return buf;
 }
@@ -365,7 +365,7 @@ inline char *TimestampFromUs(uint64_t usTime)
     uint8_t secs = time;
 
     // combine
-    snprintf(buf, BUF_SIZE, "%lld:%02u:%02u.%06u", hours, mins, secs, us);
+    snprintf(buf, BUF_SIZE, "%lld:%02u:%02u.%06lu", hours, mins, secs, us);
 
     return buf;
 }
@@ -685,7 +685,7 @@ inline vector<uint8_t> ToByteList(const T &val)
     vector<uint8_t> byteList;
 
     uint8_t *p = (uint8_t *)&val;
-    for (int i = 0; i < sizeof(T); ++i)
+    for (int i = 0; i < (int)sizeof(T); ++i)
     {
         byteList.push_back(p[i]);
     }

@@ -1,5 +1,7 @@
 #include "BleAdvertisement.h"
 
+#include "StrictMode.h"
+
 
 static vector<uint8_t> byteList;
 

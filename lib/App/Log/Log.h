@@ -109,6 +109,18 @@ extern void Log(bool val);
 extern void LogHexNNL(const uint8_t *buf, uint8_t bufLen, bool withSpaces = true);
 extern void LogHex(const uint8_t *buf, uint8_t bufLen, bool withSpaces = true);
 
+template <typename T>
+void LogHexNNL(const uint8_t *buf, T bufLen, bool withSpaces = true)
+{
+    LogHexNNL(buf, (uint8_t)bufLen, withSpaces);
+}
+
+template <typename T>
+void LogHex(const uint8_t *buf, T bufLen, bool withSpaces = true)
+{
+    LogHex(buf, (uint8_t)bufLen, withSpaces);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Containers

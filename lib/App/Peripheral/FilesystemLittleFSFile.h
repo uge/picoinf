@@ -112,7 +112,7 @@ public:
             }
             else
             {
-                if (err == bufSize)
+                if ((uint32_t)err == bufSize)
                 {
                     // the bytes we wanted to write were written
                     retVal = true;
@@ -173,7 +173,7 @@ public:
             }
             else
             {
-                if (err == bufSize)
+                if ((uint32_t)err == bufSize)
                 {
                     // the bytes we wanted to write were written
                     retVal = true;

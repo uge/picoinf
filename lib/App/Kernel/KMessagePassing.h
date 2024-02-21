@@ -90,7 +90,8 @@ public:
 
     int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
     {
-        BaseType_t retVal;
+        int retVal = pdPASS;
+
         for (uint32_t i = 0; i < valListLen; ++i)
         {
             retVal = Put(valList[i], timeout);
@@ -187,7 +188,6 @@ public:
         }
         else
         {
-
             retVal = xSemaphoreTake(sem_, KTime{timeoutUs});
         }
 

@@ -332,7 +332,7 @@ bool Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeout, ui
     teh->timeout_    = timeout;
 
     // Queue it
-    auto it = timedEventHandlerList_.insert(teh);
+    timedEventHandlerList_.insert(teh);
 
     return true;
 }

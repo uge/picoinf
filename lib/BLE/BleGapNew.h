@@ -40,7 +40,7 @@ private:
             "0x181A",
         });
         static const vector<uint8_t> byteList = adv.GetRawAdvertisingDataStructure();
-        gap_advertisements_set_data(byteList.size(), (uint8_t *)byteList.data());
+        gap_advertisements_set_data((uint8_t)byteList.size(), (uint8_t *)byteList.data());
 
         // enable
         gap_advertisements_enable(1);

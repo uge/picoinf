@@ -9,6 +9,8 @@
 #include <unordered_map>
 using namespace std;
 
+#include "StrictMode.h"
+
 
 // format of each entry is NOT(?) the same as advertising data
 // format is:

@@ -6,6 +6,8 @@
 #include <vector>
 using namespace std;
 
+#include "StrictMode.h"
+
 
 // format is STV (size, type, value)
 // size does not count itself, but does count type + value
@@ -80,7 +82,7 @@ private:
 
         if (byteList_.size() <= ADV_BYTES)
         {
-            retVal = ADV_BYTES - byteList_.size();
+            retVal = ADV_BYTES - (uint8_t)byteList_.size();
         }
 
         return retVal;
@@ -140,7 +142,7 @@ static void PackUuids(AdvertisingData &advData,
         }
 
         // Determine how many can fit
-        uint8_t countCanFit = advData.GetRecordDataRemaining() / (uuidList[0].GetBitCount() / 8);
+        uint8_t countCanFit = advData.GetRecordDataRemaining() / (uint8_t)(uuidList[0].GetBitCount() / 8);
 
         // Determine if they can all fit for flagging in advertising
         uint8_t type = (countCanFit >= uuidList.size()) ? typeIfAllFit : typeIfSomeFit;
@@ -151,7 +153,7 @@ static void PackUuids(AdvertisingData &advData,
 
         if (countToPack)
         {
-            for (int i = 0; i < countToPack; ++i)
+            for (uint8_t i = 0; i < countToPack; ++i)
             {
                 UUID &uuid = uuidList[i];
                 
@@ -173,7 +175,7 @@ static void PackUuids(AdvertisingData &advData,
 
 static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidStrList)
 {
-    size_t len = advUuidStrList.size();
+    // size_t len = advUuidStrList.size();
     // if (len)
     // {
     //     LogNNL("  UUID List (", len, "):");
@@ -240,7 +242,7 @@ static void FillOutMfrData(AdvertisingData &advData, const vector<uint8_t> &byte
 {
     static const uint8_t BT_DATA_MANUFACTURER_DATA = 0xFF;
 
-    uint8_t len = byteList.size();
+    auto len = byteList.size();
 
     if (len)
     {

@@ -9,6 +9,8 @@
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
 
+#include "StrictMode.h"
+
 
 static btstack_packet_callback_registration_t hciEventCallbackRegistration;
 static volatile bool initDone = false;
@@ -96,7 +98,7 @@ static void PacketHandlerHCI(uint8_t   packet_type,
             Log("HCI_SUBEVENT_LE_CONNECTION_COMPLETE");
 
             hci_con_handle_t con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet); 
-            float interval = hci_subevent_le_connection_complete_get_conn_interval(packet) * 1.25;
+            double interval = hci_subevent_le_connection_complete_get_conn_interval(packet) * 1.25;
             uint16_t latency = hci_subevent_le_connection_complete_get_conn_latency(packet);
 
             Log("- ", ToHex(con_handle), " connected - connection interval ", interval, " ms, latency ", latency);
@@ -111,7 +113,7 @@ static void PacketHandlerHCI(uint8_t   packet_type,
             Log("HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE");
 
             hci_con_handle_t con_handle = hci_subevent_le_connection_update_complete_get_connection_handle(packet);
-            float interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet) * 1.25;
+            double interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet) * 1.25;
             uint16_t latency = hci_subevent_le_connection_update_complete_get_conn_latency(packet);
 
             Log("- ", ToHex(con_handle), " interval updated - connection interval ", interval, " ms, latency ", latency);
