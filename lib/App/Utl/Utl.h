@@ -667,26 +667,40 @@ vector<T> &Rotate(vector<T> &valList, int count)
 
 
 template <typename T>
-void Append(T &a, T &b)
+void Append(T &a, const T &b)
 {
     a.insert(end(a), begin(b), end(b));
 }
 
 template <typename T>
-void Append(T &a, T &&b)
+void Append(T &a, const T &&b)
 {
     Append(a, b);
 }
 
 
-
-inline vector<uint8_t> ToByteList(uint16_t val)
+template <typename T>
+inline vector<uint8_t> ToByteList(const T &val)
 {
     vector<uint8_t> byteList;
 
     uint8_t *p = (uint8_t *)&val;
-    byteList.push_back(p[0]);
-    byteList.push_back(p[1]);
+    for (int i = 0; i < sizeof(T); ++i)
+    {
+        byteList.push_back(p[i]);
+    }
+
+    return byteList;
+}
+
+inline vector<uint8_t> ToByteList(const string &str)
+{
+    vector<uint8_t> byteList;
+
+    for (const auto &b : str)
+    {
+        byteList.push_back(b);
+    }
 
     return byteList;
 }
