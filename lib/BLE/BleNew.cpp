@@ -76,6 +76,13 @@ static void PacketHandlerHCI(uint8_t   packet_type,
         Log("HCI_EVENT_DISCONNECTION_COMPLETE");
         // le_notification_enabled = 0;
 
+
+        // must inform ATT, the state of read processing could be half-way and leave
+        // the object unwilling to send more
+
+
+
+
         hci_con_handle_t con_handle = hci_event_disconnection_complete_get_connection_handle(packet);
         printf("- LE Connection 0x%04x: disconnect, reason %02x\n", con_handle, hci_event_disconnection_complete_get_reason(packet));
 
@@ -218,6 +225,50 @@ void Ble::Init()
         PAL.Delay(10);
     }
 
+    // do non-ISR allocations to set up runtime
+
+
     LogNL();
     Log("Ble Init Complete");
 }
+
+
+
+BlePeripheral &Ble::CreatePeripheral()
+{
+    peripheralList_.push_back({});
+
+    BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
+
+    return retVal;
+}
+
+// BleBroadcaster &Ble::CreateBroadcaster()
+// {
+//     broadcasterList_.push_back({});
+
+//     BleBroadcaster &retVal = broadcasterList_[broadcasterList_.size() - 1];
+
+//     return retVal;
+// }
+
+// BleObserver &Ble::CreateObserver()
+// {
+//     observerList_.push_back({});
+
+//     BleObserver &retVal = observerList_[observerList_.size() - 1];
+
+//     return retVal;
+// }
+
+// void Ble::SetTxPowerAdvertising(uint8_t pct)
+// {
+//     if (started_)
+//     {
+//         BleAdvertiser::SetPowerAdv(pct);
+//     }
+//     else
+//     {
+//         Log("ERR: Ble cannot set adv power until after started");
+//     }
+// }

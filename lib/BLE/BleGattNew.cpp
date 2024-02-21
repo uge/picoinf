@@ -13,43 +13,6 @@ using namespace std;
 #include "StrictMode.h"
 
 
-// format of each entry is NOT(?) the same as advertising data
-// format is:
-// <size of entire entry including this 1-byte size field><data>
-
-const uint8_t profile_data[] =
-{
-    // ATT DB Version
-    1,
-
-    // 0x0001 PRIMARY_SERVICE-GAP_SERVICE
-    0x0a, 0x00, 0x02, 0x00, 0x01, 0x00, 0x00, 0x28, 0x00, 0x18, 
-    // 0x0002 CHARACTERISTIC-GAP_DEVICE_NAME - READ
-    0x0d, 0x00, 0x02, 0x00, 0x02, 0x00, 0x03, 0x28, 0x02, 0x03, 0x00, 0x00, 0x2a, 
-    // 0x0003 VALUE CHARACTERISTIC-GAP_DEVICE_NAME - READ -picow_temp
-    // READ_ANYBODY
-    0x12, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x2a, 0x70, 0x69, 0x63, 0x6f, 0x77, 0x5f, 0x74, 0x65, 0x6d, 0x70, 
-    // 0x0004 PRIMARY_SERVICE-GATT_SERVICE
-    0x0a, 0x00, 0x02, 0x00, 0x04, 0x00, 0x00, 0x28, 0x01, 0x18, 
-    // 0x0005 CHARACTERISTIC-GATT_DATABASE_HASH - READ
-    0x0d, 0x00, 0x02, 0x00, 0x05, 0x00, 0x03, 0x28, 0x02, 0x06, 0x00, 0x2a, 0x2b, 
-    // 0x0006 VALUE CHARACTERISTIC-GATT_DATABASE_HASH - READ -
-    // READ_ANYBODY
-    0x18, 0x00, 0x02, 0x00, 0x06, 0x00, 0x2a, 0x2b, 0x30, 0x2e, 0x9d, 0x1e, 0x20, 0x9a, 0x0a, 0xfe, 0x9b, 0xb7, 0xd8, 0x2e, 0x19, 0x38, 0xa8, 0xca, 
-    // 0x0007 PRIMARY_SERVICE-ORG_BLUETOOTH_SERVICE_ENVIRONMENTAL_SENSING
-    0x0a, 0x00, 0x02, 0x00, 0x07, 0x00, 0x00, 0x28, 0x1a, 0x18, 
-    // 0x0008 CHARACTERISTIC-ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE - READ | NOTIFY | INDICATE | DYNAMIC
-    0x0d, 0x00, 0x02, 0x00, 0x08, 0x00, 0x03, 0x28, 0x32, 0x09, 0x00, 0x6e, 0x2a, 
-    // 0x0009 VALUE CHARACTERISTIC-ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE - READ | NOTIFY | INDICATE | DYNAMIC
-    // READ_ANYBODY
-    0x08, 0x00, 0x02, 0x01, 0x09, 0x00, 0x6e, 0x2a, 
-    // 0x000a CLIENT_CHARACTERISTIC_CONFIGURATION
-    // READ_ANYBODY, WRITE_ANYBODY
-    0x0a, 0x00, 0x0e, 0x01, 0x0a, 0x00, 0x02, 0x29, 0x00, 0x00, 
-    // END
-    0x00, 0x00, 
-}; // total size 71 bytes 
-
 
 
 
@@ -92,21 +55,32 @@ uint16_t current_temp = 42;
 
 
 
-class AttCallbackHandler
-{
 
-};
-
-
-
+// per handle, can be done in parallel
 struct ReadState
 {
     bool             readyToSend = false;
-    hci_con_handle_t handleCb;
+    hci_con_handle_t conn;
     uint64_t         timeAtEvm;
     vector<uint8_t>  byteList;
     uint16_t         bytesToRead;
 };
+
+
+class AttCallbackHandler
+{
+    void SetReadCallback(function<void(vector<uint8_t> &byteList)> fn)
+    {
+        cbFnRead_ = fn;
+    }
+
+public:
+
+    function<void(vector<uint8_t> &byteList)> cbFnRead_ = [](vector<uint8_t> &byteList){};
+
+    ReadState state_;
+};
+
 
 
 
@@ -123,7 +97,7 @@ static function<void(vector<uint8_t> &byteList)> handler = [](vector<uint8_t> &b
 
     Log("callback");
 
-    byteList.resize(300);
+    byteList.resize(3000);
     for (auto &b : byteList)
     {
         b = val;
@@ -132,31 +106,31 @@ static function<void(vector<uint8_t> &byteList)> handler = [](vector<uint8_t> &b
 };
 
 
-uint16_t att_read_callback(hci_con_handle_t connection_handle,
-                           uint16_t att_handle,
-                           uint16_t offset,
-                           uint8_t * buffer,
-                           uint16_t buffer_size)
+uint16_t att_read_callback(hci_con_handle_t  conn,
+                           uint16_t          handle,
+                           uint16_t          offset,
+                           uint8_t          *buf,
+                           uint16_t          bufSize)
 {
-    Log("att_read_callback(conn=", ToHex(connection_handle), ", handle=", ToHex(att_handle), ", offset=", offset, ", bufSize=", buffer_size);
-    UNUSED(connection_handle);
+    Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
 
     if (readyToSend == false)
     {
-        if (att_handle == ATT_READ_RESPONSE_PENDING)
+        if (handle == ATT_READ_RESPONSE_PENDING)
         {
             // cache single handle (only one ATT transaction at a time, so this is safe)
-            handleCb = connection_handle;
+            handleCb = conn;
 
             Log("Got 'last in read batch' notification");
 
             Evm::QueueWork("att_read_callback", []{
                 readyToSend = true;
 
-                IrqLock lock;
-                handler(byteListStatic);
-
-                bytesToRead = (uint16_t)byteListStatic.size();
+                {
+                    IrqLock lock;
+                    handler(byteListStatic);
+                    bytesToRead = (uint16_t)byteListStatic.size();
+                }
 
                 att_server_response_ready(handleCb);
             });
@@ -176,25 +150,25 @@ uint16_t att_read_callback(hci_con_handle_t connection_handle,
 
         Log("Sending, ", timeDiff, " us later");
 
-        // what if buffer changes size before completion?
+        // what if buf changes size before completion?
         // actually, they say only a single att transaction at a time, so this shouldn't happen
-        // return att_read_callback_handle_blob((const uint8_t *)&timeAtEvm, sizeof(timeAtEvm), offset, buffer, buffer_size);
+        // return att_read_callback_handle_blob((const uint8_t *)&timeAtEvm, sizeof(timeAtEvm), offset, buf, bufSize);
 
         uint16_t retVal =
             att_read_callback_handle_blob(byteListStatic.data(),
                                           (uint16_t)byteListStatic.size(),
                                           offset,
-                                          buffer,
-                                          buffer_size);
+                                          buf,
+                                          bufSize);
 
         // I know this will get called multiple times, but I just don't think I
         // have to worry about it due to one at a time transactions
         //
         // ok wrong, how do you know it's the last transaction?
 
-        uint16_t bytesLeftAfterThisSend = bytesToRead - min(bytesToRead, (uint16_t)(offset + buffer_size));
+        uint16_t bytesLeftAfterThisSend = bytesToRead - min(bytesToRead, (uint16_t)(offset + bufSize));
 
-        uint16_t bytesThisTime = min(bytesLeftAfterThisSend, buffer_size);
+        uint16_t bytesThisTime = min(bytesLeftAfterThisSend, bufSize);
 
         Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
 
@@ -211,30 +185,27 @@ uint16_t att_read_callback(hci_con_handle_t connection_handle,
     return 0;
 
 
-    if (att_handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
-        return att_read_callback_handle_blob((const uint8_t *)&current_temp, sizeof(current_temp), offset, buffer, buffer_size);
+    if (handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
+        return att_read_callback_handle_blob((const uint8_t *)&current_temp, sizeof(current_temp), offset, buf, bufSize);
     }
     return 0;
 }
 
-int att_write_callback(hci_con_handle_t connection_handle,
-                       uint16_t att_handle,
-                       uint16_t transaction_mode,
-                       uint16_t offset,
-                       uint8_t *buffer,
-                       uint16_t buffer_size)
+int att_write_callback(hci_con_handle_t  conn,
+                       uint16_t          handle,
+                       uint16_t          txnMode,
+                       uint16_t          offset,
+                       uint8_t          *buf,
+                       uint16_t          bufSize)
 {
     Log("att_write_callback");
 
-    Log("att_write_callback(conn=", ToHex(connection_handle), ", handle=", ToHex(att_handle), ", txnMode=", transaction_mode, ", offset=", offset, ", bufSize=", buffer_size);
+    Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
     
-    UNUSED(transaction_mode);
-    UNUSED(offset);
-    UNUSED(buffer_size);
     
-    if (att_handle != ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE) return 0;
-    le_notification_enabled = little_endian_read_16(buffer, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
-    con_handle = connection_handle;
+    if (handle != ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE) return 0;
+    le_notification_enabled = little_endian_read_16(buf, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
+    con_handle = conn;
     if (le_notification_enabled) {
         att_server_request_can_send_now_event(con_handle);
     }
@@ -362,11 +333,13 @@ void BleGatt::Init()
     static BleAttDatabase attDb("TestName");
 
     attDb.AddPrimaryService("0x1234");
-    vector<uint16_t> h1List = attDb.AddCharacteristic("0x2345", "READ | DYNAMIC", "test");
-    vector<uint16_t> h2List = attDb.AddCharacteristic("0x3456", "WRITE | DYNAMIC");
+    vector<uint16_t> h1List = attDb.AddCharacteristic("0xAAAA", "READ | DYNAMIC");
+    vector<uint16_t> h2List = attDb.AddCharacteristic("0xBBBB", "READ | DYNAMIC");
+    vector<uint16_t> h3List = attDb.AddCharacteristic("0x1234", "WRITE | DYNAMIC");
 
-    Log("Handles for 0x2345: ", h1List);
-    Log("Handles for 0x3456: ", h2List);
+    Log("Handles for 0xAAAA: ", h1List);
+    Log("Handles for 0xBBBB: ", h2List);
+    Log("Handles for 0x1234: ", h3List);
 
     static vector<uint8_t> byteList = attDb.GetDatabaseData();
 
