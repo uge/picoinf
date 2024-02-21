@@ -137,14 +137,14 @@ public:
 
     uint8_t GetBytesLen()
     {
-        return buf_.size();
+        return GetBitCount() == 16 ? 2 : 16;
     }
 
     vector<uint8_t> GetByteList()
     {
         vector<uint8_t> byteList;
 
-        for (int i = 0; i < buf_.size(); ++i)
+        for (int i = 0; i < GetBytesLen(); ++i)
         {
             byteList.push_back(buf_[i]);
         }
