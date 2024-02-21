@@ -12,8 +12,8 @@ public:
     BleAttDatabase(string deviceName);
 
     uint16_t AddPrimaryService(string uuidStr);
-    void AddCharacteristic(string uuidStr, string propertiesStr, string value = "");
-    void AddCharacteristic(string uuidStr, string propertiesStr, vector<uint8_t>);
+    vector<uint16_t> AddCharacteristic(string uuidStr, string propertiesStr, string value = "");
+    vector<uint16_t> AddCharacteristic(string uuidStr, string propertiesStr, vector<uint8_t>);
 
     vector<uint8_t> GetDatabaseData();
 

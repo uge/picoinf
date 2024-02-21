@@ -95,7 +95,7 @@ static uint16_t att_flags(uint32_t propertiesIn)
     uint32_t properties = (propertiesIn & 0xffffff4e);
 
     // # rw permissions distinct
-    bool distinct_permissions_used = properties & (
+    bool distinct_permissions_used = (properties & (
         property_flags["READ_AUTHORIZED"] |
         property_flags["READ_AUTHENTICATED_SC"] |
         property_flags["READ_AUTHENTICATED"] |
@@ -106,7 +106,7 @@ static uint16_t att_flags(uint32_t propertiesIn)
         property_flags["WRITE_AUTHENTICATED_SC"] |
         property_flags["WRITE_ENCRYPTED"] |
         property_flags["WRITE_ANYBODY"]
-    ) != 0;
+    )) != 0;
 
     // # post process properties
     bool encryption_key_size_specified = (properties & property_flags["ENCRYPTION_KEY_SIZE_MASK"]) != 0;
@@ -228,7 +228,7 @@ uint16_t BleAttDatabase::AddPrimaryService(string uuidStr)
 }
 
 // more or less copying the implementation of the compile_gatt.py script
-void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, string value)
+vector<uint16_t> BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, string value)
 {
     vector<uint8_t> byteList;
 
@@ -237,11 +237,13 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, str
         byteList.push_back(c);
     }
 
-    AddCharacteristic(uuidStr, propertiesStr, byteList);
+    return AddCharacteristic(uuidStr, propertiesStr, byteList);
 }
 
-void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vector<uint8_t> value)
+vector<uint16_t> BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vector<uint8_t> value)
 {
+    vector<uint16_t> retVal;
+
     // used in multiple places
     uint16_t readOnlyAnybodyFlags = property_flags["READ"];
     UUID uuid(uuidStr);
@@ -265,7 +267,6 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vec
     // gather values needed for data portion
     const string UUID_TYPE_CHARACTERISTIC = "0x2803";
     uint8_t ctcProperties = (uint8_t)properties & 0xFF;
-    Log("CTC Prop: ", ToHex(ctcProperties));
     uint16_t handleOfSubsequent = nextHandle_ + 1;
 
     // create the total byte list for sending
@@ -277,6 +278,7 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vec
 
     uint16_t handle1 = AddEntry(readOnlyAnybodyFlags, UUID_TYPE_CHARACTERISTIC, byteListCtc);
 
+    retVal.push_back(handle1);
 
     ///////////////////////////////////////////////////
     // add entry for dynamic
@@ -289,7 +291,9 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vec
         valueFlags |= property_flags["LONG_UUID"];
     }
 
-    AddEntry(valueFlags, uuidStr, value);
+    uint16_t handle2 = AddEntry(valueFlags, uuidStr, value);
+
+    retVal.push_back(handle2);
 
     ///////////////////////////////////////////////////
     // add entry for (optional) CCC
@@ -308,7 +312,9 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vec
 
         uint16_t cccData = 0;
 
-        AddEntry(ccdFlags, UUID_TYPE_CCC, ToByteList(cccData));
+        uint16_t handle3 = AddEntry(ccdFlags, UUID_TYPE_CCC, ToByteList(cccData));
+
+        retVal.push_back(handle3);
     }
 
     ///////////////////////////////////////////////////
@@ -321,14 +327,16 @@ void BleAttDatabase::AddCharacteristic(string uuidStr, string propertiesStr, vec
 
     if (properties & property_flags["RELIABLE_WRITE"])
     {
-        AddEntry(readOnlyAnybodyFlags, UUID_TYPE_RELIABLE_WRITE, ToByteList(rwData));
+        uint16_t handle4 = AddEntry(readOnlyAnybodyFlags, UUID_TYPE_RELIABLE_WRITE, ToByteList(rwData));
+
+        retVal.push_back(handle4);
     }
 
     ///////////////////////////////////////////////////
     // Return
     ///////////////////////////////////////////////////
 
-    // return the handles?
+    return retVal;
 }
 
 
@@ -386,7 +394,7 @@ vector<uint8_t> BleAttDatabase::GetDatabaseData()
     byteList.push_back(1);
 
     // combine captured rows
-    for (int i = 0; const auto &rowByteList : rowByteListList_)
+    for (const auto &rowByteList : rowByteListList_)
     {
         Append(byteList, rowByteList);
     }
@@ -396,23 +404,23 @@ vector<uint8_t> BleAttDatabase::GetDatabaseData()
     byteList.push_back(0);
 
     // debug output (making validation against btstacks compiler doable)
-    auto FnLog = [](uint8_t row, vector<uint8_t> &byteList){
-        Log("Row ", row);
-        string sep = "";
-        for (auto &b : byteList)
-        {
-            LogNNL(sep);
-            LogNNL(ToHex(b));
+    // auto FnLog = [](uint8_t row, vector<uint8_t> &byteList){
+    //     Log("Row ", row);
+    //     string sep = "";
+    //     for (auto &b : byteList)
+    //     {
+    //         LogNNL(sep);
+    //         LogNNL(ToHex(b));
 
-            sep = ", ";
-        }
-        LogNL();
-    };
+    //         sep = ", ";
+    //     }
+    //     LogNL();
+    // };
 
-    for (int i = 0; auto &rowByteList : rowByteListList_)
-    {
-        FnLog(++i, rowByteList);
-    }
+    // for (int i = 0; auto &rowByteList : rowByteListList_)
+    // {
+    //     FnLog(++i, rowByteList);
+    // }
 
     // return raw bytes
     return byteList;

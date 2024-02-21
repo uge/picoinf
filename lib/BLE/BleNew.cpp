@@ -39,11 +39,9 @@ static void PacketHandlerHCI(uint8_t   packet_type,
 
     if (eventType == BTSTACK_EVENT_STATE)
     {
-        if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING)
-        {
-            // Log("Not yet working, early return");
-        }
-        else
+        uint8_t code = btstack_event_state_get_state(packet);
+
+        if (code == HCI_STATE_WORKING)
         {
             bd_addr_t local_addr;
             gap_local_bd_addr(local_addr);
@@ -53,6 +51,15 @@ static void PacketHandlerHCI(uint8_t   packet_type,
 
             OnHciReady();
         }
+        else
+        {
+            // Log("Not yet working, early return");
+            Log("BTSTACK_EVENT_STATE DEFAULT - ", ToHex(code));
+        }
+    }
+    else if (eventType == BTSTACK_EVENT_NR_CONNECTIONS_CHANGED)
+    {
+        // Log("BTSTACK_EVENT_NR_CONNECTIONS_CHANGED");
     }
     else if (eventType == HCI_EVENT_CONNECTION_REQUEST)
     {
@@ -60,7 +67,7 @@ static void PacketHandlerHCI(uint8_t   packet_type,
     }
     else if (eventType == HCI_EVENT_CONNECTION_COMPLETE)
     {
-        Log("HCI_EVENT_CONNECTION_REQUEST");
+        Log("HCI_EVENT_CONNECTION_COMPLETE");
     }
     else if (eventType == HCI_EVENT_DISCONNECTION_COMPLETE)
     {
@@ -68,16 +75,13 @@ static void PacketHandlerHCI(uint8_t   packet_type,
         // le_notification_enabled = 0;
 
         hci_con_handle_t con_handle = hci_event_disconnection_complete_get_connection_handle(packet);
-        printf("- LE Connection 0x%04x: disconnect, reason %02x\n", con_handle, hci_event_disconnection_complete_get_reason(packet));                    
-    }
-    else if (eventType == ATT_EVENT_CAN_SEND_NOW)
-    {
-        Log("ATT_EVENT_CAN_SEND_NOW");
-        // att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&current_temp, sizeof(current_temp));
+        printf("- LE Connection 0x%04x: disconnect, reason %02x\n", con_handle, hci_event_disconnection_complete_get_reason(packet));
+
+        LogNL();
     }
     else if (eventType == HCI_EVENT_LE_META)
     {
-        Log("HCI_EVENT_LE_META");
+        // Log("HCI_EVENT_LE_META");
 
         static const char * const phy_names[] = {
             "1 M",
@@ -89,69 +93,96 @@ static void PacketHandlerHCI(uint8_t   packet_type,
 
         if (code == HCI_SUBEVENT_LE_CONNECTION_COMPLETE)
         {
-            Log("- HCI_SUBEVENT_LE_CONNECTION_COMPLETE");
+            Log("HCI_SUBEVENT_LE_CONNECTION_COMPLETE");
 
-            // print connection parameters (without using float operations)
             hci_con_handle_t con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet); 
-            uint16_t conn_interval      = hci_subevent_le_connection_complete_get_conn_interval(packet);
-
-            uint32_t intervalWhole = conn_interval * 125 / 100;
-            uint32_t intervalFrac  = 25 * (conn_interval & 3);
-            float interval = conn_interval * 1.25;
-
+            float interval = hci_subevent_le_connection_complete_get_conn_interval(packet) * 1.25;
             uint16_t latency = hci_subevent_le_connection_complete_get_conn_latency(packet);
 
-            Log("- LE Connection ", con_handle, " connected - connection interval (", conn_interval, ") ", interval, " ms, latency ", latency);
-
-            printf("- LE Connection 0x%04x: connected - connection interval %u.%02u ms, latency %u\n", con_handle, conn_interval * 125 / 100,
-                25 * (conn_interval & 3), hci_subevent_le_connection_complete_get_conn_latency(packet));
+            Log("- ", ToHex(con_handle), " connected - connection interval ", interval, " ms, latency ", latency);
+            Log("  - Requesting 15 ms connection interval");
+            LogNL();
 
             // request min con interval 15 ms for iOS 11+ 
-            // printf("- LE Connection 0x%04x: request 15 ms connection interval\n", con_handle);
-            Log("- LE Connection ", con_handle, ": request 15 ms connection interval");
             gap_request_connection_parameter_update(con_handle, 12, 12, 4, 0x0048);
         }
         else if (code == HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE)
         {
-            Log("- HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE");
+            Log("HCI_SUBEVENT_LE_CONNECTION_UPDATE_COMPLETE");
 
-            // print connection parameters (without using float operations)
-            hci_con_handle_t con_handle    = hci_subevent_le_connection_update_complete_get_connection_handle(packet);
-            uint16_t conn_interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet);
+            hci_con_handle_t con_handle = hci_subevent_le_connection_update_complete_get_connection_handle(packet);
+            float interval = hci_subevent_le_connection_update_complete_get_conn_interval(packet) * 1.25;
+            uint16_t latency = hci_subevent_le_connection_update_complete_get_conn_latency(packet);
 
-            uint32_t intervalWhole = conn_interval * 125 / 100;
-            uint32_t intervalFrac  = 25 * (conn_interval & 3);
-            float interval = conn_interval * 1.25;
-
-            Log("interval: ", interval);
-
-            printf("- LE Connection 0x%04x: connection update - connection interval %u.%02u ms, latency %u\n", con_handle, conn_interval * 125 / 100,
-                25 * (conn_interval & 3), hci_subevent_le_connection_update_complete_get_conn_latency(packet));
+            Log("- ", ToHex(con_handle), " interval updated - connection interval ", interval, " ms, latency ", latency);
+            LogNL();
         }
         else if (code == HCI_SUBEVENT_LE_DATA_LENGTH_CHANGE)
         {
-            Log("- HCI_SUBEVENT_LE_DATA_LENGTH_CHANGE");
+            Log("HCI_SUBEVENT_LE_DATA_LENGTH_CHANGE");
 
             hci_con_handle_t con_handle = hci_subevent_le_data_length_change_get_connection_handle(packet);
-            printf("- LE Connection 0x%04x: data length change - max %u bytes per packet\n", con_handle,
-                    hci_subevent_le_data_length_change_get_max_tx_octets(packet));
+            uint16_t maxSize = hci_subevent_le_data_length_change_get_max_tx_octets(packet);
+
+            Log("- ", ToHex(con_handle), " mtu updated - max ", maxSize, " bytes per packet");
+            LogNL();
         }
         else if (code == HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE)
         {
-            Log("- HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE");
+            Log("HCI_SUBEVENT_LE_PHY_UPDATE_COMPLETE");
 
             hci_con_handle_t con_handle = hci_subevent_le_phy_update_complete_get_connection_handle(packet);
             printf("- LE Connection 0x%04x: PHY update - using LE %s PHY now\n", con_handle,
                     phy_names[hci_subevent_le_phy_update_complete_get_tx_phy(packet)]);
+
+            LogNL();
+        }
+        else if (code == HCI_SUBEVENT_LE_CHANNEL_SELECTION_ALGORITHM)
+        {
+            // Log("HCI_SUBEVENT_LE_CHANNEL_SELECTION_ALGORITHM");
+        }
+        else if (code == HCI_SUBEVENT_LE_READ_REMOTE_FEATURES_COMPLETE)
+        {
+            // Log("HCI_SUBEVENT_LE_READ_REMOTE_FEATURES_COMPLETE");
+        }
+        else if (code == HCI_SUBEVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST)
+        {
+            // Log("HCI_SUBEVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST");
         }
         else
         {
-            Log("- Default");
+            Log("HCI_EVENT_LE_META Default ", ToHex(code));
+            LogNL();
         }
     }
+    else if (eventType == HCI_EVENT_TRANSPORT_PACKET_SENT)
+    {
+        // Log("HCI_EVENT_TRANSPORT_PACKET_SENT");
+    }
+    else if (eventType == HCI_EVENT_COMMAND_COMPLETE)
+    {
+        // Log("HCI_EVENT_COMMAND_COMPLETE");
+    }
+    else if (eventType == HCI_EVENT_COMMAND_STATUS)
+    {
+        // Log("HCI_EVENT_COMMAND_STATUS");
+    }
+    else if (eventType == HCI_EVENT_VENDOR_SPECIFIC)
+    {
+        // Log("HCI_EVENT_VENDOR_SPECIFIC");
+    }
+    else if (eventType == HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS)
+    {
+        // Log("HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS");
+    }
+    // else if (eventType == )
+    // {
+    //     Log("");
+    // }
     else
-    {   
-        // Log("  default - ", eventType);
+    {
+        Log("HCI_DEFAULT - ", ToHex(eventType));
+        LogNL();
     }
 }
 

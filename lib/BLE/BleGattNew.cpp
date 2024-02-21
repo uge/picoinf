@@ -98,8 +98,13 @@ uint16_t current_temp = 42;
 
 
 
-uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t offset, uint8_t * buffer, uint16_t buffer_size) {
-    Log("att_read_callback");
+uint16_t att_read_callback(hci_con_handle_t connection_handle,
+                           uint16_t att_handle,
+                           uint16_t offset,
+                           uint8_t * buffer,
+                           uint16_t buffer_size)
+{
+    Log("att_read_callback(conn=", ToHex(connection_handle), ", handle=", ToHex(att_handle), ", offset=", offset, ", bufSize=", buffer_size);
     UNUSED(connection_handle);
 
     if (att_handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
@@ -108,8 +113,16 @@ uint16_t att_read_callback(hci_con_handle_t connection_handle, uint16_t att_hand
     return 0;
 }
 
-int att_write_callback(hci_con_handle_t connection_handle, uint16_t att_handle, uint16_t transaction_mode, uint16_t offset, uint8_t *buffer, uint16_t buffer_size) {
+int att_write_callback(hci_con_handle_t connection_handle,
+                       uint16_t att_handle,
+                       uint16_t transaction_mode,
+                       uint16_t offset,
+                       uint8_t *buffer,
+                       uint16_t buffer_size)
+{
     Log("att_write_callback");
+
+    Log("att_write_callback(conn=", ToHex(connection_handle), ", handle=", ToHex(att_handle), ", txnMode=", transaction_mode, ", offset=", offset, ", bufSize=", buffer_size);
     
     UNUSED(transaction_mode);
     UNUSED(offset);
@@ -148,8 +161,6 @@ static void PacketHandlerATT(uint8_t   packet_type,
 {
     Log("ATT: type: ", packet_type, ", channel: ", channel, ", size: ", size);
 
-    int mtu;
-
     if (packet_type == HCI_EVENT_PACKET)
     {
         uint8_t eventType = hci_event_packet_get_type(packet);
@@ -159,7 +170,11 @@ static void PacketHandlerATT(uint8_t   packet_type,
             hci_con_handle_t handle = att_event_connected_get_handle(packet);
             uint16_t mtu = att_server_get_mtu(handle);
 
-            Log("ATT_EVENT_CONNECTED - ", handle, " at mtu ", mtu);
+            Log("ATT_EVENT_CONNECTED");
+            Log("- ", ToHex(handle), " at mtu ", mtu);
+            LogNL();
+
+            
 
             // context = connection_for_conn_handle(HCI_CON_HANDLE_INVALID);
             // if (!context) break;
@@ -186,6 +201,7 @@ static void PacketHandlerATT(uint8_t   packet_type,
             Log("ATT_EVENT_CAN_SEND_NOW");
 
             // streamer();
+            // att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&current_temp, sizeof(current_temp));
         }
         else if (eventType == ATT_EVENT_DISCONNECTED)
         {
@@ -200,9 +216,24 @@ static void PacketHandlerATT(uint8_t   packet_type,
             // context->le_notification_enabled = 0;
             // context->connection_handle = HCI_CON_HANDLE_INVALID;
         }
+        else if (eventType == HCI_EVENT_LE_META)
+        {
+            uint8_t code = hci_event_le_meta_get_subevent_code(packet);
+            // Log("ATT Handler - HCI_EVENT_LE_META - ", ToHex(code));
+
+            if (code == HCI_SUBEVENT_LE_CONNECTION_COMPLETE)
+            {
+                Log("ATT HCI_SUBEVENT_LE_CONNECTION_COMPLETE");
+                LogNL();
+            }
+            else
+            {
+                Log("------- ATT default code ", ToHex(code));
+            }
+        }
         else
         {
-            Log("ATT: default event");
+            Log("ATT: default event ", ToHex(eventType));
         }
     }
     else
@@ -220,26 +251,22 @@ void BleGatt::Init()
 {
     Timeline::Global().Event("BleGatt::Init");
 
-    // Read database
-    // BleAttDatabase::ReadDatabaseData((uint8_t *)profile_data);
-
     // register for ATT event
     att_server_register_packet_handler(PacketHandlerATT);
-
-    // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
-    // att_server_init(profile_data, att_read_callback, att_write_callback);
 
     // Generate database
     static BleAttDatabase attDb("TestName");
 
     attDb.AddPrimaryService("0x1234");
-    attDb.AddCharacteristic("41c76a05-d602-4824-a565-b4eb764390f6", "READ");
+    vector<uint16_t> h1List = attDb.AddCharacteristic("0x2345", "READ | DYNAMIC");
+    vector<uint16_t> h2List = attDb.AddCharacteristic("0x3456", "WRITE | DYNAMIC");
 
-    attDb.AddPrimaryService("cc6e5304-6614-4f3d-9b9d-aea7fac65b99");
-    attDb.AddCharacteristic("0x5678", "READ | AUTHENTICATION_REQUIRED", "neat");
+    Log("Handles for 0x2345: ", h1List);
+    Log("Handles for 0x3456: ", h2List);
 
     vector<uint8_t> byteList = attDb.GetDatabaseData();
 
+    // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
     att_server_init(byteList.data(), att_read_callback, att_write_callback);
 
 
