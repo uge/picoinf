@@ -1,6 +1,7 @@
 #include "BleAttDatabase.h"
 #include "BleGattNew.h"
 #include "Log.h"
+#include "PAL.h"
 #include "Timeline.h"
 #include "Utl.h"
 
@@ -91,13 +92,44 @@ uint16_t current_temp = 42;
 
 
 
+class AttCallbackHandler
+{
+
+};
 
 
 
+struct ReadState
+{
+    bool             readyToSend = false;
+    hci_con_handle_t handleCb;
+    uint64_t         timeAtEvm;
+    vector<uint8_t>  byteList;
+    uint16_t         bytesToRead;
+};
 
 
 
+static bool readyToSend = false;
+static hci_con_handle_t handleCb;
+static uint64_t timeAtEvm;
+static vector<uint8_t> byteListStatic;
+static uint16_t bytesToRead;
 
+static function<void(vector<uint8_t> &byteList)> handler = [](vector<uint8_t> &byteList){
+    static uint8_t val = 0;
+
+    timeAtEvm = PAL.Micros();
+
+    Log("callback");
+
+    byteList.resize(300);
+    for (auto &b : byteList)
+    {
+        b = val;
+    }
+    ++val;
+};
 
 
 uint16_t att_read_callback(hci_con_handle_t connection_handle,
@@ -108,6 +140,76 @@ uint16_t att_read_callback(hci_con_handle_t connection_handle,
 {
     Log("att_read_callback(conn=", ToHex(connection_handle), ", handle=", ToHex(att_handle), ", offset=", offset, ", bufSize=", buffer_size);
     UNUSED(connection_handle);
+
+    if (readyToSend == false)
+    {
+        if (att_handle == ATT_READ_RESPONSE_PENDING)
+        {
+            // cache single handle (only one ATT transaction at a time, so this is safe)
+            handleCb = connection_handle;
+
+            Log("Got 'last in read batch' notification");
+
+            Evm::QueueWork("att_read_callback", []{
+                readyToSend = true;
+
+                IrqLock lock;
+                handler(byteListStatic);
+
+                bytesToRead = (uint16_t)byteListStatic.size();
+
+                att_server_response_ready(handleCb);
+            });
+
+            return ATT_READ_RESPONSE_PENDING;
+        }
+        else
+        {
+            Log("will send later");
+            // whatever is being requested, we'l
+            return ATT_READ_RESPONSE_PENDING;
+        }
+    }
+    else
+    {
+        uint64_t timeDiff = PAL.Micros() - timeAtEvm;
+
+        Log("Sending, ", timeDiff, " us later");
+
+        // what if buffer changes size before completion?
+        // actually, they say only a single att transaction at a time, so this shouldn't happen
+        // return att_read_callback_handle_blob((const uint8_t *)&timeAtEvm, sizeof(timeAtEvm), offset, buffer, buffer_size);
+
+        uint16_t retVal =
+            att_read_callback_handle_blob(byteListStatic.data(),
+                                          (uint16_t)byteListStatic.size(),
+                                          offset,
+                                          buffer,
+                                          buffer_size);
+
+        // I know this will get called multiple times, but I just don't think I
+        // have to worry about it due to one at a time transactions
+        //
+        // ok wrong, how do you know it's the last transaction?
+
+        uint16_t bytesLeftAfterThisSend = bytesToRead - min(bytesToRead, (uint16_t)(offset + buffer_size));
+
+        uint16_t bytesThisTime = min(bytesLeftAfterThisSend, buffer_size);
+
+        Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
+
+
+        if (bytesLeftAfterThisSend == 0)
+        {
+            Log("Declaring this the end of this send");
+            readyToSend = false;
+        }
+
+        return retVal;
+    }
+
+    return 0;
+
 
     if (att_handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
         return att_read_callback_handle_blob((const uint8_t *)&current_temp, sizeof(current_temp), offset, buffer, buffer_size);
@@ -260,13 +362,13 @@ void BleGatt::Init()
     static BleAttDatabase attDb("TestName");
 
     attDb.AddPrimaryService("0x1234");
-    vector<uint16_t> h1List = attDb.AddCharacteristic("0x2345", "READ | DYNAMIC");
+    vector<uint16_t> h1List = attDb.AddCharacteristic("0x2345", "READ | DYNAMIC", "test");
     vector<uint16_t> h2List = attDb.AddCharacteristic("0x3456", "WRITE | DYNAMIC");
 
     Log("Handles for 0x2345: ", h1List);
     Log("Handles for 0x3456: ", h2List);
 
-    vector<uint8_t> byteList = attDb.GetDatabaseData();
+    static vector<uint8_t> byteList = attDb.GetDatabaseData();
 
     // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
     att_server_init(byteList.data(), att_read_callback, att_write_callback);
