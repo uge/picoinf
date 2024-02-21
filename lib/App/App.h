@@ -1,6 +1,6 @@
 #pragma once
 
-// #include "Ble.h"
+#include "BleNew.h"
 // #include "Esb.h"
 #include "Evm.h"
 #include "FilesystemLittleFS.h"
@@ -69,6 +69,9 @@ public:
 
         // init configurable core systems
         USB::Init();
+        LogNL();
+
+        Ble::Init();
         LogNL();
 
         // run app code which depends on prior init

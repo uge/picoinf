@@ -1,6 +1,8 @@
 #pragma once
 
 #include "BleAdvertisement.h"
+#include "Log.h"
+#include "Timeline.h"
 
 #include "btstack.h"
 
@@ -11,11 +13,18 @@ public:
 
     static void Init()
     {
-        
+        Timeline::Global().Event("BleGap::Init");
+
+        StartAdvertising();
     }
 
-    static void OnReady()
+
+private:
+
+    static void StartAdvertising()
     {
+        Timeline::Global().Event("BleGap::StartAdvertising");
+
         // setup advertisements
         uint16_t adv_int_min = 800;
         uint16_t adv_int_max = 800;
@@ -35,6 +44,8 @@ public:
 
         // enable
         gap_advertisements_enable(1);
+
+        Log("BLE Advertising Started");
     }
 
 

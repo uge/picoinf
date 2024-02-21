@@ -1,15 +1,27 @@
 #include "BleNew.h"
 
+#include "Evm.h"
 #include "Log.h"
 #include "PAL.h"
+#include "Timeline.h"
 
 #include "btstack.h"
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
 
 
-inline static btstack_packet_callback_registration_t hciEventCallbackRegistration;
+static btstack_packet_callback_registration_t hciEventCallbackRegistration;
+static volatile bool initDone = false;
 
+
+static void OnHciReady()
+{
+    // in interrupt context still, but should be fine
+    BleGap::Init();
+    BleGatt::Init();
+
+    initDone = true;
+}
 
 // HCI, GAP, and general BTstack events
 static void PacketHandlerHCI(uint8_t   packet_type,
@@ -27,20 +39,19 @@ static void PacketHandlerHCI(uint8_t   packet_type,
 
     if (eventType == BTSTACK_EVENT_STATE)
     {
-        Log("BTSTACK_EVENT_STATE - ", PAL.InIsr() ? "in ISR" : "");
-
         if (btstack_event_state_get_state(packet) != HCI_STATE_WORKING)
         {
-            Log("Not yet working, early return");
+            // Log("Not yet working, early return");
         }
         else
         {
             bd_addr_t local_addr;
             gap_local_bd_addr(local_addr);
 
-            printf("BTstack up and running on %s.\n", bd_addr_to_str(local_addr));
+            LogNL();
+            Log("BTstack up and running on ", bd_addr_to_str(local_addr));
 
-            BleGap::OnReady();
+            OnHciReady();
         }
     }
     else if (eventType == HCI_EVENT_CONNECTION_REQUEST)
@@ -152,7 +163,9 @@ static void PacketHandlerHCI(uint8_t   packet_type,
 
 void Ble::Init()
 {
-    Log("BLE Init");
+    Timeline::Global().Event("Ble::Init");
+
+    Log("BLE Init Starting");
     if (cyw43_arch_init())
     {
         Log("ERR: CYW43 Init Failed");
@@ -163,9 +176,15 @@ void Ble::Init()
     l2cap_init();
     sm_init();
 
-    BleGap::Init();
-    BleGatt::Init();
-
     hciEventCallbackRegistration.callback = &PacketHandlerHCI;
     hci_add_event_handler(&hciEventCallbackRegistration);
+
+    // make this function synchronously wait for init
+    while (initDone == false)
+    {
+        PAL.Delay(10);
+    }
+
+    LogNL();
+    Log("Ble Init Complete");
 }
