@@ -136,6 +136,34 @@ void Log(const vector<T> &valList)
     LogNL();
 }
 
+inline void LogNNL(const vector<uint8_t> &valList)
+{
+    const char *hexList = "0123456789ABCDEF";
+
+    LogNNL("[");
+    const char *sep = "";
+    for (const auto &val : valList)
+    {
+        LogNNL(sep);
+
+        char buf[3];
+        buf[0] = hexList[(val & 0xF0) >> 4];
+        buf[1] = hexList[(val & 0x0F)];
+        buf[2] = '\0';
+
+        LogNNL(buf);
+
+        sep = ", ";
+    }
+    LogNNL("]");
+}
+
+inline void Log(const vector<uint8_t> &valList)
+{
+    LogNNL(valList);
+    LogNL();
+}
+
 template <typename T, size_t S>
 void LogNNL(const array<T, S> &valList)
 {
