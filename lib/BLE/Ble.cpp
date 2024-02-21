@@ -1,4 +1,4 @@
-#include "BleNew.h"
+#include "Ble.h"
 
 #include "Evm.h"
 #include "Log.h"
@@ -234,14 +234,14 @@ void Ble::Init()
 
 
 
-BlePeripheral &Ble::CreatePeripheral()
-{
-    peripheralList_.push_back({});
+// BlePeripheral &Ble::CreatePeripheral()
+// {
+//     peripheralList_.push_back({});
 
-    BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
+//     BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
 
-    return retVal;
-}
+//     return retVal;
+// }
 
 // BleBroadcaster &Ble::CreateBroadcaster()
 // {

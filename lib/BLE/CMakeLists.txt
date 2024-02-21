@@ -4,6 +4,6 @@ target_sources(LibPico PRIVATE
     BleAdvertisementDataConverter.cpp
     BleAdvertisement.cpp
     BleAttDatabase.cpp
-    BleGattNew.cpp
-    BleNew.cpp
+    BleGatt.cpp
+    Ble.cpp
 )
