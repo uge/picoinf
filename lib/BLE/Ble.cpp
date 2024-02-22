@@ -19,8 +19,8 @@ static volatile bool initDone = false;
 static void OnHciReady()
 {
     // in interrupt context still, but should be fine
-    BleGap::Init();
-    BleGatt::Init();
+    BleGap::OnReady();
+    BleGatt::OnReady();
 
     initDone = true;
 }
@@ -206,6 +206,13 @@ void Ble::Init()
     Timeline::Global().Event("Ble::Init");
 
     Log("BLE Init Starting");
+    LogNL();
+
+    // main task init
+    BleGap::Init(name_);
+    BleGatt::Init(name_, peripheralList_);
+
+    // init underlying drivers
     if (cyw43_arch_init())
     {
         Log("ERR: CYW43 Init Failed");
@@ -225,23 +232,23 @@ void Ble::Init()
         PAL.Delay(10);
     }
 
-    // do non-ISR allocations to set up runtime
-
-
     LogNL();
     Log("Ble Init Complete");
 }
 
+void Ble::SetDeviceName(string name)
+{
+    name_ = name;
+}
 
+BlePeripheral &Ble::CreatePeripheral(string name)
+{
+    peripheralList_.emplace_back(name);
 
-// BlePeripheral &Ble::CreatePeripheral()
-// {
-//     peripheralList_.push_back({});
+    BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
 
-//     BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
-
-//     return retVal;
-// }
+    return retVal;
+}
 
 // BleBroadcaster &Ble::CreateBroadcaster()
 // {

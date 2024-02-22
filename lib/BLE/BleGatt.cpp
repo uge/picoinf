@@ -61,50 +61,18 @@ struct ReadState
 {
     bool             readyToSend = false;
     hci_con_handle_t conn;
+    uint16_t         handle;
     uint64_t         timeAtEvm;
     vector<uint8_t>  byteList;
     uint16_t         bytesToRead;
 };
 
+static ReadState readState_;
 
-class AttCallbackHandler
-{
-    void SetReadCallback(function<void(vector<uint8_t> &byteList)> fn)
-    {
-        cbFnRead_ = fn;
-    }
-
-public:
-
-    function<void(vector<uint8_t> &byteList)> cbFnRead_ = [](vector<uint8_t> &byteList){};
-
-    ReadState state_;
-};
+static unordered_map<uint16_t, BleCharacteristic &> handleMap_;
 
 
-
-
-static bool readyToSend = false;
-static hci_con_handle_t handleCb;
 static uint64_t timeAtEvm;
-static vector<uint8_t> byteListStatic;
-static uint16_t bytesToRead;
-
-static function<void(vector<uint8_t> &byteList)> handler = [](vector<uint8_t> &byteList){
-    static uint8_t val = 0;
-
-    timeAtEvm = PAL.Micros();
-
-    Log("callback");
-
-    byteList.resize(3000);
-    for (auto &b : byteList)
-    {
-        b = val;
-    }
-    ++val;
-};
-
 
 uint16_t att_read_callback(hci_con_handle_t  conn,
                            uint16_t          handle,
@@ -114,33 +82,50 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
 {
     Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
 
-    if (readyToSend == false)
+    if (readState_.readyToSend == false)
     {
         if (handle == ATT_READ_RESPONSE_PENDING)
         {
             // cache single handle (only one ATT transaction at a time, so this is safe)
-            handleCb = conn;
 
             Log("Got 'last in read batch' notification");
 
-            Evm::QueueWork("att_read_callback", []{
-                readyToSend = true;
+            if (handleMap_.contains(readState_.handle))
+            {
+                Evm::QueueWork("att_read_callback", []{
+                    timeAtEvm = PAL.Micros();
 
-                {
-                    IrqLock lock;
-                    handler(byteListStatic);
-                    bytesToRead = (uint16_t)byteListStatic.size();
-                }
+                    readState_.readyToSend = true;
 
-                att_server_response_ready(handleCb);
-            });
+                    {
+                        IrqLock lock;
+
+                        readState_.byteList.clear();
+                        handleMap_.at(readState_.handle).GetCallbackOnRead()(readState_.byteList);
+
+                        readState_.bytesToRead = (uint16_t)readState_.byteList.size();
+
+                        Log(readState_.bytesToRead, " bytes acquired from read callback");
+                    }
+
+                    att_server_response_ready(readState_.conn);
+                });
+            }
+            else
+            {
+                Log("ERR: No handler for handle ", ToHex(handle));
+            }
 
             return ATT_READ_RESPONSE_PENDING;
         }
         else
         {
             Log("will send later");
-            // whatever is being requested, we'l
+
+            // cache connection and handle
+            readState_.conn = conn;
+            readState_.handle = handle;
+
             return ATT_READ_RESPONSE_PENDING;
         }
     }
@@ -155,8 +140,8 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
         // return att_read_callback_handle_blob((const uint8_t *)&timeAtEvm, sizeof(timeAtEvm), offset, buf, bufSize);
 
         uint16_t retVal =
-            att_read_callback_handle_blob(byteListStatic.data(),
-                                          (uint16_t)byteListStatic.size(),
+            att_read_callback_handle_blob(readState_.byteList.data(),
+                                          (uint16_t)readState_.byteList.size(),
                                           offset,
                                           buf,
                                           bufSize);
@@ -166,17 +151,16 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
         //
         // ok wrong, how do you know it's the last transaction?
 
-        uint16_t bytesLeftAfterThisSend = bytesToRead - min(bytesToRead, (uint16_t)(offset + bufSize));
-
-        uint16_t bytesThisTime = min(bytesLeftAfterThisSend, bufSize);
+        uint16_t bytesLeftAfterThisSend  = readState_.bytesToRead - min(readState_.bytesToRead, (uint16_t)(offset + bufSize));
+        uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
+        uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
 
         Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
-
 
         if (bytesLeftAfterThisSend == 0)
         {
             Log("Declaring this the end of this send");
-            readyToSend = false;
+            readState_.readyToSend = false;
         }
 
         return retVal;
@@ -321,30 +305,61 @@ static void PacketHandlerATT(uint8_t   packet_type,
 // Interface
 /////////////////////////////////////////////////////////////////////
 
+static vector<uint8_t> attDbByteList;
 
-void BleGatt::Init()
+void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
 {
     Timeline::Global().Event("BleGatt::Init");
+
+    // Generate database
+    BleAttDatabase attDb(name);
+
+    for (int count = 1; auto &p : periphList)
+    {
+        string fqn = p.GetName();
+        ++count;
+        Log("Registering Peripheral ", fqn);
+
+        for (auto &[svcName, svc] : p.GetServiceList())
+        {
+            string fqn2 = fqn + "." + svc.GetName() + "(" + svc.GetUuid() + ")";
+            Log("  Registering Service ", fqn2);
+
+            attDb.AddPrimaryService(svc.GetUuid());
+
+            for (auto &[ctcName, ctc] : svc.GetCtcList())
+            {
+                string fqn3 = fqn2 + "." + ctc.GetName() + "(" + ctc.GetUuid() + ")";
+
+                vector<uint16_t> handleList =
+                    attDb.AddCharacteristic(ctc.GetUuid(),
+                                            ctc.GetProperties());
+                
+                Log("    Registering CTC ", fqn3, ", handles: ", handleList);
+
+                // associate handles with the characteristic
+                for (auto handle : handleList)
+                {
+                    handleMap_.emplace(handle, ctc);
+                }
+            }
+        }
+    }
+
+
+    attDbByteList = attDb.GetDatabaseData();
+}
+
+
+void BleGatt::OnReady()
+{
+    Timeline::Global().Event("BleGatt::OnReady");
 
     // register for ATT event
     att_server_register_packet_handler(PacketHandlerATT);
 
-    // Generate database
-    static BleAttDatabase attDb("TestName");
-
-    attDb.AddPrimaryService("0x1234");
-    vector<uint16_t> h1List = attDb.AddCharacteristic("0xAAAA", "READ | DYNAMIC");
-    vector<uint16_t> h2List = attDb.AddCharacteristic("0xBBBB", "READ | DYNAMIC");
-    vector<uint16_t> h3List = attDb.AddCharacteristic("0x1234", "WRITE | DYNAMIC");
-
-    Log("Handles for 0xAAAA: ", h1List);
-    Log("Handles for 0xBBBB: ", h2List);
-    Log("Handles for 0x1234: ", h3List);
-
-    static vector<uint8_t> byteList = attDb.GetDatabaseData();
-
     // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
-    att_server_init(byteList.data(), att_read_callback, att_write_callback);
+    att_server_init(attDbByteList.data(), att_read_callback, att_write_callback);
 
 
 

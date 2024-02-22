@@ -11,10 +11,23 @@ class BleGap
 {
 public:
 
-    static void Init()
+    static void Init(string name)
     {
         Timeline::Global().Event("BleGap::Init");
 
+        // fill out actual advertisement data
+        BleAdvertisement adv;
+        adv.SetName(name);
+        adv.SetAdvertisingUuidList({
+            "0x181A",
+        });
+        byteList_ = adv.GetRawAdvertisingDataStructure();
+    }
+
+    static void OnReady()
+    {
+        Timeline::Global().Event("BleGap::OnReady");
+        
         StartAdvertising();
     }
 
@@ -33,14 +46,8 @@ private:
         memset(null_addr, 0, 6);
         gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
 
-        // fill out actual advertisement data
-        BleAdvertisement adv;
-        adv.SetName("GLOW_BIKE");
-        adv.SetAdvertisingUuidList({
-            "0x181A",
-        });
-        static const vector<uint8_t> byteList = adv.GetRawAdvertisingDataStructure();
-        gap_advertisements_set_data((uint8_t)byteList.size(), (uint8_t *)byteList.data());
+        // setup att database        
+        gap_advertisements_set_data((uint8_t)byteList_.size(), (uint8_t *)byteList_.data());
 
         // enable
         gap_advertisements_enable(1);
@@ -50,4 +57,6 @@ private:
 
 
 private:
+    
+    inline static vector<uint8_t> byteList_;
 };
