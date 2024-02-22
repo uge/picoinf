@@ -13,7 +13,7 @@ class BleCharacteristic
 {
 public:
     using CbRead      = function<void(vector<uint8_t> &byteList)>;
-    using CbWrite     = function<void()>;
+    using CbWrite     = function<void(vector<uint8_t> &byteList)>;
     using CbSubscribe = function<void()>;
 
 public:
@@ -45,6 +45,11 @@ public:
         return *this;
     }
 
+    CbWrite GetCallbackOnWrite()
+    {
+        return cbFnWrite_;
+    }
+
     BleCharacteristic &SetCallbackOnSubscribe(CbSubscribe cbFnSubscribe)
     {
         cbFnSubscribed_ = cbFnSubscribe;
@@ -74,6 +79,6 @@ private:
     string  properties_;
 
     CbRead      cbFnRead_       = [](vector<uint8_t> &byteList){};
-    CbWrite     cbFnWrite_      = []{};
+    CbWrite     cbFnWrite_      = [](vector<uint8_t> &byteList){};
     CbSubscribe cbFnSubscribed_ = []{};
 };

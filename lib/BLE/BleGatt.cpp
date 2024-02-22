@@ -55,6 +55,9 @@ uint16_t current_temp = 42;
 
 
 
+/////////////////////////////////////////////////////////////////////
+// Read
+/////////////////////////////////////////////////////////////////////
 
 // per handle, can be done in parallel
 struct ReadState
@@ -113,7 +116,7 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
             }
             else
             {
-                Log("ERR: No handler for handle ", ToHex(handle));
+                Log("ERR: No read handler for handle ", ToHex(handle));
             }
 
             return ATT_READ_RESPONSE_PENDING;
@@ -175,6 +178,30 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
     return 0;
 }
 
+
+
+
+
+/////////////////////////////////////////////////////////////////////
+// Write
+/////////////////////////////////////////////////////////////////////
+
+
+static const uint16_t WRITE_BUF_SIZE = 512;
+// static const uint16_t WRITE_BUF_SIZE = 17;
+struct WriteState
+{
+    uint16_t        handle;
+    vector<uint8_t> byteList;
+    bool            bufferExceeded = false;
+};
+static WriteState writeState_;
+
+static void ResetWriteState()
+{
+    writeState_ = WriteState{};
+}
+
 int att_write_callback(hci_con_handle_t  conn,
                        uint16_t          handle,
                        uint16_t          txnMode,
@@ -182,10 +209,135 @@ int att_write_callback(hci_con_handle_t  conn,
                        uint8_t          *buf,
                        uint16_t          bufSize)
 {
-    Log("att_write_callback");
+    int retVal = -1;
 
     Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
     
+    // track whether we have an entire data set to pass along
+    bool commitData = false;
+
+    if (txnMode == ATT_TRANSACTION_MODE_NONE)
+    {
+        // This condition is a write where the total bytes fit completely
+        // within the btstacks buffer and can be conveyed in a single
+        // callback.
+        // if you can store it, great, do it and call back,
+        // otherwise indicate failure.
+
+        Log("Write single-shot");
+
+        // cache
+        writeState_.handle = handle;
+        
+        // take in bytes
+        if (bufSize <= WRITE_BUF_SIZE)
+        {
+            Log("  Buffer within range, committing");
+
+            retVal = 0;
+
+            for (uint16_t i = 0; i < bufSize; ++i)
+            {
+                writeState_.byteList.push_back(buf[i]);
+            }
+
+            commitData = true;
+        }
+        else
+        {
+            Log("  Buffer too large, cancelling");
+        }
+    }
+    else if (txnMode == ATT_TRANSACTION_MODE_ACTIVE)
+    {
+        // portion of a multi-part write consisting of more than one buffer
+        // of data to be delivered.
+        // if you run out of capacity to cache before the entire packet is
+        // stored, you're going to want to indicate failure to capture,
+        // which will result in a cancel of the entire transaction.
+
+        Log("Write multi-shot");
+        
+        // cache
+        writeState_.handle = handle;
+
+        if (writeState_.byteList.size() + bufSize <= WRITE_BUF_SIZE)
+        {
+            retVal = 0;
+
+            Log("  Chunk fits, progressing");
+
+            for (uint16_t i = 0; i < bufSize; ++i)
+            {
+                writeState_.byteList.push_back(buf[i]);
+            }
+        }
+        else
+        {
+            Log("  Chunk doesn't fit, remembering as bad");
+            writeState_.bufferExceeded = true;
+        }
+    }
+    else if (txnMode == ATT_TRANSACTION_MODE_VALIDATE)
+    {
+        // btstacks is asking if everything worked out ok.
+        // if it did, indicate so.  progress to EXECUTE.
+        // if not, indicate so.  progress to CANCEL.
+
+        Log("Write validation");
+
+        if (writeState_.bufferExceeded == false)
+        {
+            retVal = 0;
+            Log("  Good, progressing");
+        }
+        else
+        {
+            Log("  Bad, cancelling");
+        }
+    }
+    else if (txnMode == ATT_TRANSACTION_MODE_EXECUTE)
+    {
+        // handle expected to be 0x0000
+        Log("Write executing");
+        
+        retVal = 0;
+        commitData = true;
+        Log("  Buffer ok, committing");
+    }
+    else if (txnMode == ATT_TRANSACTION_MODE_CANCEL)
+    {
+        // handle expected to be 0x0000
+
+        Log("Write Cancel, resetting");
+        ResetWriteState();
+    }
+
+    if (commitData)
+    {
+        if (handleMap_.contains(writeState_.handle))
+        {
+            Evm::QueueWork("att_read_callback", []{
+                IrqLock lock;
+
+                handleMap_.at(writeState_.handle).GetCallbackOnWrite()(writeState_.byteList);
+
+                Log(writeState_.byteList.size(), " bytes written to write callback");
+
+                writeState_.byteList.clear();
+            });
+        }
+        else
+        {
+            Log("ERR: No write handler for handle ", ToHex(handle));
+
+            writeState_.byteList.clear();
+        }
+    }
+
+    return retVal;
+
+
     
     if (handle != ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE) return 0;
     le_notification_enabled = little_endian_read_16(buf, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
@@ -305,7 +457,7 @@ static void PacketHandlerATT(uint8_t   packet_type,
 // Interface
 /////////////////////////////////////////////////////////////////////
 
-static vector<uint8_t> attDbByteList;
+static vector<uint8_t> attDbByteList_;
 
 void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
 {
@@ -346,8 +498,12 @@ void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
         }
     }
 
+    // capture raw database structure
+    attDbByteList_ = attDb.GetDatabaseData();
 
-    attDbByteList = attDb.GetDatabaseData();
+    // allocate space for receive buffer
+
+    writeState_.byteList.reserve(WRITE_BUF_SIZE);
 }
 
 
@@ -359,7 +515,7 @@ void BleGatt::OnReady()
     att_server_register_packet_handler(PacketHandlerATT);
 
     // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
-    att_server_init(attDbByteList.data(), att_read_callback, att_write_callback);
+    att_server_init(attDbByteList_.data(), att_read_callback, att_write_callback);
 
 
 
