@@ -15,44 +15,31 @@ using namespace std;
 
 
 
+/*
 
+This whole implementation is assuming a single connection.
 
-//
-// list service handle ranges
-//
-#define ATT_SERVICE_GAP_SERVICE_START_HANDLE 0x0001
-#define ATT_SERVICE_GAP_SERVICE_END_HANDLE 0x0003
-#define ATT_SERVICE_GAP_SERVICE_01_START_HANDLE 0x0001
-#define ATT_SERVICE_GAP_SERVICE_01_END_HANDLE 0x0003
-#define ATT_SERVICE_GATT_SERVICE_START_HANDLE 0x0004
-#define ATT_SERVICE_GATT_SERVICE_END_HANDLE 0x0006
-#define ATT_SERVICE_GATT_SERVICE_01_START_HANDLE 0x0004
-#define ATT_SERVICE_GATT_SERVICE_01_END_HANDLE 0x0006
-#define ATT_SERVICE_ORG_BLUETOOTH_SERVICE_ENVIRONMENTAL_SENSING_START_HANDLE 0x0007
-#define ATT_SERVICE_ORG_BLUETOOTH_SERVICE_ENVIRONMENTAL_SENSING_END_HANDLE 0x000a
-#define ATT_SERVICE_ORG_BLUETOOTH_SERVICE_ENVIRONMENTAL_SENSING_01_START_HANDLE 0x0007
-#define ATT_SERVICE_ORG_BLUETOOTH_SERVICE_ENVIRONMENTAL_SENSING_01_END_HANDLE 0x000a
+Probably should abstract to keeping state up to 
+MAX_NR_HCI_CONNECTIONS (I think?) connections.
 
-//
-// list mapping between characteristics and handles
-//
-#define ATT_CHARACTERISTIC_GAP_DEVICE_NAME_01_VALUE_HANDLE 0x0003
-#define ATT_CHARACTERISTIC_GATT_DATABASE_HASH_01_VALUE_HANDLE 0x0006
-#define ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE 0x0009
-#define ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE 0x000a
+Keep it simple for now.
+
+*/
 
 
 
+/////////////////////////////////////////////////////////////////////
+// State
+/////////////////////////////////////////////////////////////////////
 
-int le_notification_enabled;
-hci_con_handle_t con_handle;
+static unordered_map<uint16_t, BleCharacteristic &> handleReadWriteMap_;
+static unordered_map<uint16_t, BleCharacteristic &> handleNotifyMap_;
 
+static hci_con_handle_t conn_;
+static bool connected_ = false;
 
-
-
-uint16_t current_temp = 42;
-
-
+// for notify
+static uint16_t handle_;
 
 
 /////////////////////////////////////////////////////////////////////
@@ -72,20 +59,15 @@ struct ReadState
 
 static ReadState readState_;
 
-static unordered_map<uint16_t, BleCharacteristic &> handleMap_;
-
-
 static uint64_t timeAtEvm;
 
 static
-uint16_t att_read_callback(hci_con_handle_t  conn,
-                           uint16_t          handle,
-                           uint16_t          offset,
-                           uint8_t          *buf,
-                           uint16_t          bufSize)
+uint16_t att_read_callback_read(hci_con_handle_t  conn,
+                                uint16_t          handle,
+                                uint16_t          offset,
+                                uint8_t          *buf,
+                                uint16_t          bufSize)
 {
-    Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
-
     if (readState_.readyToSend == false)
     {
         if (handle == ATT_READ_RESPONSE_PENDING)
@@ -94,7 +76,7 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
 
             Log("Got 'last in read batch' notification");
 
-            if (handleMap_.contains(readState_.handle))
+            if (handleReadWriteMap_.contains(readState_.handle))
             {
                 Evm::QueueWork("att_read_callback", []{
                     timeAtEvm = PAL.Micros();
@@ -105,7 +87,7 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
                         IrqLock lock;
 
                         readState_.byteList.clear();
-                        handleMap_.at(readState_.handle).GetCallbackOnRead()(readState_.byteList);
+                        handleReadWriteMap_.at(readState_.handle).GetCallbackOnRead()(readState_.byteList);
 
                         readState_.bytesToRead = (uint16_t)readState_.byteList.size();
 
@@ -171,14 +153,49 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
     }
 
     return 0;
-
-
-    if (handle == ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE){
-        return att_read_callback_handle_blob((const uint8_t *)&current_temp, sizeof(current_temp), offset, buf, bufSize);
-    }
-    return 0;
 }
 
+static
+uint16_t att_read_callback_notify(hci_con_handle_t  conn,
+                                  uint16_t          handle,
+                                  uint16_t          offset,
+                                  uint8_t          *buf,
+                                  uint16_t          bufSize)
+{
+    uint16_t value = handleNotifyMap_.at(handle).GetIsSubscribed();
+
+    uint16_t retVal =
+        att_read_callback_handle_blob((uint8_t *)&value,
+                                       sizeof(value),
+                                       offset,
+                                       buf,
+                                       bufSize);
+
+    return retVal;
+}
+
+static
+uint16_t att_read_callback(hci_con_handle_t  conn,
+                           uint16_t          handle,
+                           uint16_t          offset,
+                           uint8_t          *buf,
+                           uint16_t          bufSize)
+{
+    Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
+
+    uint16_t retVal = 1;
+
+    if (handleNotifyMap_.contains(handle))
+    {
+        retVal = att_read_callback_notify(conn, handle, offset, buf, bufSize);
+    }
+    else
+    {
+        retVal = att_read_callback_read(conn, handle, offset, buf, bufSize);
+    }
+
+    return retVal;
+}
 
 
 
@@ -243,18 +260,17 @@ static void ResetWriteState()
     writeState_ = WriteState{};
 }
 
+
 static
-int att_write_callback(hci_con_handle_t  conn,
-                       uint16_t          handle,
-                       uint16_t          txnMode,
-                       uint16_t          offset,
-                       uint8_t          *buf,
-                       uint16_t          bufSize)
+int att_write_callback_write(hci_con_handle_t  conn,
+                             uint16_t          handle,
+                             uint16_t          txnMode,
+                             uint16_t          offset,
+                             uint8_t          *buf,
+                             uint16_t          bufSize)
 {
     int retVal = -1;
 
-    Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
-    
     // track whether we have an entire data set to pass along
     bool commitData = false;
 
@@ -357,12 +373,12 @@ int att_write_callback(hci_con_handle_t  conn,
 
     if (commitData)
     {
-        if (handleMap_.contains(writeState_.handle))
+        if (handleReadWriteMap_.contains(writeState_.handle))
         {
-            Evm::QueueWork("att_read_callback", []{
+            Evm::QueueWork("att_write_callback", []{
                 IrqLock lock;
 
-                handleMap_.at(writeState_.handle).GetCallbackOnWrite()(writeState_.byteList);
+                handleReadWriteMap_.at(writeState_.handle).GetCallbackOnWrite()(writeState_.byteList);
 
                 Log(writeState_.byteList.size(), " bytes written to write callback");
 
@@ -378,33 +394,106 @@ int att_write_callback(hci_con_handle_t  conn,
     }
 
     return retVal;
-
-
-    
-    if (handle != ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_CLIENT_CONFIGURATION_HANDLE) return 0;
-    le_notification_enabled = little_endian_read_16(buf, 0) == GATT_CLIENT_CHARACTERISTICS_CONFIGURATION_NOTIFICATION;
-    con_handle = conn;
-    if (le_notification_enabled) {
-        att_server_request_can_send_now_event(con_handle);
-    }
-    return 0;
 }
 
+static
+int att_write_callback_notify(hci_con_handle_t  conn,
+                              uint16_t          handle,
+                              uint16_t          txnMode,
+                              uint16_t          offset,
+                              uint8_t          *buf,
+                              uint16_t          bufSize)
+{
+    int retVal = -1;
 
-/*
-#define ATT_HANDLE_VALUE_INDICATION_IN_PROGRESS            0x90 
-#define ATT_HANDLE_VALUE_INDICATION_TIMEOUT                0x91
-#define ATT_HANDLE_VALUE_INDICATION_DISCONNECT             0x92
+    if (bufSize >= 2)
+    {
+        retVal = 0;
 
-#define ATT_PROPERTY_BROADCAST           0x01
-#define ATT_PROPERTY_READ                0x02
-#define ATT_PROPERTY_WRITE_WITHOUT_RESPONSE 0x04
-#define ATT_PROPERTY_WRITE               0x08
-#define ATT_PROPERTY_NOTIFY              0x10
-#define ATT_PROPERTY_INDICATE            0x20
-#define ATT_PROPERTY_AUTHENTICATED_SIGNED_WRITE 0x40
-#define ATT_PROPERTY_EXTENDED_PROPERTIES 0x80
-*/
+        bool enabled = (bool)little_endian_read_16(buf, 0);
+
+        Log("Notify for ", ToHex(handle), ": ", enabled, ", bufSize ", bufSize);
+
+        Evm::QueueWork("att_write_callback_notify", [=]{
+            handleNotifyMap_.at(handle).GetCallbackOnSubscribe()(enabled);
+        });
+    }
+
+    return retVal;
+}
+
+static
+int att_write_callback(hci_con_handle_t  conn,
+                       uint16_t          handle,
+                       uint16_t          txnMode,
+                       uint16_t          offset,
+                       uint8_t          *buf,
+                       uint16_t          bufSize)
+{
+    Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
+    
+    int retVal = -1;
+
+    if (handleNotifyMap_.contains(handle))
+    {
+        retVal = att_write_callback_notify(conn, handle, txnMode, offset, buf, bufSize);
+    }
+    else
+    {
+        retVal = att_write_callback_write(conn, handle, txnMode, offset, buf, bufSize);
+    }
+
+    return retVal;
+}
+
+// Only support a single ctc notify for the time being.
+// Otherwise have to maintain a list of them or something
+// and I just don't have that use case right now.
+//
+// This implementation is just getting the mechanisms
+// from btstack working.  Can expand later after that is sorted.
+
+static void TriggerNotify(uint16_t handle)
+{
+    handle_ = handle;
+
+    BleCharacteristic &ctc = handleReadWriteMap_.at(handle_);
+
+    Log("Triggering notify for ", ctc.GetName(), " if connected (", connected_, ")");
+
+    if (connected_)
+    {
+        att_server_request_can_send_now_event(conn_);
+    }
+}
+
+static void DoNotify()
+{
+    Evm::QueueWork("BleGatt::Notify", []{
+        if (connected_)
+        {
+            BleCharacteristic &ctc = handleReadWriteMap_.at(handle_);
+
+            vector<uint8_t> byteList;
+
+            ctc.GetCallbackOnRead()(byteList);
+
+            Log("Doing notify for ", ctc.GetName(), ", ", byteList.size(), " bytes returned");
+
+            uint8_t retVal = att_server_notify(conn_, handle_, byteList.data(), (uint16_t)byteList.size());
+
+            if (retVal == 0)
+            {
+                Log("  Success");
+            }
+            else
+            {
+                Log("  Error: ", retVal);
+            }
+        }
+    });
+}
+
 
 // HCI, GAP, and general BTstack events
 static void PacketHandlerATT(uint8_t   packet_type,
@@ -420,11 +509,15 @@ static void PacketHandlerATT(uint8_t   packet_type,
 
         if (eventType == ATT_EVENT_CONNECTED)
         {
-            hci_con_handle_t handle = att_event_connected_get_handle(packet);
-            uint16_t mtu = att_server_get_mtu(handle);
+            hci_con_handle_t conn = att_event_connected_get_handle(packet);
+
+            conn_ = conn;
+            connected_ = true;
+
+            uint16_t mtu = att_server_get_mtu(conn);
 
             Log("ATT_EVENT_CONNECTED");
-            Log("- ", ToHex(handle), " at mtu ", mtu);
+            Log("- ", ToHex(conn), " at mtu ", mtu);
             LogNL();
 
             
@@ -438,10 +531,10 @@ static void PacketHandlerATT(uint8_t   packet_type,
         }
         else if (eventType == ATT_EVENT_MTU_EXCHANGE_COMPLETE)
         {
-            hci_con_handle_t handle = att_event_mtu_exchange_complete_get_handle(packet);
+            hci_con_handle_t conn = att_event_mtu_exchange_complete_get_handle(packet);
             uint16_t mtu = att_event_mtu_exchange_complete_get_MTU(packet);
 
-            Log("ATT_EVENT_MTU_EXCHANGE_COMPLETE - ", handle, " at mtu ", mtu);
+            Log("ATT_EVENT_MTU_EXCHANGE_COMPLETE - ", conn, " at mtu ", mtu);
 
             // mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 3;
             // context = connection_for_conn_handle(att_event_mtu_exchange_complete_get_handle(packet));
@@ -453,14 +546,16 @@ static void PacketHandlerATT(uint8_t   packet_type,
         {
             Log("ATT_EVENT_CAN_SEND_NOW");
 
-            // streamer();
-            // att_server_notify(con_handle, ATT_CHARACTERISTIC_ORG_BLUETOOTH_CHARACTERISTIC_TEMPERATURE_01_VALUE_HANDLE, (uint8_t*)&current_temp, sizeof(current_temp));
+            DoNotify();
         }
         else if (eventType == ATT_EVENT_DISCONNECTED)
         {
-            hci_con_handle_t handle = att_event_disconnected_get_handle(packet);
+            hci_con_handle_t conn = att_event_disconnected_get_handle(packet);
+            
+            connected_ = false;
 
-            Log("ATT_EVENT_DISCONNECTED - ", handle);
+
+            Log("ATT_EVENT_DISCONNECTED - ", conn);
 
             // context = connection_for_conn_handle(att_event_disconnected_get_handle(packet));
             // if (!context) break;
@@ -508,10 +603,9 @@ void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
     // Generate database
     BleAttDatabase attDb(name);
 
-    for (int count = 1; auto &p : periphList)
+    for (auto &p : periphList)
     {
         string fqn = p.GetName();
-        ++count;
         Log("Registering Peripheral ", fqn);
 
         for (auto &[svcName, svc] : p.GetServiceList())
@@ -529,13 +623,26 @@ void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
                     attDb.AddCharacteristic(ctc.GetUuid(),
                                             ctc.GetProperties());
                 
-                Log("    Registering CTC ", fqn3, ", handles: ", handleList);
-
                 // associate handles with the characteristic
-                for (auto handle : handleList)
+                LogNNL("    Registering CTC ", fqn3, " - handles: ");
+                if (handleList.size() >= 2)
                 {
-                    handleMap_.emplace(handle, ctc);
+                    uint16_t handle = handleList[1];
+                    handleReadWriteMap_.emplace(handle, ctc);
+                    LogNNL(ToHex(handle), " rw");
                 }
+
+                if (handleList.size() >= 3)
+                {
+                    uint16_t handle = handleList[2];
+                    handleNotifyMap_.emplace(handle, ctc);
+                    LogNNL(", ", ToHex(handle), " notify");
+
+                    ctc.SetCallbackTriggerNotify([=]{
+                        TriggerNotify(handleList[1]);
+                    });
+                }
+                LogNL();
             }
         }
     }

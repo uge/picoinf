@@ -12,9 +12,10 @@ class BleService;
 class BleCharacteristic
 {
 public:
-    using CbRead      = function<void(vector<uint8_t> &byteList)>;
-    using CbWrite     = function<void(vector<uint8_t> &byteList)>;
-    using CbSubscribe = function<void()>;
+    using CbRead          = function<void(vector<uint8_t> &byteList)>;
+    using CbWrite         = function<void(vector<uint8_t> &byteList)>;
+    using CbSubscribe     = function<void(bool enabled)>;
+    using CbTriggerNotify = function<void()>;
 
 public:
 
@@ -57,6 +58,23 @@ public:
         return *this;
     }
 
+    CbSubscribe GetCallbackOnSubscribe()
+    {
+        return [this](bool enabled){ OnSubscribe(enabled); };
+    }
+
+    BleCharacteristic &SetCallbackTriggerNotify(CbTriggerNotify cbFnTriggerNotify)
+    {
+        cbFnTriggerNotify_ = cbFnTriggerNotify;
+
+        return *this;
+    }
+
+    void Notify()
+    {
+        cbFnTriggerNotify_();
+    }
+
     string GetName()
     {
         return name_;
@@ -72,13 +90,32 @@ public:
         return properties_;
     }
 
+    bool GetIsSubscribed()
+    {
+        return subscriptionEnabled_;
+    }
+
 
 private:
+
+    void OnSubscribe(bool enabled)
+    {
+        subscriptionEnabled_ = enabled;
+
+        cbFnSubscribed_(enabled);
+    }
+
+
+private:
+
     string  name_;
     string  uuid_;
     string  properties_;
 
-    CbRead      cbFnRead_       = [](vector<uint8_t> &byteList){};
-    CbWrite     cbFnWrite_      = [](vector<uint8_t> &byteList){};
-    CbSubscribe cbFnSubscribed_ = []{};
+    bool subscriptionEnabled_ = false;
+
+    CbRead          cbFnRead_          = [](vector<uint8_t> &byteList){};
+    CbWrite         cbFnWrite_         = [](vector<uint8_t> &byteList){};
+    CbSubscribe     cbFnSubscribed_    = [](bool enabled){};
+    CbTriggerNotify cbFnTriggerNotify_ = []{};
 };
