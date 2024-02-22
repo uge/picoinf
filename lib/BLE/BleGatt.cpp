@@ -13,8 +13,6 @@ using namespace std;
 #include "StrictMode.h"
 
 
-
-
 /*
 
 This whole implementation is assuming a single connection.
@@ -25,7 +23,6 @@ MAX_NR_HCI_CONNECTIONS (I think?) connections.
 Keep it simple for now.
 
 */
-
 
 
 /////////////////////////////////////////////////////////////////////
@@ -41,12 +38,7 @@ static bool connected_ = false;
 // for notify
 static uint16_t handle_;
 
-
-/////////////////////////////////////////////////////////////////////
-// Read
-/////////////////////////////////////////////////////////////////////
-
-// per handle, can be done in parallel
+// for read - per connection
 struct ReadState
 {
     bool             readyToSend = false;
@@ -59,7 +51,51 @@ struct ReadState
 
 static ReadState readState_;
 
-static uint64_t timeAtEvm;
+static void ResetReadState()
+{
+    readState_ = ReadState{};
+}
+
+// for write - per connection
+static const uint16_t WRITE_BUF_SIZE = 256;
+struct WriteState
+{
+    uint16_t        handle;
+    vector<uint8_t> byteList;
+    bool            bufferExceeded = false;
+};
+static WriteState writeState_;
+
+static void ResetWriteState()
+{
+    writeState_ = WriteState{};
+}
+
+// general
+static void InitState()
+{
+    writeState_.byteList.reserve(WRITE_BUF_SIZE);
+}
+
+// connection
+static void OnConnect(hci_con_handle_t conn)
+{
+    conn_      = conn;
+    connected_ = true;
+
+    ResetReadState();
+    ResetWriteState();
+}
+
+static void OnDisconnect(hci_con_handle_t conn)
+{
+    connected_ = false;
+}
+
+
+/////////////////////////////////////////////////////////////////////
+// Read
+/////////////////////////////////////////////////////////////////////
 
 static
 uint16_t att_read_callback_read(hci_con_handle_t  conn,
@@ -79,7 +115,7 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
             if (handleReadWriteMap_.contains(readState_.handle))
             {
                 Evm::QueueWork("att_read_callback", []{
-                    timeAtEvm = PAL.Micros();
+                    readState_.timeAtEvm = PAL.Micros();
 
                     readState_.readyToSend = true;
 
@@ -117,13 +153,8 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
     }
     else
     {
-        uint64_t timeDiff = PAL.Micros() - timeAtEvm;
-
-        Log("Sending, ", timeDiff, " us later");
-
         // what if buf changes size before completion?
         // actually, they say only a single att transaction at a time, so this shouldn't happen
-        // return att_read_callback_handle_blob((const uint8_t *)&timeAtEvm, sizeof(timeAtEvm), offset, buf, bufSize);
 
         uint16_t retVal =
             att_read_callback_handle_blob(readState_.byteList.data(),
@@ -132,21 +163,21 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
                                           buf,
                                           bufSize);
 
-        // I know this will get called multiple times, but I just don't think I
-        // have to worry about it due to one at a time transactions
-        //
-        // ok wrong, how do you know it's the last transaction?
-
-        uint16_t bytesLeftAfterThisSend  = readState_.bytesToRead - min(readState_.bytesToRead, (uint16_t)(offset + bufSize));
-        uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
-        uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
-
-        Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
-
-        if (bytesLeftAfterThisSend == 0)
+        // before each real send the btstack will trigger this event to measure
+        // the data left to send.  no point in logging that.
+        if (bufSize)
         {
-            Log("Declaring this the end of this send");
-            readState_.readyToSend = false;
+            uint16_t bytesLeftAfterThisSend  = readState_.bytesToRead - min(readState_.bytesToRead, (uint16_t)(offset + bufSize));
+            uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
+            uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
+
+            Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
+
+            if (bytesLeftAfterThisSend == 0)
+            {
+                Log("Declaring this the end of this send");
+                readState_.readyToSend = false;
+            }
         }
 
         return retVal;
@@ -198,8 +229,6 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
 }
 
 
-
-
 /////////////////////////////////////////////////////////////////////
 // Write
 /////////////////////////////////////////////////////////////////////
@@ -245,21 +274,6 @@ What I see happen with various writes
   - handle=0x0000, txnMode=2, offset=0, bufSize=0   // EXECUTE  (with no handle)
 
 */
-
-static const uint16_t WRITE_BUF_SIZE = 256;
-struct WriteState
-{
-    uint16_t        handle;
-    vector<uint8_t> byteList;
-    bool            bufferExceeded = false;
-};
-static WriteState writeState_;
-
-static void ResetWriteState()
-{
-    writeState_ = WriteState{};
-}
-
 
 static
 int att_write_callback_write(hci_con_handle_t  conn,
@@ -446,13 +460,17 @@ int att_write_callback(hci_con_handle_t  conn,
     return retVal;
 }
 
+
+/////////////////////////////////////////////////////////////////////
+// Notify
+/////////////////////////////////////////////////////////////////////
+
 // Only support a single ctc notify for the time being.
 // Otherwise have to maintain a list of them or something
 // and I just don't have that use case right now.
 //
 // This implementation is just getting the mechanisms
 // from btstack working.  Can expand later after that is sorted.
-
 static void TriggerNotify(uint16_t handle)
 {
     handle_ = handle;
@@ -495,7 +513,10 @@ static void DoNotify()
 }
 
 
-// HCI, GAP, and general BTstack events
+/////////////////////////////////////////////////////////////////////
+// Packet handling
+/////////////////////////////////////////////////////////////////////
+
 static void PacketHandlerATT(uint8_t   packet_type,
                              uint16_t  channel,
                              uint8_t  *packet,
@@ -511,23 +532,13 @@ static void PacketHandlerATT(uint8_t   packet_type,
         {
             hci_con_handle_t conn = att_event_connected_get_handle(packet);
 
-            conn_ = conn;
-            connected_ = true;
+            OnConnect(conn);
 
             uint16_t mtu = att_server_get_mtu(conn);
 
             Log("ATT_EVENT_CONNECTED");
             Log("- ", ToHex(conn), " at mtu ", mtu);
             LogNL();
-
-            
-
-            // context = connection_for_conn_handle(HCI_CON_HANDLE_INVALID);
-            // if (!context) break;
-            // context->counter = A;
-            // context->connection_handle = att_event_connected_get_handle(packet);
-            // context->test_data_len = btstack_min(att_server_get_mtu(context->connection_handle) - 3, sizeof(context->test_data));
-            // printf("%c: ATT connected, handle 0x%04x, test data len %u\n", context->name, context->connection_handle, context->test_data_len);
         }
         else if (eventType == ATT_EVENT_MTU_EXCHANGE_COMPLETE)
         {
@@ -535,12 +546,6 @@ static void PacketHandlerATT(uint8_t   packet_type,
             uint16_t mtu = att_event_mtu_exchange_complete_get_MTU(packet);
 
             Log("ATT_EVENT_MTU_EXCHANGE_COMPLETE - ", conn, " at mtu ", mtu);
-
-            // mtu = att_event_mtu_exchange_complete_get_MTU(packet) - 3;
-            // context = connection_for_conn_handle(att_event_mtu_exchange_complete_get_handle(packet));
-            // if (!context) break;
-            // context->test_data_len = btstack_min(mtu - 3, sizeof(context->test_data));
-            // printf("%c: ATT MTU = %u => use test data of len %u\n", context->name, mtu, context->test_data_len);
         }
         else if (eventType == ATT_EVENT_CAN_SEND_NOW)
         {
@@ -552,17 +557,9 @@ static void PacketHandlerATT(uint8_t   packet_type,
         {
             hci_con_handle_t conn = att_event_disconnected_get_handle(packet);
             
-            connected_ = false;
-
+            OnDisconnect(conn);
 
             Log("ATT_EVENT_DISCONNECTED - ", conn);
-
-            // context = connection_for_conn_handle(att_event_disconnected_get_handle(packet));
-            // if (!context) break;
-            // // free connection
-            // printf("%c: ATT disconnected, handle 0x%04x\n", context->name, context->connection_handle);                    
-            // context->le_notification_enabled = 0;
-            // context->connection_handle = HCI_CON_HANDLE_INVALID;
         }
         else if (eventType == HCI_EVENT_LE_META)
         {
@@ -589,6 +586,7 @@ static void PacketHandlerATT(uint8_t   packet_type,
         Log("ATT: Not HCI_EVENT_PACKET!!!!!");
     }
 }
+
 
 /////////////////////////////////////////////////////////////////////
 // Interface
@@ -651,10 +649,8 @@ void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
     attDbByteList_ = attDb.GetDatabaseData();
 
     // allocate space for receive buffer
-
-    writeState_.byteList.reserve(WRITE_BUF_SIZE);
+    InitState();
 }
-
 
 void BleGatt::OnReady()
 {
@@ -666,17 +662,6 @@ void BleGatt::OnReady()
     // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
     att_server_init(attDbByteList_.data(), att_read_callback, att_write_callback);
 
-
-
-    
-
-    // static TimedEventHandlerDelegate ted;
-    // ted.SetCallback([]{
-    //     if (le_notification_enabled) {
-    //         att_server_request_can_send_now_event(con_handle);
-    //     }
-    // });
-    // ted.RegisterForTimedEventInterval(5000, 0);
-
     Log("BLE Services Started");
 }
+
