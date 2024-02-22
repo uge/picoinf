@@ -74,14 +74,6 @@ static void PacketHandlerHCI(uint8_t   packet_type,
     else if (eventType == HCI_EVENT_DISCONNECTION_COMPLETE)
     {
         Log("HCI_EVENT_DISCONNECTION_COMPLETE");
-        // le_notification_enabled = 0;
-
-
-        // must inform ATT, the state of read processing could be half-way and leave
-        // the object unwilling to send more
-
-
-
 
         hci_con_handle_t con_handle = hci_event_disconnection_complete_get_connection_handle(packet);
         printf("- LE Connection 0x%04x: disconnect, reason %02x\n", con_handle, hci_event_disconnection_complete_get_reason(packet));
@@ -209,7 +201,7 @@ void Ble::Init()
     LogNL();
 
     // main task init
-    BleGap::Init(name_);
+    BleGap::Init(name_, peripheralList_, webAddress_);
     BleGatt::Init(name_, peripheralList_);
 
     // init underlying drivers
@@ -239,6 +231,11 @@ void Ble::Init()
 void Ble::SetDeviceName(string name)
 {
     name_ = name;
+}
+
+void Ble::SetWebAddress(string webAddress)
+{
+    webAddress_ = webAddress;
 }
 
 BlePeripheral &Ble::CreatePeripheral(string name)

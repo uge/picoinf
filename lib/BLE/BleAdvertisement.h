@@ -87,7 +87,7 @@ public:
         return webAddress_;
     }
 
-    const vector<uint8_t> &GetRawAdvertisingDataStructure();
+    const vector<uint8_t> &GetRawAdvertisingDataStructure(string type);
 
     // runtime toggle
     void StartAdvertising()

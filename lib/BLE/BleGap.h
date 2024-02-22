@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BleAdvertisement.h"
+#include "BlePeripheral.h"
 #include "Log.h"
 #include "Timeline.h"
 
@@ -11,17 +12,37 @@ class BleGap
 {
 public:
 
-    static void Init(string name)
+    static void Init(string name, vector<BlePeripheral> &periphList, string webAddress = "")
     {
         Timeline::Global().Event("BleGap::Init");
 
         // fill out actual advertisement data
         BleAdvertisement adv;
         adv.SetName(name);
-        adv.SetAdvertisingUuidList({
-            "0x181A",
-        });
-        byteList_ = adv.GetRawAdvertisingDataStructure();
+        
+        vector<string> uuidList;
+        for (auto &p : periphList)
+        {
+            for (auto &[svcName, svc] : p.GetServiceList())
+            {
+                uuidList.push_back(svc.GetUuid());
+            }
+        }
+        adv.SetAdvertisingUuidList(uuidList);
+
+        byteListAdv_ = adv.GetRawAdvertisingDataStructure("Advertising");
+        LogNL();
+
+        // fill out scan response
+        if (webAddress.size())
+        {
+            BleAdvertisement adv2;
+            adv2.SetAdvertisingWebAddress(webAddress);
+
+            byteListSr_ = adv2.GetRawAdvertisingDataStructure("Scan Response");
+
+            LogNL();
+        }
     }
 
     static void OnReady()
@@ -47,7 +68,12 @@ private:
         gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
 
         // setup att database        
-        gap_advertisements_set_data((uint8_t)byteList_.size(), (uint8_t *)byteList_.data());
+        gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
+
+        if (byteListSr_.size())
+        {
+            gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
+        }
 
         // enable
         gap_advertisements_enable(1);
@@ -58,5 +84,6 @@ private:
 
 private:
     
-    inline static vector<uint8_t> byteList_;
+    inline static vector<uint8_t> byteListAdv_;
+    inline static vector<uint8_t> byteListSr_;
 };

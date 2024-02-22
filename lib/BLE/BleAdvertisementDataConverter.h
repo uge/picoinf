@@ -4,6 +4,7 @@
 
 #include "BleAdvertisement.h"
 
+#include <string>
 #include <vector>
 using namespace std;
 
@@ -17,5 +18,5 @@ class BleAdvertisement;
 class BleAdvertisementDataConverter
 {
 public:
-    static vector<uint8_t> Convert(BleAdvertisement &bleAdvert);
+    static vector<uint8_t> Convert(BleAdvertisement &bleAdvert, string type);
 };

@@ -13,6 +13,7 @@ class Ble
 public:
     static void Init();
     static void SetDeviceName(string name);
+    static void SetWebAddress(string name);
     static BlePeripheral &CreatePeripheral(string name);
     // static BleBroadcaster &CreateBroadcaster();
     // static BleObserver &CreateObserver();
@@ -21,6 +22,7 @@ public:
 
 private:
     inline static string name_;
+    inline static string webAddress_;
     inline static vector<BlePeripheral>  peripheralList_;
     // inline static vector<BleBroadcaster> broadcasterList_;
     // inline static vector<BleObserver>    observerList_;

@@ -5,9 +5,9 @@
 
 static vector<uint8_t> byteList;
 
-const vector<uint8_t> &BleAdvertisement::GetRawAdvertisingDataStructure()
+const vector<uint8_t> &BleAdvertisement::GetRawAdvertisingDataStructure(string type)
 {
-    byteList = BleAdvertisementDataConverter::Convert(*this);
+    byteList = BleAdvertisementDataConverter::Convert(*this, type);
 
     return byteList;
 }

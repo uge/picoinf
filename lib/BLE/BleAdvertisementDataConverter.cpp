@@ -115,17 +115,24 @@ static void FillOutName(AdvertisingData &advData, string name)
 {
     static const uint8_t BT_DATA_NAME_COMPLETE = 0x09;
 
-    advData.AddRecord(BT_DATA_NAME_COMPLETE,
-                      (uint8_t)name.length(),
-                      (uint8_t *)name.c_str());
+    if (name.size())
+    {
+        bool ok = advData.AddRecord(BT_DATA_NAME_COMPLETE,
+                                    (uint8_t)name.length(),
+                                    (uint8_t *)name.c_str());
+        
+        Log("  Adding name: \"", name, "\"", ok ? "" : " (ERR)");
+    }
 }
 
 // Assumes the uuidList is all the same UUID bit size
-static void PackUuids(AdvertisingData &advData,
+static bool PackUuids(AdvertisingData &advData,
                       vector<UUID>    &uuidList,
                       uint8_t          typeIfAllFit,
                       uint8_t          typeIfSomeFit)
 {
+    bool retVal = false;
+
     if (uuidList.size())
     {
         // Validate all UUIDs are the same bit size
@@ -137,7 +144,7 @@ static void PackUuids(AdvertisingData &advData,
             if (byteCount != byteCountPerUuid)
             {
                 Log("ERR: PackUuids - Not all UUIDs the same size");
-                return;
+                return false;
             }
         }
 
@@ -168,9 +175,17 @@ static void PackUuids(AdvertisingData &advData,
                 uuid.ReverseBytes();
             }
 
-            advData.AddRecord(type, (uint8_t)byteList.size(), byteList.data());
+            retVal = advData.AddRecord(type, (uint8_t)byteList.size(), byteList.data());
         }
+
+        retVal = retVal && countToPack == (int)uuidList.size();
     }
+    else
+    {
+        retVal = true;
+    }
+
+    return retVal;
 }
 
 static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidStrList)
@@ -191,8 +206,10 @@ static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidS
     // }
 
     // separate them into two buckets
-    vector<UUID> advUuid16List;
-    vector<UUID> advUuid128List;
+    vector<UUID>   advUuid16List;
+    vector<string> advUuid16StrList;
+    vector<UUID>   advUuid128List;
+    vector<string> advUuid128StrList;
 
     // separate out into 16-bit and 128-bit
     for (const string &uuidStr : advUuidStrList)
@@ -202,10 +219,12 @@ static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidS
         if (uuid.GetBitCount() == 16)
         {
             advUuid16List.push_back(uuid);
+            advUuid16StrList.push_back(uuidStr);
         }
         else if (uuid.GetBitCount() == 128)
         {
             advUuid128List.push_back(uuid);
+            advUuid128StrList.push_back(uuidStr);
         }
         else
         {
@@ -219,16 +238,27 @@ static void FillOutUuid(AdvertisingData &advData, const vector<string> &advUuidS
     static const uint8_t BT_DATA_UUID128_SOME = 0x06;
 
     // Load 16-bit UUIDs first
-    PackUuids(advData,
-              advUuid16List,
-              BT_DATA_UUID16_ALL,
-              BT_DATA_UUID16_SOME);
+    bool ok;
+    ok = PackUuids(advData,
+                   advUuid16List,
+                   BT_DATA_UUID16_ALL,
+                   BT_DATA_UUID16_SOME);
+
+    if (advUuid16List.size())
+    {
+        Log("  Adding 16-bit UUIDs: ", advUuid16StrList, ok ? "" : " (ERR)");
+    }
 
     // Load 128-bit UUIDs next
-    PackUuids(advData,
-              advUuid128List,
-              BT_DATA_UUID128_ALL,
-              BT_DATA_UUID128_SOME);
+    ok = PackUuids(advData,
+                   advUuid128List,
+                   BT_DATA_UUID128_ALL,
+                   BT_DATA_UUID128_SOME);
+
+    if (advUuid128List.size())
+    {
+        Log("  Adding 128-bit UUIDs: ", advUuid128StrList, ok ? "" : " (ERR)");
+    }
 }
 
 // https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers/
@@ -246,12 +276,11 @@ static void FillOutMfrData(AdvertisingData &advData, const vector<uint8_t> &byte
 
     if (len)
     {
-        // LogNNL("  MFR Data (", len, "): ");
-        LogHex(byteList.data(), byteList.size());
+        bool ok = advData.AddRecord(BT_DATA_MANUFACTURER_DATA,
+                                    (uint8_t)byteList.size(),
+                                    (uint8_t *)byteList.data());
 
-        advData.AddRecord(BT_DATA_MANUFACTURER_DATA,
-                          (uint8_t)byteList.size(),
-                          (uint8_t *)byteList.data());
+        Log("  MFR Data (", len, "): ", byteList, ok ? "" : " (ERR)");
     }
     else
     {
@@ -265,8 +294,6 @@ static void FillOutWebAddress(AdvertisingData &advData, const string &webAddress
 
     if (webAddress.length())
     {
-        // Log("  Web Address: ", webAddress);
-
         vector<uint8_t> byteList;
 
         byteList.push_back(0x17);    // means "https:"
@@ -277,9 +304,11 @@ static void FillOutWebAddress(AdvertisingData &advData, const string &webAddress
             byteList.push_back((uint8_t)c);
         }
 
-        advData.AddRecord(BT_DATA_URI,
-                          (uint8_t)byteList.size(),
-                          (uint8_t *)byteList.data());
+        bool ok = advData.AddRecord(BT_DATA_URI,
+                                    (uint8_t)byteList.size(),
+                                    (uint8_t *)byteList.data());
+        
+        Log("  Adding Web Address: https://", webAddress, ok ? "" : " (ERR)");
     }
     else
     {
@@ -288,8 +317,10 @@ static void FillOutWebAddress(AdvertisingData &advData, const string &webAddress
 }
 
 
-vector<uint8_t> BleAdvertisementDataConverter::Convert(BleAdvertisement &bleAdvert)
+vector<uint8_t> BleAdvertisementDataConverter::Convert(BleAdvertisement &bleAdvert, string type)
 {
+    Log("Configuring ", type);
+
     AdvertisingData advData;
 
     // put flags and name in primary advertising data
