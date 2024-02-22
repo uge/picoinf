@@ -77,6 +77,7 @@ static unordered_map<uint16_t, BleCharacteristic &> handleMap_;
 
 static uint64_t timeAtEvm;
 
+static
 uint16_t att_read_callback(hci_con_handle_t  conn,
                            uint16_t          handle,
                            uint16_t          offset,
@@ -186,9 +187,49 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
 // Write
 /////////////////////////////////////////////////////////////////////
 
+/*
 
-static const uint16_t WRITE_BUF_SIZE = 512;
-// static const uint16_t WRITE_BUF_SIZE = 17;
+There are two modes that writes can be performed in:
+- Single-shot
+- Chunked ("prepared writes")
+
+The transaction type indicates.
+
+For Single-shot, you get a transaction type of ATT_TRANSACTION_MODE_NONE.
+
+For chunked you:
+- start with ATT_TRANSACTION_MODE_ACTIVE
+  - repeatedly get those until all data is delivered
+- then ATT_TRANSACTION_MODE_VALIDATE
+- then ATT_TRANSACTION_MODE_EXECUTE
+
+If, during chunked, you return an error (non-zero), there will
+be no more ATT_TRANSACTION_MODE_ACTIVE, and you will go next
+to ATT_TRANSACTION_MODE_CANCEL.
+
+You can also error out on ATT_TRANSACTION_MODE_VALIDATE
+to get to ATT_TRANSACTION_MODE_CANCEL (I think)
+
+
+
+#define ATT_TRANSACTION_MODE_NONE      0x0
+#define ATT_TRANSACTION_MODE_ACTIVE    0x1
+#define ATT_TRANSACTION_MODE_EXECUTE   0x2
+#define ATT_TRANSACTION_MODE_CANCEL    0x3
+#define ATT_TRANSACTION_MODE_VALIDATE  0x4
+
+
+What I see happen with various writes
+- small packet (less than 22 bytes): ATT_TRANSACTION_MODE_NONE
+- large packet (23+ bytes):
+  - handle=0x000D, txnMode=1, offset=0, bufSize=18  // ACTIVE (with handle)
+  - handle=0x000D, txnMode=1, offset=18, bufSize=5  // ACTIVE (with handle)
+  - handle=0x0000, txnMode=4, offset=0, bufSize=0   // VALIDATE (with no handle)
+  - handle=0x0000, txnMode=2, offset=0, bufSize=0   // EXECUTE  (with no handle)
+
+*/
+
+static const uint16_t WRITE_BUF_SIZE = 256;
 struct WriteState
 {
     uint16_t        handle;
@@ -202,6 +243,7 @@ static void ResetWriteState()
     writeState_ = WriteState{};
 }
 
+static
 int att_write_callback(hci_con_handle_t  conn,
                        uint16_t          handle,
                        uint16_t          txnMode,
