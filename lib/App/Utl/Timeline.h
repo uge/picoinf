@@ -30,6 +30,9 @@ public:
     void ReportNow(const char *title = nullptr);
     void Reset();
 
+    void Ready(bool ready);
+    bool Ready();
+
     static void EnableCcGlobal();
     static void DisableCcGlobal();
     static Timeline &Global();
@@ -49,6 +52,8 @@ private:
     bool currentlyReporting_ = false;
 
     uint32_t firstTimeUs_ = 0;
+
+    bool isReady_ = false;
 
     bool iAmTheGlobal_ = false;
 

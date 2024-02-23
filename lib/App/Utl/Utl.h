@@ -705,7 +705,7 @@ inline vector<uint8_t> ToByteList(const string &str)
     return byteList;
 }
 
-inline string FromByteList(const vector<uint8_t> &byteList)
+inline string ToString(const vector<uint8_t> &byteList)
 {
     string retVal;
 

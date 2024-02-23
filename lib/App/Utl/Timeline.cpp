@@ -211,6 +211,16 @@ void Timeline::Reset()
     eventsLost_ = 0;
 }
 
+void Timeline::Ready(bool ready)
+{
+    isReady_ = ready;
+}
+
+bool Timeline::Ready()
+{
+    return isReady_;
+}
+
 void Timeline::EnableCcGlobal()
 {
     ccGlobal_ = true;
