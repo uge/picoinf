@@ -1,7 +1,5 @@
 #pragma once
 
-#include "BleAdvertisementDataConverter.h"
-
 #include <string>
 #include <vector>
 using namespace std;
