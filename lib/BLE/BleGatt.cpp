@@ -63,12 +63,23 @@ struct WriteState
     uint16_t        handle;
     vector<uint8_t> byteList;
     bool            bufferExceeded = false;
+    uint16_t        bytesAccumulated = 0;
 };
 static WriteState writeState_;
 
 static void ResetWriteState()
 {
     writeState_ = WriteState{};
+}
+
+static void ResetWriteStateButOnlyTrashByesAccumulated()
+{
+    writeState_.handle = 0;
+    writeState_.byteList.erase(writeState_.byteList.end() - writeState_.bytesAccumulated,
+                               writeState_.byteList.end());
+    writeState_.bufferExceeded = false;
+    writeState_.bytesAccumulated = 0;
+
 }
 
 // general
@@ -108,27 +119,20 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
     {
         if (handle == ATT_READ_RESPONSE_PENDING)
         {
-            // cache single handle (only one ATT transaction at a time, so this is safe)
-
-            Log("Got 'last in read batch' notification");
-
             if (handleReadWriteMap_.contains(readState_.handle))
             {
-                Evm::QueueWork("att_read_callback", []{
+                Evm::QueueWork("QueueWork att_read_callback", []{
                     readState_.timeAtEvm = PAL.Micros();
 
                     readState_.readyToSend = true;
 
-                    {
-                        IrqLock lock;
+                    // do I need to lock any part of this?
+                    readState_.byteList.clear();
+                    handleReadWriteMap_.at(readState_.handle).GetCallbackOnRead()(readState_.byteList);
 
-                        readState_.byteList.clear();
-                        handleReadWriteMap_.at(readState_.handle).GetCallbackOnRead()(readState_.byteList);
+                    readState_.bytesToRead = (uint16_t)readState_.byteList.size();
 
-                        readState_.bytesToRead = (uint16_t)readState_.byteList.size();
-
-                        Log(readState_.bytesToRead, " bytes acquired from read callback");
-                    }
+                    // Log(readState_.bytesToRead, " bytes acquired from read callback");
 
                     att_server_response_ready(readState_.conn);
                 });
@@ -142,7 +146,7 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
         }
         else
         {
-            Log("will send later");
+            // Log("will send later");
 
             // cache connection and handle
             readState_.conn = conn;
@@ -171,11 +175,11 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
             uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
             uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
 
-            Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
+            // Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
 
             if (bytesLeftAfterThisSend == 0)
             {
-                Log("Declaring this the end of this send");
+                // Log("Declaring this the end of this send");
                 readState_.readyToSend = false;
             }
         }
@@ -212,7 +216,7 @@ uint16_t att_read_callback(hci_con_handle_t  conn,
                            uint8_t          *buf,
                            uint16_t          bufSize)
 {
-    Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
+    // Log("att_read_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", offset=", offset, ", bufSize=", bufSize);
 
     uint16_t retVal = 1;
 
@@ -296,17 +300,18 @@ int att_write_callback_write(hci_con_handle_t  conn,
         // if you can store it, great, do it and call back,
         // otherwise indicate failure.
 
-        Log("Write single-shot");
+        // Log("Write single-shot");
 
         // cache
         writeState_.handle = handle;
         
         // take in bytes
-        if (bufSize <= WRITE_BUF_SIZE)
+        if (writeState_.byteList.size() + bufSize <= WRITE_BUF_SIZE)
         {
-            Log("  Buffer within range, committing");
+            // Log("  Buffer within range, committing");
 
             retVal = 0;
+            writeState_.bytesAccumulated = bufSize;
 
             for (uint16_t i = 0; i < bufSize; ++i)
             {
@@ -317,7 +322,7 @@ int att_write_callback_write(hci_con_handle_t  conn,
         }
         else
         {
-            Log("  Buffer too large, cancelling");
+            // Log("  Buffer too large, cancelling");
         }
     }
     else if (txnMode == ATT_TRANSACTION_MODE_ACTIVE)
@@ -328,7 +333,7 @@ int att_write_callback_write(hci_con_handle_t  conn,
         // stored, you're going to want to indicate failure to capture,
         // which will result in a cancel of the entire transaction.
 
-        Log("Write multi-shot");
+        // Log("Write multi-shot");
         
         // cache
         writeState_.handle = handle;
@@ -336,8 +341,9 @@ int att_write_callback_write(hci_con_handle_t  conn,
         if (writeState_.byteList.size() + bufSize <= WRITE_BUF_SIZE)
         {
             retVal = 0;
+            writeState_.bytesAccumulated += bufSize;
 
-            Log("  Chunk fits, progressing");
+            // Log("  Chunk fits, progressing");
 
             for (uint16_t i = 0; i < bufSize; ++i)
             {
@@ -346,7 +352,7 @@ int att_write_callback_write(hci_con_handle_t  conn,
         }
         else
         {
-            Log("  Chunk doesn't fit, remembering as bad");
+            // Log("  Chunk doesn't fit, remembering as bad");
             writeState_.bufferExceeded = true;
         }
     }
@@ -356,54 +362,65 @@ int att_write_callback_write(hci_con_handle_t  conn,
         // if it did, indicate so.  progress to EXECUTE.
         // if not, indicate so.  progress to CANCEL.
 
-        Log("Write validation");
+        // Log("Write validation");
 
         if (writeState_.bufferExceeded == false)
         {
             retVal = 0;
-            Log("  Good, progressing");
+            // Log("  Good, progressing");
         }
         else
         {
-            Log("  Bad, cancelling");
+            // Log("  Bad, cancelling");
         }
     }
     else if (txnMode == ATT_TRANSACTION_MODE_EXECUTE)
     {
         // handle expected to be 0x0000
-        Log("Write executing");
+        // Log("Write executing");
         
         retVal = 0;
         commitData = true;
-        Log("  Buffer ok, committing");
+        // Log("  Buffer ok, committing");
     }
     else if (txnMode == ATT_TRANSACTION_MODE_CANCEL)
     {
         // handle expected to be 0x0000
 
-        Log("Write Cancel, resetting");
-        ResetWriteState();
+        // Log("Write Cancel, resetting");
+        ResetWriteStateButOnlyTrashByesAccumulated();
     }
 
     if (commitData)
     {
         if (handleReadWriteMap_.contains(writeState_.handle))
         {
-            Evm::QueueWork("att_write_callback", []{
-                IrqLock lock;
+            // keep a non-global copy for labda to capture by value
+            uint16_t bytesAccumulated = writeState_.bytesAccumulated;
 
-                handleReadWriteMap_.at(writeState_.handle).GetCallbackOnWrite()(writeState_.byteList);
+            Evm::QueueWork("QueueWork att_write_callback", [=]{
+                vector<uint8_t> byteList;
 
-                Log(writeState_.byteList.size(), " bytes written to write callback");
+                {
+                    IrqLock lock;
 
-                writeState_.byteList.clear();
+                    // copy the bytes that came in this write
+                    byteList = {writeState_.byteList.begin(),
+                                writeState_.byteList.begin() + bytesAccumulated};
+
+                    // remove those bytes from write state
+                    writeState_.byteList.erase(writeState_.byteList.begin(),
+                                               writeState_.byteList.begin() + bytesAccumulated);
+                }
+
+                handleReadWriteMap_.at(writeState_.handle).GetCallbackOnWrite()(byteList);
+
+                // Log(writeState_.bytesAccumulated, " bytes written to write callback, queue size: ", writeState_.byteList.size());
             });
         }
         else
         {
             Log("ERR: No write handler for handle ", ToHex(handle));
-
-            writeState_.byteList.clear();
         }
     }
 
@@ -426,9 +443,9 @@ int att_write_callback_notify(hci_con_handle_t  conn,
 
         bool enabled = (bool)little_endian_read_16(buf, 0);
 
-        Log("Notify for ", ToHex(handle), ": ", enabled, ", bufSize ", bufSize);
+        // Log("Notify for ", ToHex(handle), ": ", enabled, ", bufSize ", bufSize);
 
-        Evm::QueueWork("att_write_callback_notify", [=]{
+        Evm::QueueWork("QueueWork att_write_callback_notify", [=]{
             handleNotifyMap_.at(handle).GetCallbackOnSubscribe()(enabled);
         });
     }
@@ -444,7 +461,7 @@ int att_write_callback(hci_con_handle_t  conn,
                        uint8_t          *buf,
                        uint16_t          bufSize)
 {
-    Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
+    // Log("att_write_callback(conn=", ToHex(conn), ", handle=", ToHex(handle), ", txnMode=", txnMode, ", offset=", offset, ", bufSize=", bufSize);
     
     int retVal = -1;
 
@@ -487,7 +504,7 @@ static void TriggerNotify(uint16_t handle)
 
 static void DoNotify()
 {
-    Evm::QueueWork("BleGatt::Notify", []{
+    Evm::QueueWork("QueueWork BleGatt::Notify", []{
         if (connected_)
         {
             BleCharacteristic &ctc = handleReadWriteMap_.at(handle_);
