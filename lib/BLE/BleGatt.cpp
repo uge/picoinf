@@ -172,9 +172,8 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
         if (bufSize)
         {
             uint16_t bytesLeftAfterThisSend  = readState_.bytesToRead - min(readState_.bytesToRead, (uint16_t)(offset + bufSize));
-            uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
-            uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
-
+            // uint16_t bytesLeftBeforeThisSend = readState_.bytesToRead - min(offset, readState_.bytesToRead);
+            // uint16_t bytesThisTime = min(bytesLeftBeforeThisSend, bufSize);
             // Log("Sending ", bytesThisTime, " bytes, ", bytesLeftAfterThisSend, " bytes remain");
 
             if (bytesLeftAfterThisSend == 0)
@@ -492,9 +491,8 @@ static void TriggerNotify(uint16_t handle)
 {
     handle_ = handle;
 
-    BleCharacteristic &ctc = handleReadWriteMap_.at(handle_);
-
-    Log("Triggering notify for ", ctc.GetName(), " if connected (", connected_, ")");
+    // BleCharacteristic &ctc = handleReadWriteMap_.at(handle_);
+    // Log("Triggering notify for ", ctc.GetName(), " if connected (", connected_, ")");
 
     if (connected_)
     {
@@ -513,17 +511,17 @@ static void DoNotify()
 
             ctc.GetCallbackOnRead()(byteList);
 
-            Log("Doing notify for ", ctc.GetName(), ", ", byteList.size(), " bytes returned");
+            // Log("Doing notify for ", ctc.GetName(), ", ", byteList.size(), " bytes returned");
 
             uint8_t retVal = att_server_notify(conn_, handle_, byteList.data(), (uint16_t)byteList.size());
 
             if (retVal == 0)
             {
-                Log("  Success");
+                // Log("  Success");
             }
             else
             {
-                Log("  Error: ", retVal);
+                // Log("  Error: ", retVal);
             }
         }
     });
@@ -566,7 +564,7 @@ static void PacketHandlerATT(uint8_t   packet_type,
         }
         else if (eventType == ATT_EVENT_CAN_SEND_NOW)
         {
-            Log("ATT_EVENT_CAN_SEND_NOW");
+            // Log("ATT_EVENT_CAN_SEND_NOW");
 
             DoNotify();
         }
