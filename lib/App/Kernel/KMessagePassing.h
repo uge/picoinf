@@ -63,12 +63,12 @@ public:
         vQueueDelete(msgPipe_);
     }
 
-    int Put(T &&val, TickType_t timeout = portMAX_DELAY)
+    int Put(T &&val, TickType_t timeoutUs = portMAX_DELAY)
     {
-        return Put(val, timeout);
+        return Put(val, timeoutUs);
     }
 
-    int Put(T &val, TickType_t timeout = portMAX_DELAY)
+    int Put(T &val, TickType_t timeoutUs = portMAX_DELAY)
     {
         int retVal;
 
@@ -82,25 +82,45 @@ public:
         }
         else
         {
-            retVal = xQueueSendToBack(msgPipe_, (void *)&val, timeout);
+            retVal = xQueueSendToBack(msgPipe_, (void *)&val, KTime{timeoutUs});
         }
 
         return retVal;
     }
 
-    int Put(T *valList, uint16_t valListLen, TickType_t timeout = portMAX_DELAY)
+    int Put(T *valList, uint16_t valListLen, TickType_t timeoutUs = portMAX_DELAY)
     {
         int retVal = pdPASS;
 
         for (uint32_t i = 0; i < valListLen; ++i)
         {
-            retVal = Put(valList[i], timeout);
+            retVal = Put(valList[i], KTime{timeoutUs});
         }
 
         return retVal;
     }
 
-    int Get(T &val, TickType_t timeout = portMAX_DELAY)
+    int Overwrite(T &val)
+    {
+        int retVal;
+
+        if (PAL.InIsrReal())
+        {
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+            retVal = xQueueOverwriteFromISR(msgPipe_, (void *)&val, &xHigherPriorityTaskWoken);
+
+            portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        }
+        else
+        {
+            retVal = xQueueOverwrite(msgPipe_, (void *)&val);
+        }
+
+        return retVal;
+    }
+
+    int Get(T &val, TickType_t timeoutUs = portMAX_DELAY)
     {
         BaseType_t retVal;
         
@@ -114,7 +134,7 @@ public:
         }
         else
         {
-            retVal = xQueueReceive(msgPipe_, (void *)&val, timeout);
+            retVal = xQueueReceive(msgPipe_, (void *)&val, KTime{timeoutUs});
         }
         
         return retVal == pdTRUE ? sizeof(val) : 0;
@@ -217,47 +237,41 @@ private:
 };
 
 
+// Meant to represent a single object which can be updated safely.
+//
+// This will not block a reader.
+// This will block a writer.
+//
+// If the reader can't get access to the protected object, the cached
+// last value is used for immediate use.
+template <typename T>
+class KObject
+: private KMessagePipe<T, 1>
+{
+    using Super = KMessagePipe<T, 1>;
 
-// tried this -- didn't work
+public:
 
-// #include "pico/sem.h"
-// class KSemaphore
-// {
-// public:
-//     KSemaphore(uint32_t initialCount = 0,
-//                uint32_t countLimit   = UINT32_MAX)
-//     {
-//         sem_init(&sem_, (uint16_t)initialCount, (uint16_t)countLimit);
-//     }
+    const T &Get()
+    {
+        Super::Get(valLast_, 0);
 
-//     ~KSemaphore()
-//     {
-//     }
+        return valLast_;
+    }
 
-//     bool Take(uint32_t timeoutUs = UINT32_MAX)
-//     {
-//         bool retVal = true;
+    void Put(const T &val)
+    {
+        Super::Overwrite(val);
+    }
 
-//         if (timeoutUs == UINT32_MAX)
-//         {
-//             sem_acquire_blocking(&sem_);
-//         }
-//         else
-//         {
-//             retVal = sem_acquire_timeout_us(&sem_, timeoutUs);
-//         }
+    void Put(const T &&val)
+    {
+        Put(val);
+    }
 
-//         return retVal;
-//     }
+private:
 
-//     void Give()
-//     {
-//         sem_release(&sem_);
-//     }
-
-
-// private:
-//     semaphore_t sem_;
-// };
+    T valLast_;
+};
 
 
