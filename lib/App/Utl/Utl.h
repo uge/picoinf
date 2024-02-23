@@ -705,5 +705,17 @@ inline vector<uint8_t> ToByteList(const string &str)
     return byteList;
 }
 
+inline string FromByteList(const vector<uint8_t> &byteList)
+{
+    string retVal;
+
+    for (const auto &b : byteList)
+    {
+        retVal.push_back(b);
+    }
+
+    return retVal;
+}
+
 
 extern void UtlSetupShell();
