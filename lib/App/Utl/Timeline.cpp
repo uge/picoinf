@@ -36,7 +36,7 @@ void Timeline::KeepNewest()
     keepOldest_ = false;
 }
 
-bool Timeline::Event(const char *name)
+uint64_t Timeline::Event(const char *name)
 {
     name = name ? name : "NULLPTR";
 
@@ -83,7 +83,7 @@ bool Timeline::Event(const char *name)
         ++eventsLost_;
     }
 
-    return true;
+    return timeUs;
 }
 
 void Timeline::Report(const char *title)
@@ -169,7 +169,7 @@ void Timeline::ReportNow(const char *title)
         // walk the list
         uint32_t idxLast = 0;
         uint32_t idxThis = 1;
-        while (idxThis != eventList_.Size())
+        while (idxThis < eventList_.Size())
         {
             auto &evtLast = eventList_[idxLast];
             auto &evtThis = eventList_[idxThis];

@@ -25,7 +25,7 @@ public:
     uint32_t GetMaxEvents();
     void KeepOldest();
     void KeepNewest();
-    bool Event(const char *name);
+    uint64_t Event(const char *name);
     void Report(const char *title = nullptr);
     void ReportNow(const char *title = nullptr);
     void Reset();
