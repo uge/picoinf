@@ -33,14 +33,14 @@ const vector<uint8_t> &BleAdvertisement::GetRawAdvertisingDataStructure(string t
     const vector<uint8_t> &mfrData = GetAdvertisingMfrData();
     if (mfrData.size())
     {
-        f.AddMfrData(mfrData);
+        ok = f.AddMfrData(mfrData);
         Log("  MFR Data (", mfrData.size(), "): ", mfrData, ok ? "" : " (ERR)");
     }
 
     const string &webAddress = GetAdvertisingWebAddress();
     if (webAddress.size())
     {
-        f.AddWebAddress(webAddress);
+        ok = f.AddWebAddress(webAddress);
         Log("  Adding Web Address: https://", webAddress, ok ? "" : " (ERR)");
     }
 
