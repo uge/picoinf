@@ -80,7 +80,7 @@ add_subdirectory(${LIB_PICO}/Compiler)
 # add_subdirectory(Motor)
 # add_subdirectory(MPSL)
 # add_subdirectory(Sensor)
-# add_subdirectory(Signal)
+add_subdirectory(${LIB_PICO}/Signal)
 # add_subdirectory(WSPR)
 
 target_link_libraries(LibPico
