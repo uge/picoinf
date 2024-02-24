@@ -26,6 +26,17 @@ inline uint32_t ltohl(uint32_t val) { return val; }
 inline uint16_t htols(uint16_t val) { return val; }
 inline uint32_t htoll(uint32_t val) { return val; }
 
+inline uint32_t Flip4(uint32_t val)
+{
+    uint32_t retVal =
+        ((val & 0xFF000000) >> 24) |
+        ((val & 0x00FF0000) >>  8) |
+        ((val & 0x0000FF00) <<  8) |
+        ((val & 0x000000FF) << 24);
+
+    return retVal;
+}
+
 inline uint16_t Flip2(uint16_t val)
 {
     uint16_t retVal = 
@@ -224,6 +235,13 @@ inline string ToHex(uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
     }
 
     return retVal;
+}
+
+inline string ToHex(uint32_t val, bool addPrefix = true)
+{
+    uint32_t valBigEndian = Flip4(val);
+
+    return ToHex((uint8_t *)&valBigEndian, 4, addPrefix);
 }
 
 inline string ToHex(uint16_t val, bool addPrefix = true)
@@ -715,6 +733,20 @@ inline string ToString(const vector<uint8_t> &byteList)
     }
 
     return retVal;
+}
+
+// https://xxhash.com/
+// https://create.stephan-brumme.com/xxhash/
+#include "xxhash32.h"
+inline uint32_t Hash(uint8_t *buf, uint16_t bufSize)
+{
+    return XXHash32::hash(buf, bufSize, 0);
+}
+
+template <typename T>
+inline uint32_t Hash(const T& val)
+{
+    return Hash((uint8_t *)&val, (uint16_t)sizeof(T));
 }
 
 
