@@ -171,7 +171,8 @@ private:
   /// process a block of 4x4 bytes, this is the main part of the XXHash32 algorithm
   static inline void process(const void* data, uint32_t& state0, uint32_t& state1, uint32_t& state2, uint32_t& state3)
   {
-    const uint32_t* block = (const uint32_t*) data;
+    // const uint32_t* block = (const uint32_t*) data;  // kept crashing out hardfault
+    const uint8_t *block = (const uint8_t *)data;
     state0 = rotateLeft(state0 + block[0] * Prime2, 13) * Prime1;
     state1 = rotateLeft(state1 + block[1] * Prime2, 13) * Prime1;
     state2 = rotateLeft(state2 + block[2] * Prime2, 13) * Prime1;
