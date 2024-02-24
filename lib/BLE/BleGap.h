@@ -3,6 +3,7 @@
 #include "BleAdvertisingDataFormatter.h"
 #include "BlePeripheral.h"
 #include "Log.h"
+#include "Shell.h"
 #include "Timeline.h"
 
 #include "btstack.h"
@@ -15,6 +16,12 @@ class BleGap
     friend class Ble;
 
 public:
+
+    BleGap()
+    {
+        byteListAdv_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
+        byteListSr_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
+    }
 
     /////////////////////////////////////////////////////////////////
     // Configure some high-level display params
@@ -37,7 +44,7 @@ public:
         scannable_   = scannable;
         advertise_   = connectable_ || scannable_;
 
-        OnChangeNowDetermineAdvertising();
+        // OnChangeNowDetermineAdvertising();
     }
 
     static void SetConnectedAdvertising(bool connectable, bool scannable)
@@ -46,7 +53,7 @@ public:
         scannableDuringConnection_   = scannable;
         advertiseDuringConnection_   = connectableDuringConnection_ || scannableDuringConnection_;
 
-        OnChangeNowDetermineAdvertising();
+        // OnChangeNowDetermineAdvertising();
     }
 
     /////////////////////////////////////////////////////////////////
@@ -83,6 +90,8 @@ public:
     static void Init(string name, vector<BlePeripheral> &periphList)
     {
         Timeline::Global().Event("BleGap::Init");
+
+        return;
 
         if (autoPopulateAdvertisement_)
         {
@@ -173,17 +182,52 @@ public:
         }
     }
 
+
+    /////////////////////////////////////////////////////////////////
+    // Runtime Events
+    /////////////////////////////////////////////////////////////////
+
     static void OnReady()
     {
         Timeline::Global().Event("BleGap::OnReady");
+
+        return;
         
-        StartAdvertising();
+        // kick off the startup of advertising
+        // advertisingNow_ = true;
+        // OnChangeNowDetermineAdvertising();
+
+        Log("BLE Advertising Started");
+        Log("Connected?  |  Connectable  |  Scannable");
+        Log("    No      |       ",
+            connectable_ ? 'X' : '-',
+            "       |      ",
+            scannable_ ? 'X' : '-',
+            "    ");
+        Log("    Yes     |       ",
+            connectableDuringConnection_ ? 'X' : '-',
+            "       |      ",
+            scannableDuringConnection_ ? 'X' : '-',
+            "    ");
+        LogNL();
+    }
+
+    // assumes single connection
+    static void OnConnection()
+    {
+        connectedNow_ = true;
+
+        // OnChangeNowDetermineAdvertising();
+        // hci_send_cmd(&hci_le_set_advertise_enable, 1);
+    }
+
+    // assumes single connection
+    static void OnDisconnection()
+    {
+        connectedNow_ = false;
 
         // OnChangeNowDetermineAdvertising();
     }
-
-
-
 
 
 private:
@@ -234,53 +278,137 @@ private:
         }
     }
 
-    
-
-
-
-
-
     static void StartAdvertising()
     {
         Timeline::Global().Event("BleGap::StartAdvertising");
 
+        if (advType_ == AdvertisingType::NONE) return;
+
         // setup advertisements
         uint16_t adv_int_min = 200;
         uint16_t adv_int_max = 200;
-        uint8_t adv_type = 0;
+        uint8_t adv_type = (uint8_t)advType_;
         bd_addr_t null_addr;
         memset(null_addr, 0, 6);
         gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
 
-        // setup att database        
+        // setup gap data
         gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
+        gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
 
-        if (byteListSr_.size())
+        // enable, with extra call to hci which is (alone) what is
+        // required to re-start advertising when shut off by a
+        // connection.  so we call it here unconditionally since we're
+        // going to trigger this whole sequence whenever anything changes.
+        static bool once = false;
+        if (once == false)
         {
-            gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
+            once = true;
+
+
+
+            gap_advertisements_enable(true);
+        }
+        else
+        {
+            hci_send_cmd(&hci_le_set_advertise_enable, 1);
         }
 
-        // enable
-        gap_advertisements_enable(true);
-
-        Log("BLE Advertising Started");
-        Log("Connected?  |  Connectable  |  Scannable");
-        Log("    No      |       ",
-            connectable_ ? 'X' : '-',
-            "       |      ",
-            scannable_ ? 'X' : '-',
-            "    ");
-        Log("    Yes     |       ",
-            connectableDuringConnection_ ? 'X' : '-',
-            "       |      ",
-            scannableDuringConnection_ ? 'X' : '-',
-            "    ");
-        LogNL();
+        advertisingNow_ = true;
     }
 
     static void StopAdvertising()
     {
-        gap_advertisements_enable(false);
+        static bool once = false;
+        if (once == false)
+        {
+            once = true;
+            gap_advertisements_enable(false);
+        }
+        else
+        {
+            gap_advertisements_enable(false);
+            // hci_send_cmd(&hci_le_set_advertise_enable, 0);
+        }
+
+        advertisingNow_ = false;
+    }
+
+    static void SetupShell()
+    {
+        Shell::AddCommand("ble.gap.set.nc", [](vector<string> argList){
+            SetNonConnectedAdvertising(argList[0] == "true", argList[1] == "true");
+        }, { .argCount = 2, .help = "Set Non-Connected Advertising <connectable> <scannable>" });
+
+        Shell::AddCommand("ble.gap.set.c", [](vector<string> argList){
+            SetConnectedAdvertising(argList[0] == "true", argList[1] == "true");
+        }, { .argCount = 2, .help = "Set Connected Advertising <connectable> <scannable>" });
+
+        Shell::AddCommand("ble.gap.init", [](vector<string> argList){
+            SetConnectedAdvertising(argList[0] == "true", argList[1] == "true");
+        }, { .argCount = 2, .help = "" });
+
+
+
+        Shell::AddCommand("ble.gap.start", [](vector<string> argList){
+            Log("BleGap::StartAdvertising");
+            StartAdvertising();
+        }, { .argCount = 0, .help = "Start Advertising" });
+
+        Shell::AddCommand("ble.gap.stop", [](vector<string> argList){
+            Log("BleGap::StopAdvertising");
+            StopAdvertising();
+        }, { .argCount = 0, .help = "Stop Advertising" });
+
+
+
+        // purely testing to see what I'm able to do
+        Shell::AddCommand("ble.gap.pri.data", [](vector<string> argList){
+            string &name = argList[0];
+            
+            BleAdvertisingDataFormatter f;
+            f.AddFlags();
+            f.AddName(name);
+            byteListAdv_ = f.GetData();
+
+            gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
+        }, { .argCount = 1, .help = "set primary name = <x>" });
+
+        Shell::AddCommand("ble.gap.sec.data", [](vector<string> argList){
+            string &webAddress = argList[0];
+            
+            BleAdvertisingDataFormatter f;
+            f.AddWebAddress(webAddress);
+            byteListSr_ = f.GetData();
+
+            gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
+        }, { .argCount = 1, .help = "set secondary webpage = <x>" });
+
+        Shell::AddCommand("ble.gap.params", [](vector<string> argList){
+            uint16_t adv_int_min = 200;
+            uint16_t adv_int_max = 200;
+            uint8_t adv_type = (uint8_t)AdvertisingType::ADV_IND;
+            bd_addr_t null_addr;
+            memset(null_addr, 0, 6);
+            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
+        }, { .argCount = 0, .help = "gap_advertisements_set_params()" });
+
+        Shell::AddCommand("ble.gap.params2", [](vector<string> argList){
+            uint16_t adv_int_min = 200;
+            uint16_t adv_int_max = 200;
+            uint8_t adv_type = (uint8_t)AdvertisingType::ADV_SCAN_IND;
+            bd_addr_t null_addr;
+            memset(null_addr, 0, 6);
+            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
+        }, { .argCount = 0, .help = "gap_advertisements_set_params()" });
+
+        Shell::AddCommand("ble.gap.enable", [](vector<string> argList){
+            gap_advertisements_enable(argList[0] == "true");
+        }, { .argCount = 1, .help = "gap_advertisements_enable(<x>)" });
+
+        Shell::AddCommand("ble.gap.enable.hci", [](vector<string> argList){
+            hci_send_cmd(&hci_le_set_advertise_enable, argList[0] == "true");
+        }, { .argCount = 1, .help = "hci_send_cmd(&hci_le_set_advertise_enable, <x>)" });
     }
 
 
@@ -314,3 +442,142 @@ private:
     inline static vector<uint8_t> byteListAdv_;
     inline static vector<uint8_t> byteListSr_;
 };
+
+
+
+
+
+/*
+
+Testing notes
+
+I want to be able to:
+
+- have dynamic primary data (sync)
+- have dynamic secondary data (name change)
+- stay advertising during connection
+
+
+on run, init does nothing, OnReady does nothing
+- this leaves no ad data configured
+- this leaves advertising not started
+
+
+
+test1.1 - can you have dynamic primary data?
+-------------------------------------------
+pri.data DOUG
+params
+enable true
+[check ad working] - yes
+pri.data DOUG2
+[check if ad changed] - yes!
+
+
+test1.2 - continue from test1 - have dyn sec data?
+---------------------------------------------------
+sec.data glow.bike
+[did this show up?] - yes
+sec.data reuters.com
+[did this change?] - yes
+
+
+test 1.3 - resume ad from connection?
+-------------------------------------
+[connect]
+[does ad stop?] - yes (expected)
+enable true
+[does ad start?] - no (expected)
+enable.hci true
+[does ad start?] - yes (expected)
+
+
+test 1.4 - dynamic data still during connection?
+------------------------------
+pri.data DOUG3
+sec.data theonion.com
+[did ad change?] - yes
+
+
+test 1.5 - dynamic data still after disconnect?
+-------------------------------
+pri.data DOUG4
+sec.data twitter.com
+[did ad change?] - yes
+
+test 1.6 - process works through another connection?
+-------------------------------
+[connect]
+enable.hci true
+pri.data DOUG5
+[working still?] - yes
+
+
+test 2.1 - change the connection ad type dynamically?
+-------------------------------
+[want to continue advertising, but not connectable]
+sys.reset
+pri.data DOUG6
+params
+enable true
+[connect]
+params2
+enable.hci true
+[ad back with no connect?] - yes!
+
+
+test 2.2 - change back to connectable on disconnect?
+--------------------------------
+[disconnect]
+params
+[did that change it?] - yes, so can change any time it seems
+
+
+
+test 3.1 - does advertising come back automatically on disconnect?
+--------------------
+sys.reset
+pri.data DOUG7
+params
+enable true
+[connect]
+[disconnect]
+[is ad back?] - yes
+
+
+test 3.2 - does ad come back automatically even if you forced it back on previously?
+----------------------
+[connect]
+enable.hci true
+[disconnect]
+[connect]
+[disconnect]
+[is ad back?] - yes
+
+
+
+
+--------------------------------------------
+
+
+
+
+how timely is change
+  I don't want leader to change and a delay to when followers do
+does everyone receive at the same time?
+  I want all follower lights to change at the same time
+
+
+
+I need to build observer functionality and test
+  do I need to do anything in observer to get scan response?
+
+
+
+
+
+
+
+
+
+*/

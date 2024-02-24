@@ -3,9 +3,12 @@
 #include "Evm.h"
 #include "Log.h"
 #include "PAL.h"
+#include "Shell.h"
 #include "Timeline.h"
 
 #include "btstack.h"
+#include "platform/embedded/hci_dump_embedded_stdout.h"
+
 #include "pico/cyw43_arch.h"
 #include "pico/btstack_cyw43.h"
 
@@ -49,7 +52,8 @@ static void PacketHandlerHCI(uint8_t   packet_type,
             gap_local_bd_addr(local_addr);
 
             LogNL();
-            Log("BTstack up and running on ", bd_addr_to_str(local_addr));
+            Log("BLE BTstack up and running on ", bd_addr_to_str(local_addr));
+            LogNL();
 
             OnHciReady();
         }
@@ -75,6 +79,8 @@ static void PacketHandlerHCI(uint8_t   packet_type,
     {
         Log("HCI_EVENT_DISCONNECTION_COMPLETE");
 
+        BleGap::OnDisconnection();
+
         hci_con_handle_t con_handle = hci_event_disconnection_complete_get_connection_handle(packet);
         printf("- LE Connection 0x%04x: disconnect, reason %02x\n", con_handle, hci_event_disconnection_complete_get_reason(packet));
 
@@ -95,6 +101,8 @@ static void PacketHandlerHCI(uint8_t   packet_type,
         if (code == HCI_SUBEVENT_LE_CONNECTION_COMPLETE)
         {
             Log("HCI_SUBEVENT_LE_CONNECTION_COMPLETE");
+
+            BleGap::OnConnection();
 
             hci_con_handle_t con_handle = hci_subevent_le_connection_complete_get_connection_handle(packet); 
             double interval = hci_subevent_le_connection_complete_get_conn_interval(packet) * 1.25;
@@ -150,6 +158,10 @@ static void PacketHandlerHCI(uint8_t   packet_type,
         {
             // Log("HCI_SUBEVENT_LE_REMOTE_CONNECTION_PARAMETER_REQUEST");
         }
+        else if (code == HCI_SUBEVENT_LE_ADVERTISING_REPORT)
+        {
+            // Log("HCI_SUBEVENT_LE_ADVERTISING_REPORT");
+        }
         else
         {
             Log("HCI_EVENT_LE_META Default ", ToHex(code));
@@ -176,6 +188,11 @@ static void PacketHandlerHCI(uint8_t   packet_type,
     {
         // Log("HCI_EVENT_NUMBER_OF_COMPLETED_PACKETS");
     }
+    else if (eventType == GAP_EVENT_ADVERTISING_REPORT ||
+             eventType == GAP_EVENT_EXTENDED_ADVERTISING_REPORT)
+    {
+        BleObserver::OnAdvertisingReport(packet);
+    }
     // else if (eventType == )
     // {
     //     Log("");
@@ -197,12 +214,14 @@ void Ble::Init()
 {
     Timeline::Global().Event("Ble::Init");
 
-    Log("BLE Init Starting");
+    Log("BLE Init Starting Device ", name_);
     LogNL();
 
     // main task init
-    BleGap::Init(name_, peripheralList_, webAddress_);
+    BleGap::Init(name_, peripheralList_);
     BleGatt::Init(name_, peripheralList_);
+
+    // hci_dump_init(hci_dump_embedded_stdout_get_instance());
 
     // init underlying drivers
     if (cyw43_arch_init())
@@ -231,11 +250,6 @@ void Ble::Init()
 void Ble::SetDeviceName(string name)
 {
     name_ = name;
-}
-
-void Ble::SetWebAddress(string webAddress)
-{
-    webAddress_ = webAddress;
 }
 
 BlePeripheral &Ble::CreatePeripheral(string name)
@@ -276,3 +290,17 @@ BlePeripheral &Ble::CreatePeripheral(string name)
 //         Log("ERR: Ble cannot set adv power until after started");
 //     }
 // }
+
+
+
+
+void Ble::SetupShell()
+{
+    Shell::AddCommand("ble.init", [](vector<string> argList){
+        Log("Ble::Init");
+        Init();
+    }, { .argCount = 0, .help = "Init" });
+
+    Ble::Gap::SetupShell();
+    BleObserver::SetupShell();
+}

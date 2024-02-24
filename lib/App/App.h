@@ -43,6 +43,7 @@ public:
 
         // Shell
         Shell::Init();
+        Ble::SetupShell();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
         JSONMsgRouterSetupShell();
