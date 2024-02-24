@@ -677,6 +677,6 @@ void BleGatt::OnReady()
     // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
     att_server_init(attDbByteList_.data(), att_read_callback, att_write_callback);
 
-    Log("BLE Services Started");
+    Log("BLE GATT Started");
 }
 

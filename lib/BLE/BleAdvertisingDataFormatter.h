@@ -24,9 +24,20 @@ public:
 
 public:
     BleAdvertisingData(uint8_t capacity = ADV_BYTES)
-    : capacity_(capacity)
     {
-        byteList_.reserve(ADV_BYTES);
+        SetCapacity(capacity);
+    }
+
+    void SetCapacity(uint8_t capacity)
+    {
+        capacity_ = capacity;
+
+        byteList_.reserve(capacity_);
+    }
+
+    uint8_t GetCapacity()
+    {
+        return capacity_;
     }
 
     bool AddRecord(uint8_t type, uint8_t dataLen, uint8_t *data)
@@ -63,28 +74,7 @@ public:
         byteList_.clear();
     }
 
-    uint8_t GetRecordDataRemaining()
-    {
-        uint8_t retVal = 0;
-
-        if (BytesRemaining() >= 2)
-        {
-            retVal = BytesRemaining() - 2;
-        }
-
-        return retVal;
-    }
-
-private:
-
-    bool CanFitRecordDataSize(uint8_t dataLen)
-    {
-        uint8_t totalSize = 2 + dataLen;
-
-        return totalSize <= BytesRemaining();
-    }
-
-    uint8_t BytesRemaining()
+    uint8_t GetBytesRemaining()
     {
         uint8_t retVal = 0;
 
@@ -94,6 +84,28 @@ private:
         }
 
         return retVal;
+    }
+
+    uint8_t GetRecordBytesRemaining()
+    {
+        uint8_t retVal = 0;
+
+        if (GetBytesRemaining() >= 2)
+        {
+            retVal = GetBytesRemaining() - 2;
+        }
+
+        return retVal;
+    }
+
+
+private:
+
+    bool CanFitRecordDataSize(uint8_t dataLen)
+    {
+        uint8_t totalSize = 2 + dataLen;
+
+        return totalSize <= GetBytesRemaining();
     }
 
 
@@ -110,7 +122,7 @@ private:
 ///////////////////////////////////////////////////////////////////////////
 
 class BleAdvertisingDataFormatter
-: private BleAdvertisingData
+: public BleAdvertisingData
 {
 public:
     BleAdvertisingDataFormatter(uint8_t capacity = BleAdvertisingData::ADV_BYTES)
@@ -118,9 +130,6 @@ public:
     {
         // Nothing to do
     }
-
-    // expose just this function from base
-    using BleAdvertisingData::GetData;
 
     bool AddFlags()
     {
@@ -166,7 +175,7 @@ public:
             }
 
             // Determine how many can fit
-            uint8_t countCanFit = GetRecordDataRemaining() / (uint8_t)(uuidList[0].GetBitCount() / 8);
+            uint8_t countCanFit = GetRecordBytesRemaining() / (uint8_t)(uuidList[0].GetBitCount() / 8);
 
             // Determine if they can all fit for flagging in advertising
             uint8_t type = (countCanFit >= uuidList.size()) ? typeIfAllFit : typeIfSomeFit;
