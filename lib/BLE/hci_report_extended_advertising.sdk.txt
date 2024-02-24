@@ -1,0 +1,153 @@
+[00:00:00.116] LOG -- btstack_tlv_flash_bank.c.491: found bank 0
+[00:00:00.124] LOG -- btstack_tlv_flash_bank.c.227: test erased: bank 0, offset 56
+[00:00:00.136] LOG -- btstack_tlv_flash_bank.c.526: Flash clean after last found tag
+[00:00:00.146] LOG -- btstack_tlv_flash_bank.c.541: write offset 38
+[00:00:00.155] LOG -- btstack_tlv.c.48: TLV Instance 1008C710
+[00:00:00.164] LOG -- le_device_db_tlv.c.159: num valid le device entries 0
+[00:00:00.174] LOG -- hci.c.5210: hci_power_control: 1, current mode 0
+[00:00:01.086] LOG -- hci.c.7687: BTSTACK_EVENT_STATE 1
+[00:00:01.089] EVT <= 60 01 01
+[00:00:01.094] CMD => 03 0C 00
+[00:00:01.098] EVT <= 6E 00
+[00:00:01.103] EVT <= 0E 04 01 03 0C 00
+[00:00:01.107] CMD => 01 10 00
+[00:00:01.112] EVT <= 6E 00
+[00:00:01.116] EVT <= 0E 0C 01 01 10 00 0B 00 00 0B 31 01 10 23
+[00:00:01.124] LOG -- hci.c.2844: Treat Cypress/Infineon as Broadcom
+[00:00:01.133] LOG -- hci.c.2852: Manufacturer: 0x000f
+[00:00:01.140] CMD => 02 10 00
+[00:00:01.145] EVT <= 6E 00
+[00:00:01.149] EVT <= 0E 44 01 02 10 00 FF FF FF 03 CC FF 0F FF FF FF FC 1F F2 0F E8 FE 3F F7 8F FF 1C 00 04 00 61 F7 FF FF 7F F8 FF FF FF FF FF 0F 00 00 80 04 00 0C 00 04 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+[00:00:01.179] LOG -- hci.c.2666: Command 0x00 supported 2/5
+[00:00:01.187] LOG -- hci.c.2666: Command 0x01 supported 10/4
+[00:00:01.195] LOG -- hci.c.2666: Command 0x02 supported 14/7
+[00:00:01.203] LOG -- hci.c.2666: Command 0x03 supported 18/3
+[00:00:01.212] LOG -- hci.c.2666: Command 0x04 supported 20/4
+[00:00:01.220] LOG -- hci.c.2666: Command 0x05 supported 22/2
+[00:00:01.228] LOG -- hci.c.2666: Command 0x06 supported 24/6
+[00:00:01.236] LOG -- hci.c.2666: Command 0x07 supported 32/1
+[00:00:01.244] LOG -- hci.c.2666: Command 0x08 supported 32/3
+[00:00:01.253] LOG -- hci.c.2666: Command 0x09 supported 32/6
+[00:00:01.261] LOG -- hci.c.2666: Command 0x0a supported 34/0
+[00:00:01.269] LOG -- hci.c.2666: Command 0x0b supported 35/1
+[00:00:01.277] LOG -- hci.c.2666: Command 0x0c supported 35/3
+[00:00:01.285] LOG -- hci.c.2671: Local supported commands summary 00001fff
+[00:00:01.295] LOG -- btstack_crypto.c.1121: controller supports ECDH operation: 1
+[00:00:01.306] LOG -- hci.c.1871: Set Public BD ADDR to 28:CD:C1:08:7D:74
+[00:00:01.316] CMD => 01 FC 06 74 7D 08 C1 CD 28
+[00:00:01.323] EVT <= 6E 00
+[00:00:01.327] EVT <= 0E 04 01 01 FC 00
+[00:00:01.332] CMD => 09 10 00
+[00:00:01.337] EVT <= 6E 00
+[00:00:01.341] EVT <= 0E 0A 01 09 10 00 74 7D 08 C1 CD 28
+[00:00:01.348] LOG -- hci.c.2795: Local Address, Status: 0x00: Addr: 28:CD:C1:08:7D:74
+[00:00:01.360] CMD => 05 10 00
+[00:00:01.364] EVT <= 6E 00
+[00:00:01.368] EVT <= 0E 0B 01 05 10 00 FD 03 40 08 00 0A 00
+[00:00:01.376] LOG -- hci.c.2713: hci_read_buffer_size: ACL size module 1021 -> used 1021, count 3 / SCO size 64, count 3
+[00:00:01.392] CMD => 03 10 00
+[00:00:01.397] EVT <= 6E 00
+[00:00:01.401] EVT <= 0E 0C 01 03 10 00 BF FE CF FE DB FF 7B 87
+[00:00:01.409] LOG -- hci.c.2836: BR/EDR support 0, LE support 1
+[00:00:01.417] CMD => 33 0C 07 00 04 78 03 00 03 00
+[00:00:01.425] EVT <= 6E 00
+[00:00:01.429] EVT <= 0E 04 01 33 0C 00
+[00:00:01.434] CMD => 31 0C 01 03
+[00:00:01.439] EVT <= 6E 00
+[00:00:01.443] EVT <= 0E 04 01 31 0C 00
+[00:00:01.448] CMD => 01 0C 08 FF FF FF FF FF FF FF 3F
+[00:00:01.456] EVT <= 6E 00
+[00:00:01.460] EVT <= 0E 04 01 01 0C 00
+[00:00:01.465] CMD => 63 0C 08 00 00 00 02 00 00 00 00
+[00:00:01.472] EVT <= 6E 00
+[00:00:01.477] EVT <= 0E 04 01 63 0C 00
+[00:00:01.482] CMD => 02 20 00
+[00:00:01.486] EVT <= 6E 00
+[00:00:01.490] EVT <= 0E 07 01 02 20 00 FB 00 08
+[00:00:01.496] LOG -- hci.c.2743: hci_le_read_buffer_size: acl size 251, acl count 8
+[00:00:01.508] CMD => 6D 0C 02 01 00
+[00:00:01.513] EVT <= 6E 00
+[00:00:01.517] EVT <= 0E 04 01 6D 0C 00
+[00:00:01.522] CMD => 01 20 08 FF FD FF FF 07 00 00 00
+[00:00:01.530] EVT <= 6E 00
+[00:00:01.534] EVT <= 0E 04 01 01 20 00
+[00:00:01.539] CMD => 2F 20 00
+[00:00:01.543] EVT <= 6E 00
+[00:00:01.548] EVT <= 0E 0C 01 2F 20 00 FB 00 48 08 FB 00 48 08
+[00:00:01.556] LOG -- hci.c.2750: hci_le_read_maximum_data_length: tx octets 251, tx time 2120 us
+[00:00:01.568] CMD => 24 20 04 FB 00 48 08
+[00:00:01.575] EVT <= 6E 00
+[00:00:01.579] EVT <= 0E 04 01 24 20 00
+[00:00:01.584] CMD => 0F 20 00
+[00:00:01.588] EVT <= 6E 00
+[00:00:01.593] EVT <= 0E 05 01 0F 20 00 80
+[00:00:01.598] LOG -- hci.c.2756: hci_le_read_white_list_size: size 128
+[00:00:01.607] CMD => 0B 20 07 01 E0 01 30 00 00 00
+[00:00:01.615] EVT <= 6E 00
+[00:00:01.619] EVT <= 0E 04 01 0B 20 00
+[00:00:01.624] LOG -- hci.c.1808: hci_init_done -> HCI_STATE_WORKING
+[00:00:01.633] LOG -- hci.c.7687: BTSTACK_EVENT_STATE 2
+[00:00:01.640] EVT <= 60 01 02
+[00:00:01.644] LOG -- sm.c.3726: HCI Working!
+[00:00:01.651] LOG -- btstack_tlv_flash_bank.c.373: Found tag '534d4552' at position 8
+[00:00:01.662] LOG -- sm.c.3733: ER from TLV
+[00:00:01.668] LOG -- btstack_util.c.314: ER     E5FC3471A84C85069F095603384E4105
+[00:00:01.679] LOG -- btstack_tlv_flash_bank.c.373: Found tag '534d4952' at position 32
+[00:00:01.690] LOG -- sm.c.3678: IR from TLV
+[00:00:01.696] LOG -- btstack_util.c.314: IR     7C1F884F0CA1536FFE05EDFAEDFE92EE
+[00:00:01.707] LOG -- sm.c.4873: sm: generate new ec key
+[00:00:01.715] LOG -- btstack_crypto.c.943: start ecc random
+[00:00:01.723] CMD => 18 20 00
+[00:00:01.728] EVT <= 6E 00
+[00:00:01.731] LOG -- hci.c.8534: hci_le_set_own_address_type: old 0, new 0
+[00:00:01.747] LOG -- att_db.c.237: att_set_db 200145D8
+[00:00:01.758] EVT <= 0E 0C 01 18 20 00 BD 68 0D A5 A4 0E 5B 6A
+[00:00:01.766] LOG -- sm.c.2140: DKG_CALC_IRK started
+[00:00:01.773] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.781] CMD => 18 20 00
+[00:00:01.785] EVT <= 6E 00
+[00:00:01.790] EVT <= 0E 0C 01 18 20 00 B4 D9 24 B0 6F AC D9 87
+[00:00:01.798] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.806] CMD => 18 20 00
+[00:00:01.810] EVT <= 6E 00
+[00:00:01.814] EVT <= 0E 0C 01 18 20 00 16 41 B7 8A E7 75 B4 4C
+[00:00:01.822] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.830] CMD => 18 20 00
+[00:00:01.835] EVT <= 6E 00
+[00:00:01.839] EVT <= 0E 0C 01 18 20 00 18 8B F1 AD 3D AF 76 C6
+[00:00:01.847] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.855] CMD => 18 20 00
+[00:00:01.860] EVT <= 6E 00
+[00:00:01.864] EVT <= 0E 0C 01 18 20 00 D7 04 08 EF 9C C9 83 40
+[00:00:01.872] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.880] CMD => 18 20 00
+[00:00:01.884] EVT <= 6E 00
+[00:00:01.889] EVT <= 0E 0C 01 18 20 00 78 5B BA AA 2D 1E 7B ED
+[00:00:01.897] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.904] CMD => 18 20 00
+[00:00:01.909] EVT <= 6E 00
+[00:00:01.913] EVT <= 0E 0C 01 18 20 00 07 8E F5 33 17 F3 31 05
+[00:00:01.921] LOG -- btstack_crypto.c.956: more ecc random
+[00:00:01.929] CMD => 18 20 00
+[00:00:01.934] EVT <= 6E 00
+[00:00:01.938] EVT <= 0E 0C 01 18 20 00 E6 27 3C 3E 61 AB 61 A9
+[00:00:01.946] LOG -- btstack_crypto.c.525: set uECC RNG for initial key generation with 64 random bytes
+[00:00:01.960] LOG -- btstack_crypto.c.498: sm_generate_f_rng: size 32 - offset 0
+[00:00:02.250] LOG -- btstack_crypto.c.488: Elliptic curve: X
+[00:00:02.254] LOG -- btstack_util.c.274: 0xF9, 0x5D, 0xBD, 0xE8, 0xB4, 0xEF, 0x78, 0x9D, 0x8C, 0x27, 0xB8, 0x48, 0xC5, 0x56, 0x8B, 0x60,
+[00:00:02.272] LOG -- btstack_util.c.274: 0x26, 0x62, 0x9A, 0xFB, 0xA4, 0xE2, 0xE3, 0x2E, 0xAF, 0xC3, 0xCD, 0xE4, 0x65, 0xD1, 0x63, 0x86,
+[00:00:02.290] LOG -- btstack_crypto.c.490: Elliptic curve: Y
+[00:00:02.299] LOG -- btstack_util.c.274: 0xC6, 0x6B, 0xAE, 0xEA, 0xF0, 0x2C, 0xBE, 0xDB, 0x16, 0x0B, 0x2A, 0xDA, 0xE4, 0xA7, 0x69, 0x07,
+[00:00:02.317] LOG -- btstack_util.c.274: 0x48, 0x62, 0xE1, 0x86, 0xC2, 0x54, 0xFC, 0xD2, 0x48, 0x2B, 0x5A, 0x6F, 0xA8, 0x95, 0xD7, 0x99,
+[00:00:02.336] LOG -- btstack_util.c.314: irk    3DFA3B3E3F20315CC102917F109A0122
+[00:00:02.346] CMD => 2D 20 01 01
+[00:00:02.351] EVT <= 6E 00
+[00:00:02.355] EVT <= 0E 04 01 2D 20 00
+[00:00:02.360] LOG -- sm.c.2151: DKG_CALC_DHK started
+[00:00:02.367] LOG -- btstack_util.c.314: dhk    44D5C44E5E3D0EE1A32A1636B9A1BA7D
+[00:00:02.378] CMD => 2A 20 00
+[00:00:02.383] EVT <= 6E 00
+[00:00:02.387] EVT <= 0E 05 01 2A 20 00 80
+[00:00:02.392] CMD => 29 20 00
+[00:00:02.397] EVT <= 6E 00
+[00:00:02.401] EVT <= 0E 04 01 29 20 00
