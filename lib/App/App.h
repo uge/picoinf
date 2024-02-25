@@ -83,7 +83,7 @@ public:
         Shell::DisplayOn();
 
         // start whole application
-        KTask<1000> task("Application", []{
+        KTask<2000> task("Application", []{
             Evm::MainLoop();
         }, 10);
 

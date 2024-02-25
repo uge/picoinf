@@ -1,7 +1,7 @@
 #pragma once
 
 #include "BleAdvertisingDataFormatter.h"
-#include "BlePeripheral.h"
+#include "BleService.h"
 #include "Log.h"
 #include "Shell.h"
 #include "Timeline.h"
@@ -17,12 +17,6 @@ class BleGap
 
 public:
 
-    BleGap()
-    {
-        byteListAdv_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
-        byteListSr_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
-    }
-
     /////////////////////////////////////////////////////////////////
     // Configure some high-level display params
     /////////////////////////////////////////////////////////////////
@@ -33,6 +27,7 @@ public:
 
         OnStateChange();
     }
+
 
     /////////////////////////////////////////////////////////////////
     // Configure when to advertise
@@ -56,6 +51,27 @@ public:
         OnStateChange();
     }
 
+
+    /////////////////////////////////////////////////////////////////
+    // Configure advertising rate
+    /////////////////////////////////////////////////////////////////
+
+    // Must be in the range of 20ms - 10.2s
+    static void SetAdvertisingRateParams(uint16_t intervalMinMs, uint16_t intervalMaxMs)
+    {
+        static const uint16_t INTERVAL_MIN =     20;
+        static const uint16_t INTERVAL_MAX = 10'200;
+
+        intervalMinMs_ = Clamp(INTERVAL_MIN,   intervalMinMs, INTERVAL_MAX);
+        intervalMaxMs_ = Clamp(intervalMinMs_, intervalMinMs, INTERVAL_MAX);
+
+        Log("ATT Ad Rate Change: ", intervalMinMs_, " ms - ", intervalMaxMs_, " ms");
+        LogNL();
+
+        OnStateChange();
+    }
+
+
     /////////////////////////////////////////////////////////////////
     // Configure how to populate advertisements
     /////////////////////////////////////////////////////////////////
@@ -76,6 +92,8 @@ public:
 
     static void SetAdvertisementBuffer(const vector<uint8_t> &byteList)
     {
+        byteListAdv_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
+        
         uint8_t len = min(byteListAdv_.capacity(), byteList.size());
 
         byteListAdv_.clear();
@@ -89,6 +107,8 @@ public:
 
     static void SetScanResponseBuffer(const vector<uint8_t> &byteList)
     {
+        byteListSr_.reserve(BleAdvertisingDataFormatter::ADV_BYTES);
+
         uint8_t len = min(byteListSr_.capacity(), byteList.size());
 
         byteListSr_.clear();
@@ -100,19 +120,22 @@ public:
         OnStateChange();
     }
 
+
 // private:
 
-
     /////////////////////////////////////////////////////////////////
-    // Pre-Runtime Init
+    // Init
     /////////////////////////////////////////////////////////////////
     
-    static void Init(string name, vector<BlePeripheral> &periphList)
+    static void Init(string name, vector<BleService> &svcList)
     {
         Timeline::Global().Event("BleGap::Init");
 
         if (autoPopulateAdvertisement_)
         {
+            byteListAdv_.clear();
+            byteListSr_.clear();
+
             vector<uint8_t> *primaryTarget   = &byteListAdv_;
             vector<uint8_t> *secondaryTarget = &byteListSr_;
 
@@ -131,7 +154,7 @@ public:
 
             // Primary
             {
-                Log("Configuring ", srOnly ? "Advertising Scan Response (only)" : "Advertising");
+                Log("ATT: Configuring ", srOnly ? "Advertising Scan Response (only)" : "Advertising");
 
                 BleAdvertisingDataFormatter &f = *primaryFormatter;
                 
@@ -148,12 +171,9 @@ public:
 
                 // UUIDs
                 vector<string> uuidList;
-                for (auto &p : periphList)
+                for (auto &svc : svcList)
                 {
-                    for (auto &[svcName, svc] : p.GetServiceList())
-                    {
-                        uuidList.push_back(svc.GetUuid());
-                    }
+                    uuidList.push_back(svc.GetUuid());
                 }
 
                 if (uuidList.size())
@@ -177,6 +197,7 @@ public:
             }
 
             // Secondary
+            if (webAddress_ != "")
             {
                 if (srOnly == false)
                 {
@@ -197,6 +218,8 @@ public:
 
                 Append(*secondaryTarget, f.GetData());
             }
+
+            OnStateChange();
         }
     }
 
@@ -298,19 +321,11 @@ private:
 
     static void SetParams()
     {
-        // setup advertisements
-        // uint16_t adv_int_min = 200;
-        // uint16_t adv_int_max = 200;
-
-        // hmm, phone can't keep up, calls the device unknown or unsupported
-        // uint16_t adv_int_min = 32;  // min 20ms (aka 32 * .625)
-        // uint16_t adv_int_max = 32;  // min 20ms (aka 32 * .625)
-
-        uint16_t adv_int_min = 64;  // min 20ms (aka 32 * .625)
-        uint16_t adv_int_max = 64;  // min 20ms (aka 32 * .625)
-
+        uint16_t adv_int_min = (uint16_t)((double)intervalMinMs_ / 0.625);
+        uint16_t adv_int_max = (uint16_t)((double)intervalMaxMs_ / 0.625);
 
         uint8_t adv_type = (uint8_t)advType_;
+
         bd_addr_t null_addr;
         memset(null_addr, 0, 6);
         gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
@@ -431,6 +446,10 @@ private:
 
     // misc specific advertising
     inline static string webAddress_;
+
+    // advertising interval
+    inline static uint16_t intervalMinMs_ = 500;
+    inline static uint16_t intervalMaxMs_ = 500;
 
     // control whether and what advertising is done when not connected
     inline static bool advertise_ = true;

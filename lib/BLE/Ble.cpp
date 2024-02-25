@@ -214,12 +214,7 @@ void Ble::Init()
 {
     Timeline::Global().Event("Ble::Init");
 
-    Log("BLE Init Starting Device ", name_);
-    LogNL();
-
-    // main task init
-    BleGap::Init(name_, peripheralList_);
-    BleGatt::Init(name_, peripheralList_);
+    Log("BLE Init Starting");
 
     // hci_dump_init(hci_dump_embedded_stdout_get_instance());
 
@@ -244,55 +239,8 @@ void Ble::Init()
     }
 
     LogNL();
-    Log("Ble Init Complete");
+    Log("BLE Init Complete");
 }
-
-void Ble::SetDeviceName(string name)
-{
-    name_ = name;
-}
-
-BlePeripheral &Ble::CreatePeripheral(string name)
-{
-    peripheralList_.emplace_back(name);
-
-    BlePeripheral &retVal = peripheralList_[peripheralList_.size() - 1];
-
-    return retVal;
-}
-
-// BleBroadcaster &Ble::CreateBroadcaster()
-// {
-//     broadcasterList_.push_back({});
-
-//     BleBroadcaster &retVal = broadcasterList_[broadcasterList_.size() - 1];
-
-//     return retVal;
-// }
-
-// BleObserver &Ble::CreateObserver()
-// {
-//     observerList_.push_back({});
-
-//     BleObserver &retVal = observerList_[observerList_.size() - 1];
-
-//     return retVal;
-// }
-
-// void Ble::SetTxPowerAdvertising(uint8_t pct)
-// {
-//     if (started_)
-//     {
-//         BleAdvertiser::SetPowerAdv(pct);
-//     }
-//     else
-//     {
-//         Log("ERR: Ble cannot set adv power until after started");
-//     }
-// }
-
-
-
 
 void Ble::SetupShell()
 {
@@ -303,4 +251,5 @@ void Ble::SetupShell()
 
     Ble::Gap::SetupShell();
     BleObserver::SetupShell();
+    BleGatt::SetupShell();
 }

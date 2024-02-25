@@ -1,11 +1,12 @@
 #pragma once
 
-#include "BlePeripheral.h"
+#include "BleService.h"
 
 
 class BleGatt
 {
 public:
-    static void Init(string name, vector<BlePeripheral> &periphList);
+    static void Init(string name, vector<BleService> &periphList);
     static void OnReady();
+    static void SetupShell();
 };

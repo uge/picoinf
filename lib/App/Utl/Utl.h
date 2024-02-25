@@ -750,4 +750,22 @@ inline uint32_t Hash(const T& val)
 }
 
 
+template <typename T1, typename T2, typename T3>
+inline T2 Clamp(const T1 low, const T2 val, const T3 high)
+{
+    T2 retVal = val;
+
+    if (val < (T2)low)
+    {
+        retVal = (T2)low;
+    }
+    else if (val > (T2)high)
+    {
+        retVal = (T2)high;
+    }
+
+    return retVal;
+}
+
+
 extern void UtlSetupShell();

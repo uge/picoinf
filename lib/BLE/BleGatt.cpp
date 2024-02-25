@@ -2,6 +2,7 @@
 #include "BleGatt.h"
 #include "Log.h"
 #include "PAL.h"
+#include "Shell.h"
 #include "Timeline.h"
 #include "Utl.h"
 
@@ -160,8 +161,20 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
         // what if buf changes size before completion?
         // actually, they say only a single att transaction at a time, so this shouldn't happen
 
+        // Log("handling: ", (uint32_t)readState_.byteList.data(), ": ", readState_.byteList.size());
+
+        // protect against .data() returning nullptr when size() == 0
+        // (which would be possible if no storage allocated yet and
+        //  handler didn't return any data)
+        uint8_t byte = '\0';
+        uint8_t *p = readState_.byteList.data();
+        if (p == nullptr)
+        {
+            p = &byte;
+        }
+
         uint16_t retVal =
-            att_read_callback_handle_blob(readState_.byteList.data(),
+            att_read_callback_handle_blob(p,
                                           (uint16_t)readState_.byteList.size(),
                                           offset,
                                           buf,
@@ -185,8 +198,6 @@ uint16_t att_read_callback_read(hci_con_handle_t  conn,
 
         return retVal;
     }
-
-    return 0;
 }
 
 static
@@ -604,79 +615,218 @@ static void PacketHandlerATT(uint8_t   packet_type,
 
 
 /////////////////////////////////////////////////////////////////////
+// Class State
+/////////////////////////////////////////////////////////////////////
+
+// keep full lifecycle ownership of the db bytes
+static vector<uint8_t> attDbByteList_;
+
+// retain full lifecycle ownership of the set of services that
+// callbacks are hooked into
+static vector<BleService> svcList_;
+
+// use this to know whether HCI ready
+static bool ready_ = false;
+
+
+/////////////////////////////////////////////////////////////////////
 // Interface
 /////////////////////////////////////////////////////////////////////
 
-static vector<uint8_t> attDbByteList_;
-
-void BleGatt::Init(string name, vector<BlePeripheral> &periphList)
+// can be called at any point, if HCI not ready, or already running in
+// another configuration, this takes care of it.
+void BleGatt::Init(string name, vector<BleService> &svcList)
 {
     Timeline::Global().Event("BleGatt::Init");
+
+    // services could be running already, and those callbacks reach
+    // into the service list.  have to atomically swap out.
+    IrqLock lock;
+
+    // take full lifecycle ownership of services
+    svcList_ = svcList;
 
     // Generate database
     BleAttDatabase attDb(name);
 
-    for (auto &p : periphList)
+    // Wipe any state from a prior run
+    handleReadWriteMap_.clear();
+    handleNotifyMap_.clear();
+
+    Log("GATT: Registering ", svcList_.size(), " services");
+
+    // Build and associate services
+    for (auto &svc : svcList_)
     {
-        string fqn = p.GetName();
-        Log("Registering Peripheral ", fqn);
+        string fqn = svc.GetName() + "(" + svc.GetUuid() + ")";
+        Log("  Registering Service ", fqn);
 
-        for (auto &[svcName, svc] : p.GetServiceList())
+        attDb.AddPrimaryService(svc.GetUuid());
+
+        for (auto &[ctcName, ctc] : svc.GetCtcList())
         {
-            string fqn2 = fqn + "." + svc.GetName() + "(" + svc.GetUuid() + ")";
-            Log("  Registering Service ", fqn2);
+            string fqn2 = fqn + "." + ctc.GetName() + "(" + ctc.GetUuid() + ")";
 
-            attDb.AddPrimaryService(svc.GetUuid());
-
-            for (auto &[ctcName, ctc] : svc.GetCtcList())
+            vector<uint16_t> handleList =
+                attDb.AddCharacteristic(ctc.GetUuid(),
+                                        ctc.GetProperties());
+            
+            // associate handles with the characteristic
+            LogNNL("    Registering CTC ", fqn2, " - handles: ");
+            if (handleList.size() >= 2)
             {
-                string fqn3 = fqn2 + "." + ctc.GetName() + "(" + ctc.GetUuid() + ")";
-
-                vector<uint16_t> handleList =
-                    attDb.AddCharacteristic(ctc.GetUuid(),
-                                            ctc.GetProperties());
-                
-                // associate handles with the characteristic
-                LogNNL("    Registering CTC ", fqn3, " - handles: ");
-                if (handleList.size() >= 2)
-                {
-                    uint16_t handle = handleList[1];
-                    handleReadWriteMap_.emplace(handle, ctc);
-                    LogNNL(ToHex(handle), " rw");
-                }
-
-                if (handleList.size() >= 3)
-                {
-                    uint16_t handle = handleList[2];
-                    handleNotifyMap_.emplace(handle, ctc);
-                    LogNNL(", ", ToHex(handle), " notify");
-
-                    ctc.SetCallbackTriggerNotify([=]{
-                        TriggerNotify(handleList[1]);
-                    });
-                }
-                LogNL();
+                uint16_t handle = handleList[1];
+                handleReadWriteMap_.emplace(handle, ctc);
+                LogNNL(ToHex(handle), " rw");
             }
+
+            if (handleList.size() >= 3)
+            {
+                uint16_t handle = handleList[2];
+                handleNotifyMap_.emplace(handle, ctc);
+                LogNNL(", ", ToHex(handle), " notify");
+
+                ctc.SetCallbackTriggerNotify([=]{
+                    TriggerNotify(handleList[1]);
+                });
+            }
+            LogNL();
         }
     }
 
     // capture raw database structure
     attDbByteList_ = attDb.GetDatabaseData();
 
-    // allocate space for receive buffer
+    // ensure runtime containers set up
     InitState();
+
+    LogNL();
+
+    // if OnReady already ran, run it again
+    if (ready_)
+    {
+        OnReady();
+    }
 }
 
 void BleGatt::OnReady()
 {
     Timeline::Global().Event("BleGatt::OnReady");
 
-    // register for ATT event
-    att_server_register_packet_handler(PacketHandlerATT);
+    ready_ = true;
 
-    // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
-    att_server_init(attDbByteList_.data(), att_read_callback, att_write_callback);
+    static bool doOnce = true;
 
-    Log("BLE GATT Started");
+    if (doOnce)
+    {
+        if (attDbByteList_.size() != 0)
+        {
+            doOnce = false;
+
+            // register for ATT event
+            att_server_register_packet_handler(PacketHandlerATT);
+
+            // https://bluekitchen-gmbh.com/btstack/#appendix/att_server/
+            att_server_init(attDbByteList_.data(), att_read_callback, att_write_callback);
+
+            Log("BLE GATT Started");
+        }
+    }
+    else
+    {
+        att_set_db(attDbByteList_.data());
+
+        Log("BLE GATT Re-Started");
+    }
 }
 
+
+
+/*
+
+Looks like att_server_init() is a convenience function.  It:
+- sets handler pointers
+- calls att_set_db()
+  - just stores a pointer
+
+att_server_deinit()
+- just unsets handler pointers
+- doesn't do anything about the database being set
+  - maybe things even just keep working but app never knows
+    because no callbacks?
+    - like, connection would still work?
+
+so ok to call att_server_init() the first time
+  but subsequently, just call att_set_db()?
+
+*/
+void BleGatt::SetupShell()
+{
+    Shell::AddCommand("ble.gatt.init", [](vector<string> argList){
+        static bool doOnce = true;
+
+        handleReadWriteMap_.clear();
+        handleNotifyMap_.clear();
+        // clean up any state?
+        // don't disconnect?
+            // just make sure equal services keep same handle?
+                // does it even matter?
+                    // might not for nordic app, maybe not everything (web, etc) is as smart?
+
+        if (doOnce)
+        {
+            doOnce = false;
+
+            static vector<BleService> svcList;
+
+            static auto &s = svcList.emplace_back("SERIAL1.1", "0xAAAA");
+            static auto &c1 = s.GetOrMakeCharacteristic("SERIAL", "0xAAAA", "READ | NOTIFY | WRITE_WITHOUT_RESPONSE | DYNAMIC");
+
+            c1.SetCallbackOnRead([](vector<uint8_t> &byteList){
+                Log("Test Read Callback");
+            });
+            c1.SetCallbackOnSubscribe([](bool enabled){
+                Log("Test C1 Subscribe Callback - ", enabled);
+            });
+
+            static auto &s2 = svcList.emplace_back("SERIAL1.2", "0xAAAA");
+            s2.GetOrMakeCharacteristic("SERIAL", "0xAAAA", "READ | NOTIFY | WRITE_WITHOUT_RESPONSE | DYNAMIC");
+
+            // test what happens when a service vanishes
+            static auto &s3 = svcList.emplace_back("SERIAL1.3", "0xAAAA");
+            static auto &c3 = s3.GetOrMakeCharacteristic("SERIAL", "0xAAAA", "READ | NOTIFY | WRITE_WITHOUT_RESPONSE | DYNAMIC");
+
+            c3.SetCallbackOnRead([](vector<uint8_t> &byteList){
+                Log("Test C3 Read Callback");
+            });
+
+            Init("test", svcList);
+        }
+        else
+        {
+            static vector<BleService> svcList;
+
+            static auto &s = svcList.emplace_back("SERIAL2.1", "0xBBBB");
+            static auto &c1 = s.GetOrMakeCharacteristic("SERIAL", "0xBBBB", "READ | NOTIFY | WRITE_WITHOUT_RESPONSE | DYNAMIC");
+
+            c1.SetCallbackOnRead([](vector<uint8_t> &byteList){
+                Log("Test2 C1 Read Callback");
+            });
+            c1.SetCallbackOnSubscribe([](bool enabled){
+                Log("Test2 C1 Subscribe Callback - ", enabled);
+            });
+
+            static auto &s2 = svcList.emplace_back("SERIAL2.2", "0xCCCC");
+            static auto &c2 = s2.GetOrMakeCharacteristic("SERIAL", "0xCCCC", "READ | NOTIFY | WRITE_WITHOUT_RESPONSE | DYNAMIC");
+
+            c2.SetCallbackOnRead([](vector<uint8_t> &byteList){
+                Log("Test2 C2 Read Callback");
+            });
+
+            Init("test2", svcList);
+        }
+    }, { .argCount = 0, .help = "Init" });
+
+    Shell::AddCommand("ble.gatt.deinit", [](vector<string> argList){
+    }, { .argCount = 0, .help = "DeInit" });
+}
