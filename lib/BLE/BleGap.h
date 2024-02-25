@@ -31,7 +31,7 @@ public:
     {
         webAddress_ = webAddress;
 
-        OnChangeNowDetermineAdvertising();
+        OnStateChange();
     }
 
     /////////////////////////////////////////////////////////////////
@@ -44,7 +44,7 @@ public:
         scannable_   = scannable;
         advertise_   = connectable_ || scannable_;
 
-        // OnChangeNowDetermineAdvertising();
+        OnStateChange();
     }
 
     static void SetConnectedAdvertising(bool connectable, bool scannable)
@@ -53,7 +53,7 @@ public:
         scannableDuringConnection_   = scannable;
         advertiseDuringConnection_   = connectableDuringConnection_ || scannableDuringConnection_;
 
-        // OnChangeNowDetermineAdvertising();
+        OnStateChange();
     }
 
     /////////////////////////////////////////////////////////////////
@@ -64,20 +64,40 @@ public:
     {
         autoPopulateAdvertisement_ = val;
 
-        OnChangeNowDetermineAdvertising();
+        OnStateChange();
     }
 
     static void SetAutoPopulateScanResponseOnly(bool val)
     {
         autoPopulateScanResponseOnly_ = val;
 
-        OnChangeNowDetermineAdvertising();
+        OnStateChange();
     }
 
     static void SetAdvertisementBuffer(const vector<uint8_t> &byteList)
     {
+        uint8_t len = min(byteListAdv_.capacity(), byteList.size());
 
-        OnChangeNowDetermineAdvertising();
+        byteListAdv_.clear();
+        for (uint8_t i = 0; i < len; ++i)
+        {
+            byteListAdv_.push_back(byteList[i]);
+        }
+
+        OnStateChange();
+    }
+
+    static void SetScanResponseBuffer(const vector<uint8_t> &byteList)
+    {
+        uint8_t len = min(byteListSr_.capacity(), byteList.size());
+
+        byteListSr_.clear();
+        for (uint8_t i = 0; i < len; ++i)
+        {
+            byteListSr_.push_back(byteList[i]);
+        }
+
+        OnStateChange();
     }
 
 // private:
@@ -90,8 +110,6 @@ public:
     static void Init(string name, vector<BlePeripheral> &periphList)
     {
         Timeline::Global().Event("BleGap::Init");
-
-        return;
 
         if (autoPopulateAdvertisement_)
         {
@@ -191,11 +209,7 @@ public:
     {
         Timeline::Global().Event("BleGap::OnReady");
 
-        return;
-        
-        // kick off the startup of advertising
-        // advertisingNow_ = true;
-        // OnChangeNowDetermineAdvertising();
+        StartAdvertising();
 
         Log("BLE Advertising Started");
         Log("Connected?  |  Connectable  |  Scannable");
@@ -217,8 +231,12 @@ public:
     {
         connectedNow_ = true;
 
-        // OnChangeNowDetermineAdvertising();
-        // hci_send_cmd(&hci_le_set_advertise_enable, 1);
+        OnStateChange();
+
+        // no idea why this is necessary
+        Evm::QueueWork("", []{
+            GapEnableHci();
+        });
     }
 
     // assumes single connection
@@ -226,7 +244,10 @@ public:
     {
         connectedNow_ = false;
 
-        // OnChangeNowDetermineAdvertising();
+        // no idea why this is necessary
+        Evm::QueueWork("", []{
+            OnStateChange();
+        });
     }
 
 
@@ -245,7 +266,7 @@ private:
 
     // determine the correct state of being given all the factors.
     // if we are not in that correct state, get there.
-    static void OnChangeNowDetermineAdvertising()
+    static void OnStateChange()
     {
         AdvertisingType advTypeNew = AdvertisingType::ADV_IND;
 
@@ -271,67 +292,60 @@ private:
 
         advType_ = advTypeNew;
 
-        if (advertisingNow_)
-        {
-            StopAdvertising();
-            StartAdvertising();
-        }
+        SetParams();
+        SetData();
+    }
+
+    static void SetParams()
+    {
+        // setup advertisements
+        // uint16_t adv_int_min = 200;
+        // uint16_t adv_int_max = 200;
+
+        // hmm, phone can't keep up, calls the device unknown or unsupported
+        // uint16_t adv_int_min = 32;  // min 20ms (aka 32 * .625)
+        // uint16_t adv_int_max = 32;  // min 20ms (aka 32 * .625)
+
+        uint16_t adv_int_min = 64;  // min 20ms (aka 32 * .625)
+        uint16_t adv_int_max = 64;  // min 20ms (aka 32 * .625)
+
+
+        uint8_t adv_type = (uint8_t)advType_;
+        bd_addr_t null_addr;
+        memset(null_addr, 0, 6);
+        gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
+    }
+
+    static void SetData()
+    {
+        gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
+        gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
+    }
+
+    static void GapEnable()
+    {
+        if (advType_ == AdvertisingType::NONE) return;
+        gap_advertisements_enable(true);
+    }
+
+    static void GapEnableHci()
+    {
+        if (advType_ == AdvertisingType::NONE) return;
+        hci_send_cmd(&hci_le_set_advertise_enable, 1);
     }
 
     static void StartAdvertising()
     {
         Timeline::Global().Event("BleGap::StartAdvertising");
 
-        if (advType_ == AdvertisingType::NONE) return;
-
-        // setup advertisements
-        uint16_t adv_int_min = 200;
-        uint16_t adv_int_max = 200;
-        uint8_t adv_type = (uint8_t)advType_;
-        bd_addr_t null_addr;
-        memset(null_addr, 0, 6);
-        gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-
-        // setup gap data
-        gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
-        gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
-
-        // enable, with extra call to hci which is (alone) what is
-        // required to re-start advertising when shut off by a
-        // connection.  so we call it here unconditionally since we're
-        // going to trigger this whole sequence whenever anything changes.
-        static bool once = false;
-        if (once == false)
-        {
-            once = true;
-
-
-
-            gap_advertisements_enable(true);
-        }
-        else
-        {
-            hci_send_cmd(&hci_le_set_advertise_enable, 1);
-        }
-
-        advertisingNow_ = true;
+        SetParams();
+        SetData();
+        GapEnable();
     }
 
     static void StopAdvertising()
     {
-        static bool once = false;
-        if (once == false)
-        {
-            once = true;
-            gap_advertisements_enable(false);
-        }
-        else
-        {
-            gap_advertisements_enable(false);
-            // hci_send_cmd(&hci_le_set_advertise_enable, 0);
-        }
-
-        advertisingNow_ = false;
+        gap_advertisements_enable(false);
     }
 
     static void SetupShell()
@@ -368,7 +382,8 @@ private:
             
             BleAdvertisingDataFormatter f;
             f.AddFlags();
-            f.AddName(name);
+            // f.AddName(name);
+            f.AddMfrData(ToByteList(name));
             byteListAdv_ = f.GetData();
 
             gap_advertisements_set_data((uint8_t)byteListAdv_.size(), (uint8_t *)byteListAdv_.data());
@@ -429,7 +444,6 @@ private:
 
     // state keeping about whether connected and whether currently advertising
     inline static bool connectedNow_ = false;
-    inline static bool advertisingNow_ = false;
 
     // the advertising method (in ble terms) to use
     inline static AdvertisingType advType_ = AdvertisingType::ADV_IND;

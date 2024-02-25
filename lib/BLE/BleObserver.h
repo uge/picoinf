@@ -2,6 +2,7 @@
 
 #include "BleAdvertisingDataFormatter.h"
 #include "KMessagePassing.h"
+#include "Pin.h"
 #include "Shell.h"
 #include "Utl.h"
 
@@ -135,8 +136,11 @@ public:
         }
     }
 
+
     static void OnAdvertisingReport(uint8_t *packet)
     {
+        static Pin p(18);
+
         uint8_t type = hci_event_packet_get_type(packet);
 
         if (type == GAP_EVENT_ADVERTISING_REPORT)
@@ -152,8 +156,37 @@ public:
 
             memcpy(report.data, gap_event_advertising_report_get_data(packet), report.len);
 
+            bool ourGuy = (strcmp("28:CD:C1:08:7D:74", bd_addr_to_str(report.address)) == 0) &&
+                          (report.eventType == 0 || report.eventType == 0b0010);
+
             uint32_t hash = HashReport(report);
-            if (seenSet_.contains(hash) == false)
+
+            if (seenSet_.contains(hash) == false && ourGuy)
+            {
+                p.DigitalToggle();
+            }
+
+            if (ourGuy)
+            {
+                static uint64_t timeLast = 0;
+
+                uint64_t timeNow = PAL.Micros();
+
+                if (timeLast != 0)
+                {
+                    uint64_t timeDiff = timeNow - timeLast;
+                    Log(Commas(timeDiff / 1000), " ms since last");
+                }
+
+                // p.DigitalToggle();
+                Log("[", TimestampFromUs(PAL.Micros()), "]: Our guy, hash (", ToHex(hash), ") seen? ", seenSet_.contains(hash) ? "yes" : "no");
+                LogBlob(report.data, report.len);
+                LogNL();
+
+                timeLast = timeNow;
+            }
+
+            if (seenSet_.contains(hash) == false && ourGuy)
             {
                 auto count = pipe_.Count();
 
@@ -165,10 +198,6 @@ public:
                         Evm::QueueWork("BleObserver::OnAdvertisingReport", OnAdvertisingReportEvm);
                     }
                 }
-            }
-            else
-            {
-                // Log("Skipped");
             }
         }
     }
