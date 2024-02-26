@@ -91,7 +91,9 @@ public:
     // Public Interface
     /////////////////////////////////////////////////////////////////
 
-    static void Start(function<void(const AdReport &report)> cbFn, vector<Filter> filterList = {})
+    static void Start(function<void(const AdReport &report)> cbFn,
+                      vector<Filter>                         filterList = {},
+                      bool                                   deDup      = false)
     {
         Stop();
 
@@ -114,6 +116,7 @@ public:
             // capture state
             cbFn_ = cbFn;
             filterList_ = filterList;
+            deDup_ = deDup;
 
             // Do some one-time adjustments to the filter
             PreprocessFilterList(filterList_);
@@ -138,6 +141,7 @@ public:
     static void Stop()
     {
         ted_.DeRegisterForTimedEvent();
+        reportLast_ = {};
 
         if (!started_) return;
         started_ = false;
@@ -178,18 +182,39 @@ private:
 
             gap_event_advertising_report_get_address(packet, report.address);
             memcpy(report.addrStr, bd_addr_to_str(report.address), sizeof(report.addrStr));
-
             report.eventType    = gap_event_advertising_report_get_advertising_event_type(packet);
             report.addressType  = gap_event_advertising_report_get_address_type(packet);
             report.rssi         = gap_event_advertising_report_get_rssi(packet);
             report.len          = gap_event_advertising_report_get_data_length(packet);
-
-            memcpy(report.data, gap_event_advertising_report_get_data(packet), report.len);
+            memcpy(report.dataBuf, gap_event_advertising_report_get_data(packet), report.len);
 
             // Do filtering
-            bool match = FilterMatch(report, filterList_);
+            bool process = FilterMatch(report, filterList_);
 
-            if (match)
+            // De-Dup maybe
+            if (process && deDup_)
+            {
+                bool isDup = false;
+
+                if (reportLast_.len != report.len)
+                {
+                    isDup = false;
+                }
+                else
+                {
+                    isDup = memcmp(&reportLast_.dataBuf, &report.dataBuf, report.len) == 0;
+                }
+
+                if (isDup == false)
+                {
+                    reportLast_ = report;
+                }
+
+                process = !isDup;
+            }
+
+            // process
+            if (process)
             {
                 // pass upward if not already an event ascending
                 auto count = pipe_.Count();
@@ -310,7 +335,7 @@ private:
         uint8_t len = 0;
 
         ad_context_t context;
-        for (ad_iterator_init(&context, report.len, report.data);
+        for (ad_iterator_init(&context, report.len, report.dataBuf);
              ad_iterator_has_more(&context);
              ad_iterator_next(&context))
         {
@@ -518,6 +543,10 @@ private:
 
     // filter
     inline static vector<Filter> filterList_;
+
+    // de-dup
+    inline static AdReport reportLast_;
+    inline static bool deDup_ = false;
 
     inline static TimedEventHandlerDelegate ted_;
 
