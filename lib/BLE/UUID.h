@@ -38,7 +38,7 @@ public:
         ReverseBytesInternal();
     }
 
-    int GetBitCount()
+    int GetBitCount() const
     {
         int retVal = 0;
 
@@ -130,17 +130,17 @@ public:
         return retVal;
     }
 
-    uint8_t *GetBytes()
+    uint8_t *GetBytes() const
     {
         return (uint8_t *)&buf_;
     }
 
-    uint8_t GetBytesLen()
+    uint8_t GetBytesLen() const
     {
         return GetBitCount() == 16 ? 2 : 16;
     }
 
-    vector<uint8_t> GetByteList()
+    vector<uint8_t> GetByteList() const
     {
         vector<uint8_t> byteList;
 
