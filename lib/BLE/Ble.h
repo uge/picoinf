@@ -17,4 +17,13 @@ public:
 
     using Gap = BleGap;
     using Gatt = BleGatt;
+
+private:
+
+    static void OnHciReady();
+    static void PacketHandlerHCI(uint8_t   packet_type,
+                                 uint16_t  channel,
+                                 uint8_t  *packet,
+                                 uint16_t  size);
+
 };

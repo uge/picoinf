@@ -1,5 +1,5 @@
 #include "Ble.h"
-
+#include "BleObserver.h"
 #include "Evm.h"
 #include "Log.h"
 #include "PAL.h"
@@ -19,20 +19,21 @@ static btstack_packet_callback_registration_t hciEventCallbackRegistration;
 static volatile bool initDone = false;
 
 
-static void OnHciReady()
+void Ble::OnHciReady()
 {
-    // in interrupt context still, but should be fine
+    // in interrupt context still
     BleGap::OnReady();
     BleGatt::OnReady();
+    BleObserver::OnReady();
 
     initDone = true;
 }
 
 // HCI, GAP, and general BTstack events
-static void PacketHandlerHCI(uint8_t   packet_type,
-                             uint16_t  channel,
-                             uint8_t  *packet,
-                             uint16_t  size)
+void Ble::PacketHandlerHCI(uint8_t   packet_type,
+                           uint16_t  channel,
+                           uint8_t  *packet,
+                           uint16_t  size)
 {
     if (packet_type != HCI_EVENT_PACKET)
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BleAdvertisingDataFormatter.h"
+#include "Evm.h"
 #include "KMessagePassing.h"
 #include "Pin.h"
 #include "Shell.h"
@@ -15,6 +16,7 @@ using namespace std;
 
 
 static void dump_advertisement_data(const uint8_t * adv_data, uint8_t adv_size);
+
 
 class Ble;
 
@@ -52,30 +54,47 @@ public:
     {
         if (started_) return;
 
-        // scan_type – 0 = passive, 1 = active
-        // scan_interval – range 0x0004..0x4000, unit 0.625 ms
-        // scan_window – range 0x0004..0x4000, unit 0.625 ms
-        // scanning_filter_policy – 0 = all devices, 1 = all from whitelist
-        // uint8_t scan_type, uint16_t scan_interval, uint16_t scan_window
+        if (ready_ == false)
+        {
+            // can only get called after BLE available, which might not
+            // have happened yet.  we want to support application not
+            // knowing that detail.
 
-        // Active scanning, 100% (scan interval = scan window)
-        gap_set_scan_parameters(1, 48, 48);
+            // We know that by the time Evm comes around, BLE is available
+            ted_.SetCallback(Start);
+            ted_.RegisterForTimedEvent(0);
+        }
+        else
+        {
+            started_ = true;
 
-        gap_start_scan();
+            // scan_type – 0 = passive, 1 = active
+            // scan_interval – range 0x0004..0x4000, unit 0.625 ms
+            // scan_window – range 0x0004..0x4000, unit 0.625 ms
+            // scanning_filter_policy – 0 = all devices, 1 = all from whitelist
+            // uint8_t scan_type, uint16_t scan_interval, uint16_t scan_window
 
-        ted_.SetCallback([]{
-            ClearCache();
-        });
-        ted_.RegisterForTimedEventInterval(CACHE_EXPIRY_SECS * 1000);
+            // Active scanning, 100% (scan interval = scan window)
+            gap_set_scan_parameters(1, 48, 48);
+
+            gap_start_scan();
+
+            ted_.SetCallback([]{
+                ClearCache();
+            });
+            ted_.RegisterForTimedEventInterval(CACHE_EXPIRY_SECS * 1000);
+        }
     }
 
     static void Stop()
     {
+        ted_.DeRegisterForTimedEvent();
+
         if (!started_) return;
+        started_ = false;
 
         gap_stop_scan();
 
-        ted_.DeRegisterForTimedEvent();
         ClearCache();
     }
 
@@ -84,6 +103,20 @@ public:
         IrqLock lock;
         seenSet_.clear();
         seenAddrSet_.clear();
+    }
+
+
+private:
+
+    /////////////////////////////////////////////////////////////////
+    // Runtime Events
+    /////////////////////////////////////////////////////////////////
+
+    inline static bool ready_ = false;
+
+    static void OnReady()
+    {
+        ready_ = true;
     }
 
 
