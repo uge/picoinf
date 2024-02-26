@@ -35,19 +35,25 @@ public:
 
     struct AdReport
     {
+        friend class BleObserver;
+
         AdReport()
         {
             // make sure any holes in the structure are zero for hashing
             memset(this, 0, sizeof(AdReport));
+            data = &dataBuf[0];
         }
 
-        bd_addr_t address;
-        char      addrStr[6*3]; // 12:45:78:01:34:67\0
-        uint8_t   addressType;
-        uint8_t   eventType;
-        int8_t    rssi;
-        uint8_t   len;
-        uint8_t   data[BleAdvertisingDataFormatter::ADV_BYTES];
+        bd_addr_t  address;
+        char       addrStr[6*3]; // 12:45:78:01:34:67\0
+        uint8_t    addressType;
+        uint8_t    eventType;
+        int8_t     rssi;
+        uint8_t    len;
+        uint8_t   *data;
+
+    private:
+        uint8_t dataBuf[BleAdvertisingDataFormatter::ADV_BYTES];
     };
 
     struct Filter
@@ -57,9 +63,9 @@ public:
             enum class Type : uint8_t
             {
                 AD_TYPE,
-                // MAC,
+                MFR_DATA_SIZE,
+                DEVICE_ADDR,
                 UUID16,
-                // MFR_DATA_SIZE,
                 DEVICE_NAME,
             };
 
@@ -67,15 +73,15 @@ public:
             Type type;
 
             // attribute value, depending on type
-            AdType eventType;
-            UUID uuid;
-            string deviceName;
+            AdType  eventType;
+            string  deviceAddr;
+            UUID    uuid;
+            uint8_t mfrDataSize;
+            string  deviceName;
         };
 
         // list of attributes to filter against
         vector<Attr> attrList;
-        
-        bool filterDups = false;
     };
 
 
@@ -154,6 +160,9 @@ private:
 
         while (pipe_.Get(report, 0))
         {
+            // re-point pointer after having been copied around
+            report.data = &report.dataBuf[0];
+
             cbFn_(report);
         }
     }
@@ -168,6 +177,7 @@ private:
             AdReport report;
 
             gap_event_advertising_report_get_address(packet, report.address);
+            memcpy(report.addrStr, bd_addr_to_str(report.address), sizeof(report.addrStr));
 
             report.eventType    = gap_event_advertising_report_get_advertising_event_type(packet);
             report.addressType  = gap_event_advertising_report_get_address_type(packet);
@@ -181,9 +191,6 @@ private:
 
             if (match)
             {
-                // finalize structure
-                memcpy(report.addrStr,bd_addr_to_str(report.address), sizeof(report.addrStr));
-
                 // pass upward if not already an event ascending
                 auto count = pipe_.Count();
 
@@ -321,6 +328,29 @@ private:
         return pair{ retVal, len };
     }
 
+    static bool MatchMfrDataSize(const AdReport &report, uint8_t mfrDataSize)
+    {
+        static const uint8_t TYPE = 0xFF;
+
+        auto [data, len] = GetDataByType(report, TYPE);
+
+        bool retVal = data && len == mfrDataSize;
+
+        return retVal;
+    }
+
+    static bool MatchDeviceAddr(const AdReport &report, const string &deviceAddr)
+    {
+        bool retVal = false;
+
+        if (deviceAddr.size() == sizeof(report.addrStr) - 1)
+        {
+            retVal = memcmp(report.addrStr, deviceAddr.c_str(), sizeof(report.addrStr)) == 0;
+        }
+
+        return retVal;
+    }
+
     static bool MatchUuid16(const AdReport &report, const UUID &uuid)
     {
         static const uint8_t BT_DATA_UUID16_ALL   = 0x03;
@@ -380,6 +410,20 @@ private:
             if (attr.type == Filter::Attr::Type::AD_TYPE)
             {
                 if ((uint8_t)attr.eventType == report.eventType)
+                {
+                    ++countMatch;
+                }
+            }
+            else if (attr.type == Filter::Attr::Type::MFR_DATA_SIZE)
+            {
+                if (MatchMfrDataSize(report, attr.mfrDataSize))
+                {
+                    ++countMatch;
+                }
+            }
+            else if (attr.type == Filter::Attr::Type::DEVICE_ADDR)
+            {
+                if (MatchDeviceAddr(report, attr.deviceAddr))
                 {
                     ++countMatch;
                 }
