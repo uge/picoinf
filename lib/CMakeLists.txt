@@ -86,6 +86,7 @@ add_subdirectory(${LIB_PICO}/Signal)
 target_link_libraries(LibPico
     pico_stdlib
     pico_rand
+    hardware_pwm
     FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap3
     tinyusb_device

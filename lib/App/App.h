@@ -13,7 +13,7 @@
 // #include "MPSL.h"
 #include "PAL.h"
 #include "Pin.h"
-// #include "PWM.h"
+#include "PWM.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "USB.h"
@@ -50,6 +50,7 @@ public:
         LogSetupShell();
         PALSetupShell();
         PinSetupShell();
+        PWM::SetupShell();
         TimelineSetupShell();
         UartSetupShell();
         UtlSetupShell();
