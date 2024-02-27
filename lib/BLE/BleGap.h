@@ -57,7 +57,7 @@ public:
     /////////////////////////////////////////////////////////////////
 
     // Must be in the range of 20ms - 10.2s
-    static void SetAdvertisingRateParams(uint16_t intervalMinMs, uint16_t intervalMaxMs)
+    static void SetAdvertisingInterval(uint16_t intervalMinMs, uint16_t intervalMaxMs = 0)
     {
         static const uint16_t INTERVAL_MIN =     20;
         static const uint16_t INTERVAL_MAX = 10'200;
@@ -362,6 +362,8 @@ private:
 
     static void SetupShell()
     {
+        // configure
+
         Shell::AddCommand("ble.gap.set.nc", [](vector<string> argList){
             SetNonConnectedAdvertising(argList[0] == "true", argList[1] == "true");
         }, { .argCount = 2, .help = "Set Non-Connected Advertising <connectable> <scannable>" });
@@ -370,11 +372,15 @@ private:
             SetConnectedAdvertising(argList[0] == "true", argList[1] == "true");
         }, { .argCount = 2, .help = "Set Connected Advertising <connectable> <scannable>" });
 
-        Shell::AddCommand("ble.gap.init", [](vector<string> argList){
-            SetConnectedAdvertising(argList[0] == "true", argList[1] == "true");
-        }, { .argCount = 2, .help = "" });
+        Shell::AddCommand("ble.gap.interval", [](vector<string> argList){
+            uint16_t minMs = atoi(argList[0].c_str());
+            uint16_t maxMs = atoi(argList[1].c_str());
+
+            SetAdvertisingInterval(minMs, maxMs);
+        }, { .argCount = 2, .help = "Set Ad Interval <minMs> [<maxMs>]" });
 
 
+        // start / stop
 
         Shell::AddCommand("ble.gap.start", [](vector<string> argList){
             Log("BleGap::StartAdvertising");
@@ -387,8 +393,8 @@ private:
         }, { .argCount = 0, .help = "Stop Advertising" });
 
 
+        // change ad data at runtime
 
-        // purely testing to see what I'm able to do
         Shell::AddCommand("ble.gap.pri.data", [](vector<string> argList){
             string &name = argList[0];
             
@@ -410,32 +416,6 @@ private:
 
             gap_scan_response_set_data((uint8_t)byteListSr_.size(), (uint8_t *)byteListSr_.data());
         }, { .argCount = 1, .help = "set secondary webpage = <x>" });
-
-        Shell::AddCommand("ble.gap.params", [](vector<string> argList){
-            uint16_t adv_int_min = 200;
-            uint16_t adv_int_max = 200;
-            uint8_t adv_type = (uint8_t)AdvertisingType::ADV_IND;
-            bd_addr_t null_addr;
-            memset(null_addr, 0, 6);
-            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-        }, { .argCount = 0, .help = "gap_advertisements_set_params()" });
-
-        Shell::AddCommand("ble.gap.params2", [](vector<string> argList){
-            uint16_t adv_int_min = 200;
-            uint16_t adv_int_max = 200;
-            uint8_t adv_type = (uint8_t)AdvertisingType::ADV_SCAN_IND;
-            bd_addr_t null_addr;
-            memset(null_addr, 0, 6);
-            gap_advertisements_set_params(adv_int_min, adv_int_max, adv_type, 0, null_addr, 0x07, 0x00);
-        }, { .argCount = 0, .help = "gap_advertisements_set_params()" });
-
-        Shell::AddCommand("ble.gap.enable", [](vector<string> argList){
-            gap_advertisements_enable(argList[0] == "true");
-        }, { .argCount = 1, .help = "gap_advertisements_enable(<x>)" });
-
-        Shell::AddCommand("ble.gap.enable.hci", [](vector<string> argList){
-            hci_send_cmd(&hci_le_set_advertise_enable, argList[0] == "true");
-        }, { .argCount = 1, .help = "hci_send_cmd(&hci_le_set_advertise_enable, <x>)" });
     }
 
 

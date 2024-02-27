@@ -194,6 +194,11 @@ void Ble::PacketHandlerHCI(uint8_t   packet_type,
     {
         BleObserver::OnAdvertisingReport(packet);
     }
+    else if (eventType == L2CAP_EVENT_TRIGGER_RUN)
+    {
+        // triggered from gap_request_connection_parameter_update()
+        // Log("L2CAP_EVENT_TRIGGER_RUN");
+    }
     // else if (eventType == )
     // {
     //     Log("");
@@ -242,6 +247,7 @@ void Ble::Init()
     LogNL();
     Log("BLE Init Complete");
 }
+
 
 void Ble::SetupShell()
 {
