@@ -47,9 +47,44 @@ inline uint16_t Flip2(uint16_t val)
 }
 
 // we are a little endian device, net is big endian, so flip
+inline uint32_t ntohl(uint32_t val)
+{
+    return Flip4(val);
+}
+
 inline uint16_t ntohs(uint16_t val)
 {
     return Flip2(val);
+}
+
+inline uint32_t htonl(uint32_t val)
+{
+    return Flip4(val);
+}
+
+inline uint16_t htons(uint16_t val)
+{
+    return Flip2(val);
+}
+
+inline uint32_t ToBigEndian(uint32_t val)
+{
+    return htonl(val);
+}
+
+inline uint16_t ToBigEndian(uint16_t val)
+{
+    return htons(val);
+}
+
+inline uint32_t ToLittleEndian(uint32_t val)
+{
+    return val;
+}
+
+inline uint16_t ToLittleEndian(uint16_t val)
+{
+    return val;
 }
 
 
@@ -211,7 +246,7 @@ inline char *ToString(uint32_t num)
     return buf;
 }
 
-inline string ToHex(uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
+inline string ToHex(const uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
 {
     const char *hexList = "0123456789ABCDEF";
 
@@ -254,6 +289,69 @@ inline string ToHex(uint16_t val, bool addPrefix = true)
 inline string ToHex(uint8_t val, bool addPrefix = true)
 {
     return ToHex(&val, 1, addPrefix);
+}
+
+inline string ToBin(uint8_t *buf,
+                    uint8_t  bufLen,
+                    bool     addPrefix = true)
+{
+    const char *binList = "01";
+
+    string retVal;
+
+    if (buf && bufLen)
+    {
+        if (addPrefix)
+        {
+            retVal = "0x";
+        }
+
+        string sepByte = "";
+        string sepNibble = "";
+
+        for (int i = 0; i < bufLen; ++i)
+        {
+            retVal += sepByte;
+
+            uint8_t byte = buf[i];
+
+            for (int j = 0; j < 4; ++j)
+            {
+                char bit = binList[byte & 0x01];
+                byte >>= 1;
+
+                retVal.push_back(bit);
+            }
+
+            retVal += sepNibble;
+
+            for (int j = 0; j < 4; ++j)
+            {
+                char bit = binList[byte & 0x01];
+                byte >>= 1;
+
+                retVal.push_back(bit);
+            }
+            
+            sepByte = "'";
+        }
+    }
+
+    return retVal;
+}
+
+inline string ToBin(uint32_t val, bool addPrefix = true)
+{
+    uint32_t valBigEndian = htonl(val);
+
+    return ToBin((uint8_t *)&valBigEndian, 4, addPrefix);
+}
+
+inline string ToBin(uint16_t val, bool addPrefix = true)
+{
+    uint16_t valBigEndian = htons(val);
+
+    return ToBin((uint8_t *)&valBigEndian, 2, addPrefix);
 }
 
 inline string Commas(string num)
