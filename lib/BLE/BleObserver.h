@@ -29,6 +29,7 @@ public:
     enum class AdType : uint8_t
     {
         ADV_IND  = 0,
+        ADV_NONCONN_IND = 2,
         SCAN_RSP = 4,
     };
 
