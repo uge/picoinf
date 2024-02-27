@@ -4,25 +4,26 @@
 
 
 BleService::BleService(string name, string uuid)
-: name_(name)
-, uuid_(uuid)
 {
     // Nothing to do
+
+    state_->name_ = name;
+    state_->uuid_ = uuid;
 }
 
 BleCharacteristic &BleService::GetOrMakeCharacteristic(string name,
                                                        string uuid,
                                                        string properties)
 {
-    if (ctcMap_.contains(name) == false)
+    if (state_->ctcMap_.contains(name) == false)
     {
-        ctcMap_.emplace(name, BleCharacteristic{ name, uuid, properties} );
+        state_->ctcMap_.emplace(name, BleCharacteristic{ name, uuid, properties} );
     }
 
-    return ctcMap_.at(name);
+    return state_->ctcMap_.at(name);
 }
 
 map<string, BleCharacteristic> &BleService::GetCtcList()
 {
-    return ctcMap_;
+    return state_->ctcMap_;
 }

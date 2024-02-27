@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <memory>
 using namespace std;
 
 
@@ -20,40 +21,39 @@ public:
 public:
 
     BleCharacteristic(string name, string uuid, string properties)
-    : name_(name)
-    , uuid_(uuid)
-    , properties_(properties)
     {
-        // Nothing to do
+        state_->name_       = name;
+        state_->uuid_       = uuid;
+        state_->properties_ = properties;
     }
 
     BleCharacteristic &SetCallbackOnRead(CbRead cbFnRead)
     {
-        cbFnRead_ = cbFnRead;
+        state_->cbFnRead_ = cbFnRead;
 
         return *this;
     }
 
     CbRead GetCallbackOnRead()
     {
-        return cbFnRead_;
+        return state_->cbFnRead_;
     }
 
     BleCharacteristic &SetCallbackOnWrite(CbWrite cbFnWrite)
     {
-        cbFnWrite_ = cbFnWrite;
+        state_->cbFnWrite_ = cbFnWrite;
 
         return *this;
     }
 
     CbWrite GetCallbackOnWrite()
     {
-        return cbFnWrite_;
+        return state_->cbFnWrite_;
     }
 
     BleCharacteristic &SetCallbackOnSubscribe(CbSubscribe cbFnSubscribe)
     {
-        cbFnSubscribed_ = cbFnSubscribe;
+        state_->cbFnSubscribed_ = cbFnSubscribe;
 
         return *this;
     }
@@ -65,34 +65,34 @@ public:
 
     BleCharacteristic &SetCallbackTriggerNotify(CbTriggerNotify cbFnTriggerNotify)
     {
-        cbFnTriggerNotify_ = cbFnTriggerNotify;
+        state_->cbFnTriggerNotify_ = cbFnTriggerNotify;
 
         return *this;
     }
 
     void Notify()
     {
-        cbFnTriggerNotify_();
+        state_->cbFnTriggerNotify_();
     }
 
     string GetName()
     {
-        return name_;
+        return state_->name_;
     }
 
     string GetUuid()
     {
-        return uuid_;
+        return state_->uuid_;
     }
 
     string GetProperties()
     {
-        return properties_;
+        return state_->properties_;
     }
 
     bool GetIsSubscribed()
     {
-        return subscriptionEnabled_;
+        return state_->subscriptionEnabled_;
     }
 
 
@@ -100,22 +100,27 @@ private:
 
     void OnSubscribe(bool enabled)
     {
-        subscriptionEnabled_ = enabled;
+        state_->subscriptionEnabled_ = enabled;
 
-        cbFnSubscribed_(enabled);
+        state_->cbFnSubscribed_(enabled);
     }
 
 
 private:
 
-    string  name_;
-    string  uuid_;
-    string  properties_;
+    struct State
+    {
+        string  name_;
+        string  uuid_;
+        string  properties_;
 
-    bool subscriptionEnabled_ = false;
+        bool subscriptionEnabled_ = false;
 
-    CbRead          cbFnRead_          = [](vector<uint8_t> &byteList){};
-    CbWrite         cbFnWrite_         = [](vector<uint8_t> &byteList){};
-    CbSubscribe     cbFnSubscribed_    = [](bool enabled){};
-    CbTriggerNotify cbFnTriggerNotify_ = []{};
+        CbRead          cbFnRead_          = [](vector<uint8_t> &byteList){};
+        CbWrite         cbFnWrite_         = [](vector<uint8_t> &byteList){};
+        CbSubscribe     cbFnSubscribed_    = [](bool enabled){};
+        CbTriggerNotify cbFnTriggerNotify_ = []{};
+    };
+
+    shared_ptr<State> state_ = make_shared<State>();
 };

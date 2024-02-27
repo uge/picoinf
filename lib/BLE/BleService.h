@@ -4,6 +4,7 @@
 
 #include <string>
 #include <map>
+#include <memory>
 using namespace std;
 
 
@@ -19,17 +20,22 @@ public:
 
     string GetName()
     {
-        return name_;
+        return state_->name_;
     }
 
     string GetUuid()
     {
-        return uuid_;
+        return state_->uuid_;
     }
 
 private:
 
-    string name_;
-    string uuid_;
-    map<string, BleCharacteristic> ctcMap_;
+    struct State
+    {
+        string name_;
+        string uuid_;
+        map<string, BleCharacteristic> ctcMap_;
+    };
+
+    shared_ptr<State> state_ = make_shared<State>();
 };
