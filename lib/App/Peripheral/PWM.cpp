@@ -16,8 +16,6 @@ PWM::PWM(uint8_t pin)
 {
     gpio_set_function(pin_, GPIO_FUNC_PWM);
     pwm_set_wrap(slice_, TOP);
-
-    Log("pin ", pin_, ", slice ", slice_, ", channel ", channel_);
 }
 
 void PWM::SetPulseWidthPct(uint8_t pct)
@@ -36,8 +34,6 @@ void PWM::SetPulseWidthPct(uint8_t pct)
     {
         counterVal_ = (uint16_t)round((double)pct * MAX_COUNTER / 100.0);
     }
-
-    Log("pct ", pct, ", counter: ", Commas(counterVal_));
 
     ApplyIfOn();
 }
