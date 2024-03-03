@@ -39,14 +39,14 @@ public:
         LogNL();
         NukeAppStorageFlashIfFirmwareChanged();
         EvmInit();
-        JSONMsgRouterInit();
+        JSONMsgRouter::Init();
 
         // Shell
         Shell::Init();
         Ble::SetupShell();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
-        JSONMsgRouterSetupShell();
+        JSONMsgRouter::SetupShell();
         LogSetupShell();
         PALSetupShell();
         PinSetupShell();
@@ -58,7 +58,7 @@ public:
         WorkSetupShell();
 
         // JSON
-        JSONMsgRouterSetupJSON();
+        JSONMsgRouter::SetupJSON();
         PALSetupJSON();
         Shell::SetupJSON();
     }

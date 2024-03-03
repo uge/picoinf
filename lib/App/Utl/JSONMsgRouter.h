@@ -26,28 +26,47 @@ class JSONMsgRouter
 
 public:
 
-    static void Enable()
+    // An abstract interface class lets callers send and receive messages,
+    // adapted to their particular needs.
+    class Iface
     {
-        Disable();
+    public:
 
-        auto [ok, id] = UartAddLineStreamCallback(UART::UART_USB, [](const string &line){
-            OnLine(line);
-        });
-
-        id_ = id;
-    }
-
-    static void Disable()
-    {
-        if (id_ != 0)
+        void Route(const string &jsonStr) const
         {
-            UartRemoveLineStreamCallback(uart_, id_);
-
-            id_ = 0;
+            JSONMsgRouter::OnLine(*this, jsonStr);
         }
+
+        void Send(function<void(JsonObject &out)> handler) const
+        {
+            JSONMsgRouter::Send(*this, handler);
+        }
+
+        void OnReceive(const string &jsonStr) const
+        {
+            cbFnOnReceive_(jsonStr);
+        }
+
+        void SetOnReceiveCallback(function<void(const string &jsonStr)> cbFn)
+        {
+            cbFnOnReceive_ = cbFn;
+        }
+
+    private:
+        function<void(const string &jsonStr)> cbFnOnReceive_ = [](const string &jsonStr){};
+    };
+
+public:
+
+    static void RegisterHandler(string type, Handler cbHandle)
+    {
+        handlerDataList_.push_back({type, cbHandle});
     }
 
-    static void OnLine(const string &jsonStr)
+
+private:
+
+    static void OnLine(const Iface &iface, const string &jsonStr)
     {
         // default to outputting to regular serial so
         // all code following this can log normally
@@ -87,7 +106,7 @@ public:
                         size_t size = measureJson(outJsonDoc);
                         if (size > OBSERVED_EMPTY_MESSAGE_SIZE)
                         {
-                            JSON::SerializeToUart(outJsonDoc, uart_);
+                            iface.OnReceive(JSON::Serialize(outJsonDoc));
 
                             replySent = true;
                         }
@@ -100,8 +119,7 @@ public:
 
                 if (handled == false)
                 {
-                    Log("ERR: message was not handled");
-                    JSON::SerializeToUart(inJsonDoc);
+                    Log("ERR: message was not handled: \"", JSON::Serialize(inJsonDoc), "\"");
                 }
 
                 // ensure every received message is replied to, either by the
@@ -111,44 +129,17 @@ public:
                     // auto ack
                     outJson["type"] = "ACK";
                     outJson["inType"] = inJson["type"];
-                    JSON::SerializeToUart(outJsonDoc, uart_);
+                    iface.OnReceive(JSON::Serialize(outJsonDoc));
                 }
             }
             else
             {
-                Log("ERR: message has no type");
-                JSON::SerializeToUart(inJsonDoc);
+                Log("ERR: message has no type: \"", JSON::Serialize(inJsonDoc), "\"");
             }
         }
     }
 
-    // designed to allow handlers to let other handlers fill out sub-json messages
-    static void InternalRoute(function<void(JsonObject &theirInJson)> preHandler, JsonObject &theirOutJson)
-    {
-        // create json object to get filled out and used as the faked inbound message
-        auto theirInJsonDoc = JSON::GetObj();
-        auto theirInJson    = theirInJsonDoc.to<JsonObject>();
-
-        // let the handler fill out the details of the faked inbound
-        preHandler(theirInJson);
-
-        // route to handlers
-        if (theirInJson.containsKey("type"))
-        {
-            const char *typeStr = theirInJson["type"];
-
-            for (auto &[type, cbHandle] : handlerDataList_)
-            {
-                if (type == typeStr)
-                {
-                    // actually call handler
-                    cbHandle(theirInJson, theirOutJson);
-                }
-            }
-        }
-    }
-
-    static void Send(function<void(JsonObject &out)> handler)
+    static void Send(const Iface &iface, function<void(JsonObject &out)> handler)
     {
         // create json object to send
         auto jsonDoc = JSON::GetObj();
@@ -162,7 +153,7 @@ public:
 
         if (size > OBSERVED_EMPTY_MESSAGE_SIZE)
         {
-            JSON::SerializeToUart(jsonDoc, uart_);
+            iface.OnReceive(JSON::Serialize(jsonDoc));
         }
         else
         {
@@ -170,17 +161,14 @@ public:
         }
     }
 
-    static void RegisterHandler(string type, Handler cbHandle)
-    {
-        handlerDataList_.push_back({type, cbHandle});
-    }
+public:
+
+    static void Init();
+    static void SetupShell();
+    static void SetupJSON();
 
 
 private:
 
-    inline static uint8_t id_ = 0;
-    inline static UART uart_ = UART::UART_USB;
-
-public:
     inline static vector<HandlerData> handlerDataList_;
 };

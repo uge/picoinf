@@ -8,21 +8,24 @@
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void JSONMsgRouterInit()
+void JSONMsgRouter::Init()
 {
-    Timeline::Global().Event("JSONMsgRouterInit");
-    
-    JSONMsgRouter::Enable();
+    Timeline::Global().Event("JSONMsgRouter::Init");
 }
 
-void JSONMsgRouterSetupShell()
+void JSONMsgRouter::SetupShell()
 {
-    Timeline::Global().Event("JSONRouterSetupShell");
+    Timeline::Global().Event("JSONRouter::SetupShell");
+
+    static JSONMsgRouter::Iface router_;
+    router_.SetOnReceiveCallback([](const string &jsonStr){
+        Log(jsonStr);
+    });
 
     Shell::AddCommand("json.send", [](vector<string> argList){
         if (argList.size() >= 1)
         {
-            JSONMsgRouter::Send([&](const auto &out){
+            router_.Send([&](const auto &out){
                 out["type"] = argList[0];
 
                 for (int i = 1; i + 1 < (int)argList.size(); i += 2)
@@ -47,9 +50,9 @@ void JSONMsgRouterSetupShell()
     }, { .argCount = 0, .help = "list json routing"});
 }
 
-void JSONMsgRouterSetupJSON()
+void JSONMsgRouter::SetupJSON()
 {
-    Timeline::Global().Event("JSONMsgRouterSetupJSON");
+    Timeline::Global().Event("JSONMsgRouter::SetupJSON");
 
     JSONMsgRouter::RegisterHandler("REQ_PING", [](auto &in, auto &out){
         out["type"] = "REP_PING";

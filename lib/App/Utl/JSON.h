@@ -44,30 +44,41 @@ public:
         return DynamicJsonDocument{ JSON_DOC_BYTE_ALLOC };
     }
 
-    static void SerializeToUart(JSONObj &json, UART uart = UartCurrent())
+    static string Serialize(JSONObj &json)
     {
-        class WriterToUart
+        class WriterToString
         {
         public:
             size_t write(uint8_t c)
             {
-                UartSend(&c, 1);
+                jsonStr += c;
 
                 return 1;
             }
 
             size_t write(const uint8_t *buf, size_t length)
             {
-                UartSend(buf, length);
+                for (size_t i = 0; i < length; ++i)
+                {
+                    jsonStr += (char)buf[i];
+                }
 
                 return length;
             }
+
+            string GetString()
+            {
+                return jsonStr;
+            }
+
+        private:
+            string jsonStr;
         };
 
-        UartTarget target(uart);
-        WriterToUart writer;
+        WriterToString writer;
         serializeJson(json, writer);
-        LogNL();
+
+        return writer.GetString();
     }
 };
 
