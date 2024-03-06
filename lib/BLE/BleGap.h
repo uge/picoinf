@@ -221,19 +221,9 @@ public:
         }
     }
 
-
-private:
-
-    /////////////////////////////////////////////////////////////////
-    // Runtime Events
-    /////////////////////////////////////////////////////////////////
-
-    static void OnReady()
+    static void Report()
     {
-        Timeline::Global().Event("BleGap::OnReady");
-
-        StartAdvertising();
-
+        LogNL();
         Log("BLE Advertising Started");
         Log("Connected?  |  Connectable  |  Scannable");
         Log("    No      |       ",
@@ -247,6 +237,21 @@ private:
             scannableDuringConnection_ ? 'X' : '-',
             "    ");
         LogNL();
+    }
+
+
+private:
+
+    /////////////////////////////////////////////////////////////////
+    // Runtime Events
+    /////////////////////////////////////////////////////////////////
+
+    static void OnReady()
+    {
+        Timeline::Global().Event("BleGap::OnReady");
+
+        StartAdvertising();
+        Report();
     }
 
     // assumes single connection
