@@ -8,7 +8,7 @@ bool Shell::Eval(string cmd)
 {
     bool didEval = false;
 
-    cmd = trim(cmd);
+    cmd = Trim(cmd);
 
     if (cmd.length())
     {

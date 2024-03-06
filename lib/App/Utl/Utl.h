@@ -92,23 +92,23 @@ inline uint16_t ToLittleEndian(uint16_t val)
 // https://stackoverflow.com/questions/216823/how-to-trim-a-stdstring
 
 // trim from end of string (right)
-inline std::string& rtrim(std::string& s, string t = " \t\n\r\f\v")
+inline std::string& RTrim(std::string& s, string t = " \t\n\r\f\v")
 {
     s.erase(s.find_last_not_of(t.c_str()) + 1);
     return s;
 }
 
 // trim from beginning of string (left)
-inline std::string& ltrim(std::string& s, string t = " \t\n\r\f\v")
+inline std::string& LTrim(std::string& s, string t = " \t\n\r\f\v")
 {
     s.erase(0, s.find_first_not_of(t.c_str()));
     return s;
 }
 
 // trim from both ends of string (right then left)
-inline std::string& trim(std::string& s, string t = " \t\n\r\f\v")
+inline std::string& Trim(std::string& s, string t = " \t\n\r\f\v")
 {
-    return ltrim(rtrim(s, t), t);
+    return LTrim(RTrim(s, t), t);
 }
 
 inline string& toupper(string &s)
@@ -156,7 +156,7 @@ vector<string> Split(string str,
     auto process = [&](string token){
         if (trimmed)
         {
-            token = trim(token);
+            token = Trim(token);
         }
 
         if (!token.empty() || allowEmpty)
@@ -828,6 +828,24 @@ inline string ToString(const vector<uint8_t> &byteList)
     for (const auto &b : byteList)
     {
         retVal.push_back(b);
+    }
+
+    return retVal;
+}
+
+inline string Join(const vector<string> &valList, const string &sep)
+{
+    string retVal;
+
+    if (valList.size())
+    {
+        retVal = valList[0];
+    }
+
+    for (size_t i = 1; i < valList.size(); ++i)
+    {
+        retVal += sep;
+        retVal += valList[i];
     }
 
     return retVal;
