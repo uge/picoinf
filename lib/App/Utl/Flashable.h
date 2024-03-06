@@ -4,6 +4,24 @@
 #include "Log.h"
 
 
+class FlashableIdMaker
+{
+public:
+    static uint16_t GetNextId()
+    {
+        uint16_t retVal = nextId_;
+
+        ++nextId_;
+
+        return retVal;
+    }
+
+private:
+
+    inline static uint16_t nextId_ = 1;
+};
+
+
 template <typename T>
 class Flashable
 : public T
@@ -15,9 +33,9 @@ public:
     {
         if (id == -1)
         {
-            id_ = to_string(nextId_);
+            id_ = to_string(FlashableIdMaker::GetNextId());
 
-            ++nextId_;
+            Log("Flashable obj size ", sizeof(T), " has id ", id_);
         }
         else
         {
@@ -124,8 +142,6 @@ public:
     }
 
 private:
-
-    static inline uint16_t nextId_ = 1;
 
     string id_;
 };
