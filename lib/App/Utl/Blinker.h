@@ -23,13 +23,19 @@ public:
         pin_ = pin;
     }
 
+    void SetOnOffFunctions(function<void()> fnOn, function<void()> fnOff)
+    {
+        fnOn_ = fnOn;
+        fnOff_ = fnOff;
+    }
+
     void SetBlinkOnOffTime(uint64_t onMs, uint64_t offMs)
     {
         onMs_ = onMs;
         offMs_ = offMs;
     }
 
-    void EnableAsyncBlink()
+    void EnableAsyncBlink(uint32_t count = 0)
     {
         // could be running on timer or not
         // could be on or off at the moment
@@ -42,12 +48,23 @@ public:
 
         Off();
         ted_.RegisterForTimedEvent(0);
+
+        if (count == 0)
+        {
+            asyncCountRemaining_ = -1;
+        }
+        else
+        {
+            asyncCountRemaining_ = count + 1;
+        }
     }
 
     void DisableAsyncBlink()
     {
         Off();
         ted_.DeRegisterForTimedEvent();
+
+        asyncCountRemaining_ = -1;
     }
 
     void Blink(uint32_t count)
@@ -75,19 +92,19 @@ public:
     void On()
     {
         on_ = true;
-        pin_.DigitalWrite(1);
+        fnOn_();
     }
 
     void Off()
     {
         on_ = false;
-        pin_.DigitalWrite(0);
+        fnOff_();
     }
 
     void Toggle()
     {
-        on_ = !on_;
-        pin_.DigitalToggle();
+        if (on_) { Off(); }
+        else     { On();  }
     }
 
 private:
@@ -96,9 +113,21 @@ private:
     {
         if (on_ == false)
         {
-            On();
+            bool takeAction = true;
 
-            ted_.RegisterForTimedEvent(onMs_);
+            if (asyncCountRemaining_ != -1)
+            {
+                --asyncCountRemaining_;
+
+                takeAction = asyncCountRemaining_ != 0;
+            }
+
+            if (takeAction)
+            {
+                On();
+
+                ted_.RegisterForTimedEvent(onMs_);
+            }
         }
         else
         {
@@ -113,8 +142,13 @@ private:
 
     Pin pin_;
 
-    uint64_t onMs_  = 100;
-    uint64_t offMs_ = 100;
+    uint64_t onMs_  = 250;
+    uint64_t offMs_ = 750;
+
+    function<void()> fnOn_  = [this]{ pin_.DigitalWrite(1); };
+    function<void()> fnOff_ = [this]{ pin_.DigitalWrite(0); };
+
+    int64_t asyncCountRemaining_ = -1;
 
     bool on_ = false;
 
