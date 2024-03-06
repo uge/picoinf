@@ -382,9 +382,9 @@ private:
         static const uint8_t BT_DATA_UUID16_ALL   = 0x03;
         static const uint8_t BT_DATA_UUID16_SOME  = 0x02;
 
-        bool retVal = false;
+        static vector<uint8_t> typeList = { BT_DATA_UUID16_ALL, BT_DATA_UUID16_SOME };
 
-        vector<uint8_t> typeList = { BT_DATA_UUID16_ALL, BT_DATA_UUID16_SOME };
+        bool retVal = false;
 
         for (auto type : typeList)
         {
