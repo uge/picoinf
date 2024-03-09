@@ -34,8 +34,6 @@ public:
         if (id == -1)
         {
             id_ = to_string(FlashableIdMaker::GetNextId());
-
-            Log("Flashable obj size ", sizeof(T), " has id ", id_);
         }
         else
         {
