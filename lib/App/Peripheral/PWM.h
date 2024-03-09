@@ -7,11 +7,12 @@ class PWM
 {
     static const uint32_t CLOCK_FREQ     =   125'000'000;
     static const uint8_t  NS_PER_TICK    = 1'000'000'000 / CLOCK_FREQ;      // 8 ns per tick
-    static const uint16_t MAX_COUNTER    =        65'535;
+    static const uint16_t MAX_COUNTER    =        5'001;
     static const uint16_t TOP            = MAX_COUNTER - 1;
-    static const uint32_t NS_PER_PERIOD  = NS_PER_TICK * TOP;               // 524,272 ns = 524 us
+    static const uint32_t NS_PER_PERIOD  = NS_PER_TICK * TOP;               // 40,000 ns = 40 us
+    static const uint32_t PERIOD_FREQ    = 1'000'000'000 / NS_PER_PERIOD;   // 25,000 (25 kHz)
     static const uint8_t  NS_PER_COUNTER = TOP * NS_PER_TICK / MAX_COUNTER; //       7 ns
-    static const uint16_t NS_PER_PCT     = 0.01 * NS_PER_PERIOD;            //   5,242 ns = 5.242 us
+    static const uint16_t NS_PER_PCT     = 0.01 * NS_PER_PERIOD;            //   400 ns = 0.4 us
 
 
 public:

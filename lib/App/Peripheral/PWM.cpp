@@ -32,7 +32,7 @@ void PWM::SetPulseWidthPct(uint8_t pct)
     }
     else
     {
-        counterVal_ = (uint16_t)round((double)pct * MAX_COUNTER / 100.0);
+        counterVal_ = (uint16_t)round((double)pct * TOP / 100.0);
     }
 
     ApplyIfOn();
@@ -80,6 +80,7 @@ void PWM::SetupShell()
         Log("MAX_COUNTER   : ", Commas(MAX_COUNTER));
         Log("TOP           : ", Commas(TOP));
         Log("NS_PER_PERIOD : ", Commas(NS_PER_PERIOD));
+        Log("PERIOD_FREQ   : ", Commas(PERIOD_FREQ));
         Log("NS_PER_COUNTER: ", Commas(NS_PER_COUNTER));
         Log("NS_PER_PCT    : ", Commas(NS_PER_PCT));
     }, { .argCount = 0, .help = "" });
