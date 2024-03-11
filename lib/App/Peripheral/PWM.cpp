@@ -18,7 +18,7 @@ PWM::PWM(uint8_t pin)
     pwm_set_wrap(slice_, TOP);
 }
 
-void PWM::SetPulseWidthPct(uint8_t pct)
+void PWM::SetPulseWidthPct(double pct)
 {
     pct = Clamp(0, pct, 100);
 
@@ -32,7 +32,7 @@ void PWM::SetPulseWidthPct(uint8_t pct)
     }
     else
     {
-        counterVal_ = (uint16_t)round((double)pct * TOP / 100.0);
+        counterVal_ = (uint16_t)round(pct * TOP / 100.0);
     }
 
     ApplyIfOn();

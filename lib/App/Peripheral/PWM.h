@@ -18,7 +18,7 @@ class PWM
 public:
 
     PWM(uint8_t pin);
-    void SetPulseWidthPct(uint8_t pct);
+    void SetPulseWidthPct(double pct);
     void On();
     void Off();
 
