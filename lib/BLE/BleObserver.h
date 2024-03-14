@@ -139,6 +139,11 @@ public:
         }
     }
 
+    static void ClearDupFilter()
+    {
+        reportLast_ = AdReport{};
+    }
+
     static void Stop()
     {
         ted_.DeRegisterForTimedEvent();
