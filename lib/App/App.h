@@ -85,6 +85,7 @@ public:
 
         // start whole application
         KTask<2000> task("Application", []{
+            Log("Application running");
             Evm::MainLoop();
         }, 10);
 
