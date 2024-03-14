@@ -8,14 +8,16 @@ class Blinker
 public:
     Blinker()
     {
-        ted_.SetCallback([this]{
-            OnTimeout();
-        }, name_.c_str());
+        SetName(name_);
     }
 
     void SetName(string name)
     {
         name_ = name;
+
+        ted_.SetCallback([this]{
+            OnTimeout();
+        }, name_.c_str());
     }
 
     void SetPin(Pin pin)

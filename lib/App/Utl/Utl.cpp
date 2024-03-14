@@ -42,7 +42,7 @@ void UtlSetupShell()
     blinker.SetName("TIMER_BLINKER_UTL");
 
     Shell::AddCommand("blinker.set.pin", [](vector<string> argList){
-        uint8_t pin = atoi(argList[1].c_str());
+        uint8_t pin = atoi(argList[0].c_str());
 
         blinker.SetPin({pin});
     }, { .argCount = 1, .help = "set <pin>"});
