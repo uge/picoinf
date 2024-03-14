@@ -21,7 +21,7 @@ def Main():
     fdScript.truncate()
     fdScript.write(
 """si 1
-speed 4000
+speed 2000
 device RP2040_M0_0
 connect
 loadfile %s
