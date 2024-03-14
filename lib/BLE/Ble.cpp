@@ -225,6 +225,7 @@ void Ble::Init()
     // hci_dump_init(hci_dump_embedded_stdout_get_instance());
 
     // init underlying drivers
+    uint64_t timeStart = PAL.Millis();
     if (cyw43_arch_init())
     {
         Log("ERR: CYW43 Init Failed");
@@ -243,9 +244,10 @@ void Ble::Init()
     {
         PAL.Delay(10);
     }
+    uint64_t timeDiff = PAL.Millis() - timeStart;
 
     LogNL();
-    Log("BLE Init Complete");
+    Log("BLE Init Complete in ", Commas(timeDiff), " ms");
 }
 
 
