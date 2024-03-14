@@ -1,6 +1,7 @@
 #include "PAL.h"
 #include "Log.h"
 #include "Timeline.h"
+#include "VersionStr.h"
 #include "WDT.h"
 
 #include "pico/time.h"
@@ -294,6 +295,7 @@ void PALInit()
     LogNL();
     Log("Reset reason: ", PAL.GetResetReason());
     Log("Device ID   : ", PAL.GetAddress());
+    Log("Version     : ", Version::GetVersion());
 }
 
 void PALSetupShell()

@@ -1,4 +1,5 @@
 #include "Utl.h"
+#include "VersionStr.h"
 #include "Timeline.h"
 
 
@@ -75,5 +76,9 @@ void UtlSetupShell()
     Shell::AddCommand("blinker.async.off", [](vector<string> argList){
         blinker.DisableAsyncBlink();
     }, { .argCount = 0, .help = ""});
+
+    Shell::AddCommand("version", [](vector<string> argList){
+        Log(Version::GetVersion());
+    }, { .argCount = 0, .help = "Display the build version"});
 }
 
