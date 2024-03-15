@@ -130,7 +130,7 @@ public:
         bool retVal = false;
 
         string cs = callsign;
-        trim(cs);
+        Trim(cs);
         toupper(cs);
 
         if (cs == callsign &&
