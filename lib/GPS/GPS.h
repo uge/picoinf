@@ -227,6 +227,9 @@ struct Fix2D
     uint8_t  lngMin = 0;
     double   lngSec = 0;
     int32_t lngDegMillionths = 0;
+
+    static const uint8_t MAIDENHEAD_GRID_LEN = 6;
+    string maidenheadGrid;
 };
 
 struct Fix3D
@@ -650,6 +653,8 @@ public:
         auto dmsLat = ToDegMinSec(data_.latStr, data_.latNorthSouth);
         auto dmsLng = ToDegMinSec(data_.lngStr, data_.lngEastWest);
 
+        string maidenheadGrid = ToMaidenheadGrid(dmsLat.degMillionths, dmsLng.degMillionths);
+
         Fix2D retVal;
 
         *(FixTime *)&retVal = GetFixTime();
@@ -663,6 +668,8 @@ public:
         retVal.lngMin = dmsLng.min;
         retVal.lngSec = dmsLng.sec;
         retVal.lngDegMillionths = dmsLng.degMillionths;
+
+        retVal.maidenheadGrid = maidenheadGrid;
 
         return retVal;
     }
@@ -823,7 +830,9 @@ private:
     }
 
 
-public:
+
+private:
+
     /////////////////////////////////////////////////////////////////
     // Converters
     /////////////////////////////////////////////////////////////////
@@ -868,9 +877,6 @@ public:
 
         return retVal;
     }
-
-
-private:
 
     /* 
      * Formats

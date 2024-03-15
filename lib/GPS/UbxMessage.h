@@ -2,8 +2,6 @@
 
 #include <cstdint>
 
-#include <zephyr/net/net_ip.h>
-
 #include "Format.h"
 
 
