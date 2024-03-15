@@ -209,7 +209,7 @@ void Shell::ShellCmdExecute(const string &line)
 
 void Shell::Init()
 {
-    Timeline::Global().Event("Shell::PreInit");
+    Timeline::Global().Event("Shell::Init");
 
     Shell::AddCommand(".", [](vector<string>){
         Shell::RepeatPriorCommand();
