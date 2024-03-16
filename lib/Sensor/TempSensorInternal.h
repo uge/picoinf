@@ -1,18 +1,18 @@
 #pragma once
 
-#include "Log.h"
-#include "ZephyrSensor.h"
+#include "ADCInternal.h"
 
-// drivers/sensor/rpi_pico_temp/rpi_pico_temp.c
 
 class TempSensorInternal
 {
 public:
     static double GetTempC()
     {
-        ZephyrSensor sensor("dietemp");
+        uint16_t raw = ADC::ReadTemperature();
 
-        double tempC = sensor.FetchAndGet(SENSOR_CHAN_DIE_TEMP);
+        double mv = raw * 3.3f / 4096;
+
+        double tempC = 27.0f - (mv - 0.706f) / 0.001721f;
 
         return tempC;
     }
