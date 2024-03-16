@@ -57,7 +57,9 @@ extern bool                UartRemoveLineStreamCallback(UART uart, uint8_t id = 
 
 
 
-
+// Enable/Disable
+extern void UartEnable(UART uart);
+extern void UartDisable(UART uart);
 
 // Turn on or off
 extern void UartClearRxBuffer(UART uart);

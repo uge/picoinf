@@ -455,6 +455,100 @@ bool UartRemoveLineStreamCallback(UART uart, uint8_t id)
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// UART Enable / Disable
+////////////////////////////////////////////////////////////////////////////////
+
+static void UartInitDevice(uart_inst_t *uart, uint8_t pinRx, uint8_t pinTx, uint32_t baudRate)
+{
+    // https://lucidar.me/en/serialib/most-used-baud-rates-table/
+
+    // static const uint32_t BAUD_RATE = 9600;
+    // static const uint32_t BAUD_RATE = 57600;
+    // static const uint32_t BAUD_RATE = 76800;
+
+    // Set the TX and RX pins by using the function select on the GPIO
+    // Set datasheet for more information on function select
+    gpio_set_function(pinTx, GPIO_FUNC_UART);
+    gpio_set_function(pinRx, GPIO_FUNC_UART);
+
+    // do init
+    uart_init(uart, baudRate);
+
+    // Turn off FIFO's - we want to do this character by character
+    // uart_set_fifo_enabled(uart, false);
+}
+
+static void UartDeInitDevice(uart_inst_t *uart, uint8_t pinRx, uint8_t pinTx)
+{
+    uart_deinit(uart);
+
+    gpio_set_function(pinRx, GPIO_FUNC_NULL);
+    gpio_set_function(pinTx, GPIO_FUNC_NULL);
+}
+
+static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
+{
+    // Set up a RX interrupt
+    // We need to set up the handler first
+    // Select correct interrupt for the UART we are using
+    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+
+    // And set up and enable the interrupt handlers
+    if (irq_get_exclusive_handler(UART_IRQ) == nullptr)
+    {
+        irq_set_exclusive_handler(UART_IRQ, handler);
+    }
+    irq_set_enabled(UART_IRQ, true);
+
+    // Now enable the UART to send interrupts - RX and TX
+    uart_set_irq_enables(uart, true, true);
+}
+
+static void UartDeInitDeviceInterrupts(uart_inst_t *uart)
+{
+    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+
+    irq_set_enabled(UART_IRQ, false);
+}
+
+
+
+void UartEnable(UART uart)
+{
+    IrqLock lock;
+
+    // set up raw IRQ handling
+    // then trigger interrupts to kick off any already-queued data
+
+    if (uart == UART::UART_0)
+    {
+        UartInitDevice(uart0, 1, 0, 76800);
+        UartInitDeviceInterrupts(uart0, UartInterruptHandlerUart0);
+        irq_set_pending(UART0_IRQ);
+    }
+    else if (uart == UART::UART_1)
+    {
+        UartInitDevice(uart1, 9, 8, 9600);
+        UartInitDeviceInterrupts(uart1, UartInterruptHandlerUart1);
+        irq_set_pending(UART1_IRQ);
+    }
+}
+
+void UartDisable(UART uart)
+{
+    IrqLock lock;
+
+    UartClearTxBuffer(uart);
+    UartClearRxBuffer(uart);
+
+    if (uart == UART::UART_1)
+    {
+        UartDeInitDevice(uart1, 9, 8);
+        UartDeInitDeviceInterrupts(uart1);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // UART Clear Buffer Interface
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -479,47 +573,20 @@ void UartClearTxBuffer(UART uart)
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// UART Baud Interface
+////////////////////////////////////////////////////////////////////////////////
+
+// TODO -- implement
+uint32_t UartGetBaud(UART uart)
+{
+    return 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-static void UartInitDevice(uart_inst_t *uart, uint8_t pinRx, uint8_t pinTx)
-{
-    // https://lucidar.me/en/serialib/most-used-baud-rates-table/
-
-    // static const uint32_t BAUD_RATE = 9600;
-    // static const uint32_t BAUD_RATE = 57600;
-    static const uint32_t BAUD_RATE = 76800;
-
-    // Set the TX and RX pins by using the function select on the GPIO
-    // Set datasheet for more information on function select
-    gpio_set_function(pinTx, GPIO_FUNC_UART);
-    gpio_set_function(pinRx, GPIO_FUNC_UART);
-
-    // do init
-    uart_init(uart, BAUD_RATE);
-
-    // Turn off FIFO's - we want to do this character by character
-    // uart_set_fifo_enabled(uart, false);
-}
-
-static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
-{
-    // Set up a RX interrupt
-    // We need to set up the handler first
-    // Select correct interrupt for the UART we are using
-    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
-
-    // And set up and enable the interrupt handlers
-    // irq_set_exclusive_handler(UART_IRQ, on_uart_rx);
-    irq_set_exclusive_handler(UART_IRQ, handler);
-    irq_set_enabled(UART_IRQ, true);
-
-    // Now enable the UART to send interrupts - RX only
-    // uart_set_irq_enables(uart, true, false);
-    uart_set_irq_enables(uart, true, true);
-}
-
-#include "Timeline.h"
 void UartInit()
 {
     Timeline::Global().Event("UartInit");
@@ -538,15 +605,9 @@ void UartInit()
         UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR.AddData(data);
     });
 
-    // set up raw IRQ handling
-    UartInitDevice(uart0, 1, 0);
-    UartInitDevice(uart1, 9, 8);
-    UartInitDeviceInterrupts(uart0, UartInterruptHandlerUart0);
-    UartInitDeviceInterrupts(uart1, UartInterruptHandlerUart1);
-
-    // trigger interrupts to kick off any already-queued data
-    irq_set_pending(UART0_IRQ);
-    irq_set_pending(UART1_IRQ);
+    // Enable
+    UartEnable(UART::UART_0);
+    UartEnable(UART::UART_1);
 
     // Set up USB serial interface
     cdc0->SetCallbackOnRx(UsbOnRx);
@@ -590,10 +651,10 @@ void UartSetupShell()
         Log("  - queued      : ", UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR.Size());
     }, { .argCount = 0, .help = "UART stats"});
 
-    // Shell::AddCommand("uart.uart1", [](vector<string> argList){
-    //     if (argList[0] == "on") { UartEnable(UART::UART_1);  }
-    //     else                    { UartDisable(UART::UART_1); }
-    // }, { .argCount = 1, .help = "UART1 <on/off>"});
+    Shell::AddCommand("uart.uart1", [](vector<string> argList){
+        if (argList[0] == "on") { UartEnable(UART::UART_1);  }
+        else                    { UartDisable(UART::UART_1); }
+    }, { .argCount = 1, .help = "UART1 <on/off>"});
 
     Shell::AddCommand("uart.uart1.clear.rx", [](vector<string> argList){
         PAL.DelayBusy(2000);
