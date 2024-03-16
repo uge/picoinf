@@ -227,11 +227,9 @@ void PlatformAbstractionLayer::CaptureResetReasonAndClear()
     }
 }
 
-double PlatformAbstractionLayer::MeasureVCC()
+bool PlatformAbstractionLayer::IsPicoW()
 {
-    // TODO
-    // return RP2040::MeasureVCC();
-    return 0;
+    return isPicoW_;
 }
 
 
