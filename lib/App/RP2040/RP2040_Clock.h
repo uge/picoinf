@@ -5,9 +5,6 @@
 #include <unordered_map>
 #include <utility>
 
-#include <zephyr/drivers/clock_control.h>
-#include <zephyr/sys/time_units.h>
-
 #include "hardware/regs/intctrl.h"
 #include "hardware/structs/clocks.h"
 #include "hardware/structs/pll.h"
@@ -15,7 +12,6 @@
 #include "hardware/clocks.h"
 #include "hardware/i2c.h"
 #include "hardware/pll.h"
-#include "rtc.h"    // had to take private copy because rtc->irq->assembly something that didn't build properly
 #include "rosc.h"   // taken from pico-extras
 #include "hardware/irq.h"
 #include "hardware/resets.h"
@@ -25,6 +21,7 @@
 #include "hardware/vreg.h"
 #include "hardware/xosc.h"
 #include "sleep.h"  // taken from pico-extras
+#include "pico/stdlib.h"
 
 #include "KTime.h"
 #include "Log.h"
@@ -75,13 +72,24 @@ class RP2040_Clock
         uint32_t freqCountId;
     };
 
+    // should I play with changing these values?
+    // p. 230-232 shows how, can save power with lower VCO freq
+    // at the expense of jitter, but how much jitter?
+    //   I care about timing bits for WSPR but that's 600ms+ apiece
+    //   I care about USB working.  
+    //     btw, can I enable/disable the pll_usb simply by detecting USB events?
+    //       I might be willing to do elaborate things (like monitor vbus, then enable to wait for detect)
+    //       because running the USB PLL all the time during flight is just pissing power for
+    //       USB which isn't being used.
+
+    // nominal startup state
     inline static vector<PllData> pdList_ = {
         {
             .pll = pll_sys,
             .name = "pll_sys",
             .freq = 125'000'000,
             .refdiv = 1,
-            .vco_freq = 1500 * PICO_MHZ,
+            .vco_freq = 1500 * MHZ,
             .post_div1 = 6,
             .post_div2 = 2,
             .freqCountId = CLOCKS_FC0_SRC_VALUE_PLL_SYS_CLKSRC_PRIMARY,
@@ -91,7 +99,7 @@ class RP2040_Clock
             .name = "pll_usb",
             .freq = 48'000'000,
             .refdiv = 1,
-            .vco_freq = 1200 * PICO_MHZ,
+            .vco_freq = 1200 * MHZ,
             .post_div1 = 5,
             .post_div2 = 5,
             .freqCountId = CLOCKS_FC0_SRC_VALUE_PLL_USB_CLKSRC_PRIMARY,
@@ -113,6 +121,10 @@ class RP2040_Clock
         void Print()
         {
             Log("PLL: ", pllData.name, ", freq: ", Commas(pllData.freq), " (", on ? "on" : "off", ")");
+            Log("  refdiv    = ", Commas(pllData.refdiv));
+            Log("  vco_freq  = ", Commas(pllData.vco_freq));
+            Log("  post_div1 = ", pllData.post_div1);
+            Log("  post_div2 = ", pllData.post_div2);
         }
     };
 
@@ -124,8 +136,16 @@ class RP2040_Clock
         {
             if (pd.pll == pll)
             {
+                // update state
+                pd.freq      = frequency_count_khz(pd.freqCountId) * KHZ;
+                pd.refdiv    = pll->cs & PLL_CS_REFDIV_BITS;
+                pd.vco_freq  = pll->fbdiv_int * XOSC_KHZ * KHZ / pd.refdiv;
+                pd.post_div1 = (pll->prim & PLL_PRIM_POSTDIV1_BITS) >> PLL_PRIM_POSTDIV1_LSB;
+                pd.post_div2 = (pll->prim & PLL_PRIM_POSTDIV2_BITS) >> PLL_PRIM_POSTDIV2_LSB;
+
+                // capture
                 retVal.pllData = pd;
-                retVal.on = frequency_count_khz(pd.freqCountId) != 0;
+                retVal.on = pd.freq != 0;
             }
         }
 
@@ -482,11 +502,11 @@ class RP2040_Clock
         }
         else if (srcStr == "PLL_SYS")
         {
-            retVal.freqSrc = 125'000'000;
+            retVal.freqSrc = GetPllState(pll_sys).pllData.freq;
         }
         else if (srcStr == "PLL_USB")
         {
-            retVal.freqSrc = 48'000'000;
+            retVal.freqSrc = GetPllState(pll_usb).pllData.freq;
         }
 
         if (overlay)
@@ -503,6 +523,7 @@ class RP2040_Clock
     // State Capture and Change
     /////////////////////////////////////////////////////////////////
 
+    // Do I want this?
     static void SetInitialStateConditions()
     {
         // by default, clk_rtc is tied to pll_usb.
@@ -525,6 +546,8 @@ class RP2040_Clock
 
         void Print()
         {
+            LogModeSync();
+
             Log("State:");
 
             for (auto &pllState : pllStateList)
@@ -538,6 +561,8 @@ class RP2040_Clock
                 clockState.Print();
                 LogNL();
             }
+
+            LogModeAsync();
         }
     };
 
@@ -565,6 +590,57 @@ class RP2040_Clock
     static void SetState(State state)
     {
         Timeline::Global().Event("RP2040_CLOCK_SET_STATE_START");
+
+        // scan for pll_sys being modified, if yes, switch clk_sys to be XOSC so
+        // it doesn't halt during the re-adjustment (which shuts off the PLL
+        // before re-init)
+        bool moveClkSys = false;
+        bool moveClkSysBack = false;
+        uint32_t pllFreqNew = 0;
+        for (auto &pllState : state.pllStateList)
+        {
+            // is pll_sys being changed?
+            if (pllState.pllData.pll == pll_sys && pllState.on)
+            {
+                ClockState cState = GetClockState(clk_sys);
+
+                // is clk_sys dependent on pll_sys?
+                if (cState.src    == CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX &&
+                    cState.auxsrc == CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS)
+                {
+                    pllFreqNew = pllState.pllData.vco_freq /
+                                 (pllState.pllData.post_div1 * pllState.pllData.post_div2);
+                    moveClkSys = true;
+                    moveClkSysBack = true;
+                }
+            }
+        }
+
+        // scan to see if clk_sys was moving to something else, if yes, then no need to
+        // point it back to the pll_sys
+        for (auto &clockState : state.clockStateList)
+        {
+            if (clockState.clk == clk_sys && clockState.on)
+            {
+                if (clockState.src    != CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX ||
+                    clockState.auxsrc != CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS)
+                {
+                    moveClkSysBack = false;
+                }
+            }
+        }
+
+        // move clk_sys if required
+        if (moveClkSys)
+        {
+            clock_configure(
+                clk_sys,
+                CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
+                12'000'000,
+                12'000'000
+            );
+        }
 
         // turn things on first to avoid lockup situations
         for (auto &pllState : state.pllStateList)
@@ -595,7 +671,7 @@ class RP2040_Clock
             }
         }
 
-        // then turng things off
+        // then turn things off
         for (auto &clockState : state.clockStateList)
         {
             if (clockState.on == false)
@@ -612,17 +688,27 @@ class RP2040_Clock
             }
         }
 
+        // move clk_sys back if required
+        if (moveClkSysBack)
+        {
+            clock_configure(
+                clk_sys,
+                CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                pllFreqNew,
+                pllFreqNew
+            );
+        }
+
         Timeline::Global().Event("RP2040_CLOCK_SET_STATE_CHANGES_DONE");
 
         // uart probably got messed up along the way, let's restore that
-        uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-        uart_set_baudrate(uart1, UartGetBaud(UART::UART_1));
-
-        uart_set_irq_enables(uart0, true, false);
+        if (UartIsEnabled(UART::UART_0)) { UartEnable(UART::UART_0); }
+        if (UartIsEnabled(UART::UART_1)) { UartEnable(UART::UART_1); }
 
         Timeline::Global().Event("RP2040_CLOCK_SET_STATE_UART_DONE");
 
-        // if the system clock speed changed, help deal with zephyr timing
+        // if the system clock speed changed, help deal with timing
         ClockState csSys = GetClockState(clk_sys);
         KTime::SetScalingFactor((double)csSys.freq / 125'000'000.0);
 
@@ -728,7 +814,7 @@ public:
         pll_init(
             pll_usb,
             1,
-            1200 * PICO_MHZ,
+            1200 * MHZ,
             5,
             5
         );
@@ -759,10 +845,10 @@ public:
 
         pll_deinit(pll_sys);
 
-        uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-        uart_set_baudrate(uart1, UartGetBaud(UART::UART_1));
+        // uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
+        // uart_set_baudrate(uart1, UartGetBaud(UART::UART_1));
 
-        uart_set_irq_enables(uart0, true, false);
+        // uart_set_irq_enables(uart0, true, false);
 
         ClockState csSys = GetClockState(clk_sys);
         KTime::SetScalingFactor((double)csSys.freq / 125'000'000.0);
@@ -818,192 +904,109 @@ public:
     }
 
 
+    // When 12MHz, use XOSC
     //    pll_sys            0  XOSC
-    //    pll_usb            0  XOSC
-    //    clk_ref   12,001,000  XOSC
+    //    pll_usb   48,000,000  XOSC
+    //    clk_ref   12,002,000  XOSC
     //    clk_sys   12,000,000  XOSC
-    //   clk_peri   12,000,000  CLK_SYS
-    //    clk_usb            0  PLL_USB
-    //    clk_adc   12,002,000  XOSC
+    //   clk_peri   12,002,000  XOSC
+    //    clk_usb   48,000,000  PLL_USB
+    //    clk_adc   48,000,000  PLL_USB
+    //    clk_rtc       47,000  XOSC
     //
-    // runs at 4mA idle, 5mA processing UART
-    static void SetClock12MHzNew()
+    // When something else, change pll_sys
+    //    pll_sys    X,000,000  XOSC
+    //    pll_usb   48,000,000  XOSC
+    //    clk_ref   12,000,000  XOSC
+    //    clk_sys    X,000,000  PLL_SYS
+    //   clk_peri    X,000,000  CLK_SYS
+    //    clk_usb   48,000,000  PLL_USB
+    //    clk_adc   48,000,000  PLL_SYS
+    //    clk_rtc       46,000  XOSC
+    static void SetClockMHz(uint32_t mhz)
     {
-        Timeline::Global().Event("RP2040_CLOCK_12");
+        Timeline::Global().Event("RP2040_CLOCK_X");
 
-        clock_configure(
-            clk_sys,
-            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            12'000'000,
-            12'000'000
-        );
+        uint vco, postdiv1, postdiv2;
 
-        clock_configure(
-            clk_peri,
-            0,
-            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-            12'000'000,
-            12'000'000
-        );
-
-        clock_configure(
-            clk_adc,
-            0,
-            CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            12'000'000,
-            12'000'000
-        );
-
-        pll_deinit(pll_sys);
-        pll_deinit(pll_usb);
-
-        uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-        uart_set_baudrate(uart1, UartGetBaud(UART::UART_1));
-
-        uart_set_irq_enables(uart0, true, false);
-
-        ClockState csSys = GetClockState(clk_sys);
-        KTime::SetScalingFactor((double)csSys.freq / 125'000'000.0);
-
-        PrintAll();
-    }
-
-    //    pll_sys            0  XOSC
-    //    pll_usb            0  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys   12,000,000  XOSC
-    //   clk_peri   12,000,000  CLK_SYS
-    //    clk_usb            0  PLL_USB
-    //    clk_adc   12,002,000  XOSC
-    //
-    // runs at 4mA idle, 5mA processing UART
-    static void SetClock12MHzOldMod()
-    {
-        Timeline::Global().Event("RP2040_CLOCK_12");
-
-        // GoToInitialState();
-
-        // set up new state
-        State newState;
-
-        // // shut off pll_sys
-        // PllState psSys = GetPllState(pll_sys);
-        // psSys.on = false;
-        // newState.pllStateList.push_back(psSys);
-
-        // shut off pll_usb (shaves off 3.5mA)
-        PllState psUsb = GetPllState(pll_usb);
-        psUsb.on = false;
-        newState.pllStateList.push_back(psUsb);
-
-        // change clk_sys to be driven by PLL_USB
-        // no observed savings using clk_ref vs using XOSC
-        ClockState csSys = OverlayClockState(clk_sys, {
-            .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csSys);
-
-        // using clk_sys is a 500uA savings over using XOSC
-        // (even though that's what clk_sys is using)
-        ClockState csPeri = OverlayClockState(clk_peri, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csPeri);
-
-        // change clk_adc to be driven by XOSC
-        ClockState csAdc = OverlayClockState(clk_adc, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csAdc);
-
-        if (verbose_)
+        if (mhz == 12)
         {
-            Log("Applying new state for 12MHz");
+            // set up new state
+            State newState;
+
+            PllState psSys = GetPllState(pll_sys);
+            psSys.on = false;
+            newState.pllStateList.push_back(psSys);
+
+            // change clk_sys to be driven by PLL_USB
+            ClockState csSys = OverlayClockState(clk_sys, {
+                .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
+                .freqSrc = 12 * MHZ,
+                .freq    = 12 * MHZ,
+            });
+            newState.clockStateList.push_back(csSys);
+
+            // change clk_peri to be driven by clk_sys at clk_sys's new frequency
+            ClockState csPeri = OverlayClockState(clk_peri, {
+                .src     = 0,
+                .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
+                .freqSrc = 12 * MHZ,
+                .freq    = 12 * MHZ,
+            });
+            newState.clockStateList.push_back(csPeri);
+
+            Log("Applying new state for ", mhz, " MHz");
             newState.Print();
-            PrintCount();
+
+            // apply
+            GoToInitialState();
+            SetState(newState);
         }
-
-        // apply
-        SetState(newState);
-    }
-
-    //    pll_sys            0  XOSC
-    //    pll_usb            0  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys   12,000,000  XOSC
-    //   clk_peri   12,000,000  CLK_SYS
-    //    clk_usb            0  PLL_USB
-    //    clk_adc   12,002,000  XOSC
-    //
-    // runs at 4mA idle, 5mA processing UART
-    static void SetClock12MHzOld()
-    {
-        Timeline::Global().Event("RP2040_CLOCK_12");
-
-        GoToInitialState();
-
-        // set up new state
-        State newState;
-
-        // shut off pll_sys
-        PllState psSys = GetPllState(pll_sys);
-        psSys.on = false;
-        newState.pllStateList.push_back(psSys);
-
-        // shut off pll_usb (shaves off 3.5mA)
-        PllState psUsb = GetPllState(pll_usb);
-        psUsb.on = false;
-        newState.pllStateList.push_back(psUsb);
-
-        // change clk_sys to be driven by PLL_USB
-        // no observed savings using clk_ref vs using XOSC
-        ClockState csSys = OverlayClockState(clk_sys, {
-            .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csSys);
-
-        // using clk_sys is a 500uA savings over using XOSC
-        // (even though that's what clk_sys is using)
-        ClockState csPeri = OverlayClockState(clk_peri, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csPeri);
-
-        // change clk_adc to be driven by XOSC
-        ClockState csAdc = OverlayClockState(clk_adc, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csAdc);
-
-        if (verbose_)
+        // Figure out PLL configuration to get to requested MHz
+        else if (check_sys_clock_khz(mhz * 1000, &vco, &postdiv1, &postdiv2))
         {
-            Log("Applying new state for 12MHz");
-            newState.Print();
-            PrintCount();
-        }
+            // set up new state
+            State newState;
 
-        // apply
-        SetState(newState);
+            PllState psSys = GetPllState(pll_sys);
+            psSys.on = true;
+            psSys.pllData.vco_freq = vco;
+            psSys.pllData.post_div1 = postdiv1;
+            psSys.pllData.post_div2 = postdiv2;
+            newState.pllStateList.push_back(psSys);
+
+            // change clk_sys to be driven by PLL_USB
+            ClockState csSys = OverlayClockState(clk_sys, {
+                .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                .freqSrc = mhz * MHZ,
+                .freq    = mhz * MHZ,
+            });
+            newState.clockStateList.push_back(csSys);
+
+            // change clk_peri to be driven by clk_sys at clk_sys's new frequency
+            ClockState csPeri = OverlayClockState(clk_peri, {
+                .src     = 0,
+                .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
+                .freqSrc = mhz * MHZ,
+                .freq    = mhz * MHZ,
+            });
+            newState.clockStateList.push_back(csPeri);
+
+            Log("Applying new state for ", mhz, " MHz");
+            newState.Print();
+
+            // apply
+            GoToInitialState();
+            SetState(newState);
+        }
+        else
+        {
+            Log("SetClockMHz: ERR Could not set freq to ", mhz, " MHz");
+        }
     }
+
 
 
     //    pll_sys            0  XOSC
@@ -1145,10 +1148,10 @@ public:
 
 
         // Go to sleep
-        Pin::Configure(0, 15, Pin::Type::OUTPUT, 0);
-        Pin::Configure(0, 15, Pin::Type::OUTPUT, 1);
+        Pin::Configure(15, Pin::Type::OUTPUT, 0);
+        Pin::Configure(15, Pin::Type::OUTPUT, 1);
         __wfi();
-        Pin::Configure(0, 15, Pin::Type::OUTPUT, 0);
+        Pin::Configure(15, Pin::Type::OUTPUT, 0);
 
         // restore state
         scb_hw->scr = cacheScr;
@@ -1167,6 +1170,8 @@ public:
 
     static void PrintAll()
     {
+        LogModeSync();
+
         Log("name        freq         src");
         Log("----------------------------");
 
@@ -1210,10 +1215,9 @@ public:
         if (verbose_)
         {
             LogNL();
-            GetPllState(pll_sys).Print();
-            GetPllState(pll_usb).Print();
+            GetPllState(pll_sys).Print();  LogNL();
+            GetPllState(pll_usb).Print();  LogNL();
 
-            LogNL();
             GetClockState(clk_ref).Print();  LogNL();
             GetClockState(clk_sys).Print();  LogNL();
             GetClockState(clk_peri).Print();  LogNL();
@@ -1225,6 +1229,8 @@ public:
             GetClockState(clk_gpout2).Print();  LogNL();
             GetClockState(clk_gpout3).Print();  LogNL();
         }
+
+        LogModeAsync();
     }
 
     static void PrintSources()
@@ -1294,9 +1300,20 @@ static void DoNothingSilent() { }
             SetClock48MHz();
         }, { .argCount = 0, .help = "" });
 
-        Shell::AddCommand("clk.freq.12", [](vector<string> argList) {
-            // SetClock12MHz();
-        }, { .argCount = 0, .help = "" });
+        Shell::AddCommand("clk.freq", [](vector<string> argList) {
+            SetClockMHz(atol(argList[0].c_str()));
+        }, { .argCount = 1, .help = "Set non-USB clocks to X MHz" });
+
+        Shell::AddCommand("clk.stop", [](vector<string> argList) {
+            string clock = argList[0];
+
+            if (clock == "ref")  { clock_stop(clk_ref);  }
+            if (clock == "sys")  { clock_stop(clk_sys);  }
+            if (clock == "peri") { clock_stop(clk_peri); }
+            if (clock == "usb")  { clock_stop(clk_usb);  }
+            if (clock == "adc")  { clock_stop(clk_adc);  }
+            if (clock == "rtc")  { clock_stop(clk_rtc);  }
+        }, { .argCount = 1, .help = "clock_stop(clk_<x>)" });
 
         Shell::AddCommand("clk.disable.rosc", [](vector<string> argList) {
             rosc_disable();
@@ -1375,10 +1392,10 @@ static void DoNothingSilent() { }
 
 
             // Go to sleep
-            Pin::Configure(0, 15, Pin::Type::OUTPUT, 0);
-            Pin::Configure(0, 15, Pin::Type::OUTPUT, 1);
+            Pin::Configure(15, Pin::Type::OUTPUT, 0);
+            Pin::Configure(15, Pin::Type::OUTPUT, 1);
             __wfi();
-            Pin::Configure(0, 15, Pin::Type::OUTPUT, 0);
+            Pin::Configure(15, Pin::Type::OUTPUT, 0);
 
             // restore state
             scb_hw->scr = cacheScr;
@@ -1441,14 +1458,14 @@ static void DoNothingSilent() { }
 
             while (false)
             {
-                Pin::Configure(0, 25, Pin::Type::OUTPUT, 1);
+                Pin::Configure(25, Pin::Type::OUTPUT, 1);
                 PAL.DelayBusy(100);
-                Pin::Configure(0, 25, Pin::Type::OUTPUT, 0);
+                Pin::Configure(25, Pin::Type::OUTPUT, 0);
                 PAL.DelayBusy(100);
             }
 
-            uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-            uart_set_irq_enables(uart0, true, false);
+            // uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
+            // uart_set_irq_enables(uart0, true, false);
 
             KTime::SetScalingFactor(12.0 / 125.0);
 
@@ -1579,11 +1596,15 @@ static void DoNothingSilent() { }
 
         }, { .argCount = 0, .help = "" });
 
-        Shell::AddCommand("clk.stop", [](vector<string> argList) {
-            clock_stop(clk_rtc);
-            // clock_stop(clk_usb); // prevents USB plug-in event
-        }, { .argCount = 0, .help = "" });
 
+        // why am I not using dormant?
+        // p. 219, 225
+        // apparently there's a hello_sleep and hello_dormant example
+            // yeah not sure I remember why I was trying sleep and not dormant
+
+
+
+        // do more with this, I don't remember learning if this was useful or not
         Shell::AddCommand("clk.wake.regs", [](vector<string> argList) {
             Log("WAKE_EN0: ", Format::ToBin(clocks_hw->wake_en0));
             Log("WAKE_EN1: ", Format::ToBin(clocks_hw->wake_en1));
