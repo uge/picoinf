@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <cmath>
 #include <functional>
 #include <vector>
 using namespace std;
@@ -12,7 +13,7 @@ using namespace std;
 /*
 
 Class designed to abstract away clock speed changes on the device
-vs what Zephyr is able to handle with its (seemingly) fixed
+vs what RTOS is able to handle with its (seemingly) fixed
 clock speed representation.
 
 Core libraries that actually interface with the kernel time APIs
@@ -41,7 +42,7 @@ public:
         uint32_t ms = us_;
         if (ms != portMAX_DELAY)
         {
-            ms = us_ / 1'000;
+            ms = round(us_ / 1'000 * scalingFactor_);
         }
 
         return ms;
