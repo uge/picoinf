@@ -76,6 +76,11 @@ public:
         return *this;
     }
 
+    void ReInit()
+    {
+        Configure(pin_, pin__data_[pin_].type_, pin__data_[pin_].outputLevel_);
+    }
+
     ~Pin()
     {
         if (PinValid(pin_))
