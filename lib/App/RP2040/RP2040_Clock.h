@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 #include <unordered_map>
@@ -903,6 +904,103 @@ public:
         SetState(newState);
     }
 
+    struct PllConfig
+    {
+        double mhz;
+        uint refdiv;
+        uint fbdiv;
+        uint vco_freq;
+        uint post_div1;
+        uint post_div2;
+
+        void Print()
+        {
+            Log("MHz      : ", mhz);
+            Log("refdiv   : ", refdiv);
+            Log("vco_freq : ", Commas(vco_freq));
+            Log("post_div1: ", post_div1);
+            Log("post_div2: ", post_div2);
+
+            // Log(mhz, ", ", fbdiv, ", ", post_div1, ", ", post_div2, ", ", refdiv);
+        }
+    };
+
+    // 15.3 MHz is the lowest you can go with a PLL on a 12MHz input freq
+    // 
+    // adapted from vcocalc.py in pico-sdk
+    static PllConfig GetPllConfigForFreq(double mhz, bool lowPowerPriority, bool mustBeExact)
+    {
+        PllConfig retVal;
+
+        static const double XOSC_FREQ_MHZ = 12;
+
+        Range fbdiv_range = lowPowerPriority ? Range(16, 320) : Range(320, 16);
+        Range postdiv_range = Range(1, 7);
+
+        uint16_t ref_min = 5;
+        uint16_t refdiv_min = 1;
+        uint16_t refdiv_max = 63;
+        Range refdiv_range = Range(refdiv_min,
+                                   max(refdiv_min,
+                                       min(refdiv_max, (uint16_t)(XOSC_FREQ_MHZ / ref_min))));
+
+        uint16_t vco_min =  750;
+        uint16_t vco_max = 1600;
+
+        // Log("fbdiv_range  : ", fbdiv_range.GetStart(), " - ", fbdiv_range.GetEnd());
+        // Log("postdiv_range: ", postdiv_range.GetStart(), " - ", postdiv_range.GetEnd());
+        // Log("refdiv_range : ", refdiv_range.GetStart(), " - ", refdiv_range.GetEnd());
+        // LogNL();
+
+        double best_margin = mhz;
+
+        for (uint8_t refdiv : refdiv_range)
+        {
+            for (uint16_t fbdiv : fbdiv_range)
+            {
+                double vco = XOSC_FREQ_MHZ / refdiv * fbdiv;
+                // Log(vco, " = ", XOSC_FREQ_MHZ, " / ", refdiv, " * ", fbdiv);
+
+                if (vco < vco_min || vco > vco_max)
+                {
+                    continue;
+                }
+
+                // pd1 is inner loop so that we prefer higher ratios of pd1:pd2
+                for (uint8_t pd2 : postdiv_range)
+                {
+                    for (uint8_t pd1 : postdiv_range)
+                    {
+                        double out = vco / pd1 / pd2;
+                        // Log(out, " = ", vco, " / ", pd1, " / ", pd2);
+
+                        double margin = fabs(out - mhz);
+                        if (margin < best_margin)
+                        {
+                            retVal.mhz = out;
+                            retVal.refdiv = refdiv;
+                            retVal.fbdiv = fbdiv;
+                            retVal.vco_freq = (uint16_t)(XOSC_FREQ_MHZ / refdiv * fbdiv) * MHZ;
+                            retVal.post_div1 = pd1;
+                            retVal.post_div2 = pd2;
+
+                            best_margin = margin;
+                            // Log("Got a new best (margin ", margin, " MHz diff)");
+                            // retVal.Print();
+                        }
+                    }
+                }
+            }
+        }
+
+        if (retVal.mhz != mhz && mustBeExact)
+        {
+            retVal = PllConfig{};
+        }
+
+        return retVal;
+    }
+
 
     // When 12MHz, use XOSC
     //    pll_sys            0  XOSC
@@ -923,11 +1021,9 @@ public:
     //    clk_usb   48,000,000  PLL_USB
     //    clk_adc   48,000,000  PLL_SYS
     //    clk_rtc       46,000  XOSC
-    static void SetClockMHz(uint32_t mhz)
+    static void SetClockMHz(double mhz, bool lowPowerPriority, bool mustBeExact)
     {
         Timeline::Global().Event("RP2040_CLOCK_X");
-
-        uint vco, postdiv1, postdiv2;
 
         if (mhz == 12)
         {
@@ -963,47 +1059,53 @@ public:
             GoToInitialState();
             SetState(newState);
         }
-        // Figure out PLL configuration to get to requested MHz
-        else if (check_sys_clock_khz(mhz * 1000, &vco, &postdiv1, &postdiv2))
+        else 
         {
-            // set up new state
-            State newState;
+            // Figure out PLL configuration to get to requested MHz
+            PllConfig pc = GetPllConfigForFreq(mhz, lowPowerPriority, mustBeExact);
 
-            PllState psSys = GetPllState(pll_sys);
-            psSys.on = true;
-            psSys.pllData.vco_freq = vco;
-            psSys.pllData.post_div1 = postdiv1;
-            psSys.pllData.post_div2 = postdiv2;
-            newState.pllStateList.push_back(psSys);
+            if (pc.refdiv != 0)
+            {
+                // set up new state
+                State newState;
 
-            // change clk_sys to be driven by PLL_USB
-            ClockState csSys = OverlayClockState(clk_sys, {
-                .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-                .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
-                .freqSrc = mhz * MHZ,
-                .freq    = mhz * MHZ,
-            });
-            newState.clockStateList.push_back(csSys);
+                PllState psSys = GetPllState(pll_sys);
+                psSys.on = true;
+                psSys.pllData.refdiv = pc.refdiv;
+                psSys.pllData.vco_freq = pc.vco_freq;
+                psSys.pllData.post_div1 = pc.post_div1;
+                psSys.pllData.post_div2 = pc.post_div2;
+                newState.pllStateList.push_back(psSys);
 
-            // change clk_peri to be driven by clk_sys at clk_sys's new frequency
-            ClockState csPeri = OverlayClockState(clk_peri, {
-                .src     = 0,
-                .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-                .freqSrc = mhz * MHZ,
-                .freq    = mhz * MHZ,
-            });
-            newState.clockStateList.push_back(csPeri);
+                // change clk_sys to be driven by PLL_USB
+                ClockState csSys = OverlayClockState(clk_sys, {
+                    .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                    .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                    .freqSrc = (uint32_t)mhz * MHZ,
+                    .freq    = (uint32_t)mhz * MHZ,
+                });
+                newState.clockStateList.push_back(csSys);
 
-            Log("Applying new state for ", mhz, " MHz");
-            newState.Print();
+                // change clk_peri to be driven by clk_sys at clk_sys's new frequency
+                ClockState csPeri = OverlayClockState(clk_peri, {
+                    .src     = 0,
+                    .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
+                    .freqSrc = (uint32_t)mhz * MHZ,
+                    .freq    = (uint32_t)mhz * MHZ,
+                });
+                newState.clockStateList.push_back(csPeri);
 
-            // apply
-            GoToInitialState();
-            SetState(newState);
-        }
-        else
-        {
-            Log("SetClockMHz: ERR Could not set freq to ", mhz, " MHz");
+                Log("Applying new state for ", mhz, " MHz");
+                newState.Print();
+
+                // apply
+                GoToInitialState();
+                SetState(newState);
+            }
+            else
+            {
+                Log("SetClockMHz ERR: Could not set frequency ", mhz);
+            }
         }
     }
 
@@ -1301,8 +1403,12 @@ static void DoNothingSilent() { }
         }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.freq", [](vector<string> argList) {
-            SetClockMHz(atol(argList[0].c_str()));
-        }, { .argCount = 1, .help = "Set non-USB clocks to X MHz" });
+            double mhz            = atof(argList[0].c_str());
+            bool lowPowerPriority = atoi(argList[1].c_str());
+            bool mustBeExact      = atoi(argList[2].c_str());
+
+            SetClockMHz(mhz, lowPowerPriority, mustBeExact);
+        }, { .argCount = 3, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
 
         Shell::AddCommand("clk.stop", [](vector<string> argList) {
             string clock = argList[0];
