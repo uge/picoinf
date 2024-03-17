@@ -94,6 +94,16 @@ public:
         device_ = device;
     }
 
+    static void SetCallbackVbusConnected(function<void()> cbFn)
+    {
+        fnCbVbusConnected_ = cbFn;
+    }
+
+    static void SetCallbackVbusDisconnected(function<void()> cbFn)
+    {
+        fnCbVbusDisconnected_ = cbFn;
+    }
+
     static void SetCallbackConnected(function<void()> cbFn)
     {
         fnCbConnected_ = cbFn;
@@ -108,6 +118,10 @@ public:
 public:
 
     static uint8_t const *tud_descriptor_device_cb();
+
+    inline static Pin              pVbus_ = Pin(24, Pin::Type::INPUT);
+    inline static function<void()> fnCbVbusConnected_    = []{};
+    inline static function<void()> fnCbVbusDisconnected_ = []{};
 
     inline static function<void()> fnCbConnected_    = []{};
     inline static function<void()> fnCbDisconnected_ = []{};

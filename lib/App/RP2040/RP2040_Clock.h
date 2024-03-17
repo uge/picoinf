@@ -32,22 +32,6 @@
 #include "Utl.h"
 
 
-/*
-enum clock_index {
-    clk_gpout0 = 0,     ///< GPIO Muxing 0
-    clk_gpout1,         ///< GPIO Muxing 1
-    clk_gpout2,         ///< GPIO Muxing 2
-    clk_gpout3,         ///< GPIO Muxing 3
-    clk_ref,            ///< Watchdog and timers reference clock
-    clk_sys,            ///< Processors, bus fabric, memory, memory mapped registers
-    clk_peri,           ///< Peripheral clock for UART and SPI
-    clk_usb,            ///< USB clock
-    clk_adc,            ///< ADC clock
-    clk_rtc,            ///< Real time clock
-    CLK_COUNT
-};
-*/
-
 class RP2040_Clock
 {
 
@@ -755,7 +739,10 @@ class RP2040_Clock
         SetState(stateInitial_);
     }
 
-public:
+
+    /////////////////////////////////////////////////////////////////
+    // High-Level Clock Control
+    /////////////////////////////////////////////////////////////////
 
     static void SetClockInitial()
     {
@@ -785,7 +772,8 @@ public:
         }
     };
 
-    // 15.3 MHz is the lowest you can go with a PLL on a 12MHz input freq
+    // 15.3 MHz is the lowest you can go with a PLL
+    // 280  MHz is the fastest you can go without some kind of hang I haven't researched
     // 
     // adapted from vcocalc.py in pico-sdk
     static PllConfig GetPllConfigForFreq(double mhz, bool lowPowerPriority, bool mustBeExact)
@@ -861,6 +849,8 @@ public:
         return retVal;
     }
 
+
+public:
 
     // When 12MHz, use XOSC
     //    pll_sys            0  XOSC
@@ -989,8 +979,25 @@ public:
         }
     }
 
+    static void EnableUSB()
+    {
+        PllState psUsb = GetPllState(pll_usb);
 
-public:
+        pll_init(
+            psUsb.pllData.pll,
+            psUsb.pllData.refdiv,
+            psUsb.pllData.vco_freq,
+            psUsb.pllData.post_div1,
+            psUsb.pllData.post_div2
+        );
+    }
+
+    // saves 4mA
+    static void DisableUSB()
+    {
+        pll_deinit(pll_usb);
+    }
+
 
     /////////////////////////////////////////////////////////////////
     // Configuration
@@ -1226,6 +1233,17 @@ static void DoNothingSilent() { }
 
             SetClockMHz(mhz, lowPowerPriority, mustBeExact);
         }, { .argCount = 3, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
+
+        Shell::AddCommand("clk.usb", [](vector<string> argList) {
+            if (atoi(argList[0].c_str()))
+            {
+                EnableUSB();
+            }
+            else
+            {
+                DisableUSB();
+            }
+        }, { .argCount = 1, .help = "USB enable(1)/disable(0) " });
 
         Shell::AddCommand("clk.stop", [](vector<string> argList) {
             string clock = argList[0];

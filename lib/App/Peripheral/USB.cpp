@@ -21,6 +21,18 @@ void USB::Init()
         serial_ = PAL.GetAddress();
     }
 
+    pVbus_.SetInterruptCallback([]{
+        if (pVbus_.DigitalRead())
+        {
+            fnCbVbusConnected_();
+        }
+        else
+        {
+            fnCbVbusDisconnected_();
+        }
+    }, Pin::TriggerType::BOTH);
+    pVbus_.EnableInterrupt();
+
     Log("USB Init");
     Log("VID: ", ToHex(vid_), ", PID: ", ToHex(pid_), ", Device: ", ToHex(device_));
     Log("Manufacturer    : ", manufacturer_);
