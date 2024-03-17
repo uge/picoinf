@@ -303,6 +303,7 @@ uint32_t Evm::ServiceLowPriorityWork()
         
         // Execute
         timeline_.Event("EVM_LOW_PRIO_WORK_START");
+        timeline_.Event(workData.label);
         fnWork();
         timeline_.Event("EVM_LOW_PRIO_WORK_END");
  
