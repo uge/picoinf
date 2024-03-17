@@ -512,6 +512,7 @@ static void UartDeInitDeviceInterrupts(uart_inst_t *uart)
 }
 
 
+static bool uart1Enabled_ = false;
 
 void UartEnable(UART uart)
 {
@@ -531,6 +532,8 @@ void UartEnable(UART uart)
         UartInitDevice(uart1, 9, 8, 9600);
         UartInitDeviceInterrupts(uart1, UartInterruptHandlerUart1);
         irq_set_pending(UART1_IRQ);
+
+        uart1Enabled_ = true;
     }
 }
 
@@ -545,8 +548,23 @@ void UartDisable(UART uart)
     {
         UartDeInitDevice(uart1, 9, 8);
         UartDeInitDeviceInterrupts(uart1);
+
+        uart1Enabled_ = false;
     }
 }
+
+bool UartIsEnabled(UART uart)
+{
+    bool retVal = true;
+
+    if (uart == UART::UART_1)
+    {
+        retVal = uart1Enabled_;
+    }
+
+    return retVal;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // UART Clear Buffer Interface
@@ -569,17 +587,6 @@ void UartClearTxBuffer(UART uart)
     {
         UART_1_OUTPUT_PIPE.Flush();
     }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// UART Baud Interface
-////////////////////////////////////////////////////////////////////////////////
-
-// TODO -- implement
-uint32_t UartGetBaud(UART uart)
-{
-    return 0;
 }
 
 
