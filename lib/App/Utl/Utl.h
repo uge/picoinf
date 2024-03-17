@@ -883,5 +883,88 @@ inline T2 Clamp(const T1 low, const T2 val, const T3 high)
     return retVal;
 }
 
+template <typename T>
+class Range
+{
+public:
+    class Counter
+    {
+    public:
+        Counter(T val, T step)
+        : val_(val)
+        , step_(step)
+        {
+            // Nothing to do
+        }
+
+        // prefix
+        Counter &operator++()
+        {
+            val_ += step_;
+
+            return *this;
+        }
+
+        operator T()
+        {
+            return val_;
+        }
+
+        T operator *()
+        {
+            return val_;
+        }
+
+
+    private:
+        T val_;
+        T step_;
+    };
+
+public:
+    Range(T numStart, T numEnd)
+    : numStart_(numStart)
+    , numEnd_(numEnd)
+    {
+        // nothing to do
+    }
+
+    T GetStart() { return numStart_; }
+    T GetEnd()   { return numEnd_;   }
+
+    Counter begin()
+    {
+        if (numStart_ <= numEnd_)
+        {
+            return Counter(numStart_, 1);
+        }
+        else
+        {
+            return Counter(numStart_, -1);
+        }
+    }
+
+    Counter end()
+    {
+        if (numStart_ <= numEnd_)
+        {
+            return Counter(numEnd_ + 1, 1);
+        }
+        else
+        {
+            return Counter(numEnd_ - 1, -1);
+        }
+    }
+
+private:
+
+    T numStart_;
+    T numEnd_;
+};
+
+
+
+
+
 
 extern void UtlSetupShell();
