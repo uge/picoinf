@@ -524,7 +524,6 @@ class RP2040_Clock
     // State Capture and Change
     /////////////////////////////////////////////////////////////////
 
-    // Do I want this?
     static void SetInitialStateConditions()
     {
         // by default, clk_rtc is tied to pll_usb.
@@ -765,145 +764,6 @@ public:
         GoToInitialState();
     }
 
-    static void SetClockNoUsb()
-    {
-        Timeline::Global().Event("RP2040_CLOCK_NOUSB");
-
-        GoToInitialState();
-
-        // set up new state
-        State newState;
-
-        // testing -- shut off pllusb
-        PllState psUsb = GetPllState(pll_usb);
-        psUsb.on = false;
-        newState.pllStateList.push_back(psUsb);
-
-
-        // change clk_adc to be driven by XOSC
-        ClockState csAdc = OverlayClockState(clk_adc, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            .freqSrc = 12'000'000,
-            .freq    = 12'000'000,
-        });
-        newState.clockStateList.push_back(csAdc);
-        
-
-        // if (verbose_)
-        {
-            Log("Applying new state for NOUSB");
-            newState.Print();
-            PrintCount();
-        }
-
-        // apply
-        SetState(newState);
-    }
-
-
-    //    pll_sys            0  XOSC    (change)
-    //    pll_usb   48,000,000  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys   48,000,000  PLL_USB (change)
-    //   clk_peri   48,000,000  CLK_SYS (change)
-    //    clk_usb   48,000,000  PLL_USB
-    static void SetClock48MHzNew()
-    {
-        Timeline::Global().Event("RP2040_CLOCK_48");
-
-        pll_init(
-            pll_usb,
-            1,
-            1200 * MHZ,
-            5,
-            5
-        );
-
-        clock_configure(
-            clk_sys,
-            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-            48'000'000,
-            48'000'000
-        );
-
-        clock_configure(
-            clk_peri,
-            0,
-            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-            48'000'000,
-            48'000'000
-        );
-
-        clock_configure(
-            clk_adc,
-            0,
-            CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            12'000'000,
-            12'000'000
-        );
-
-        pll_deinit(pll_sys);
-
-        // uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-        // uart_set_baudrate(uart1, UartGetBaud(UART::UART_1));
-
-        // uart_set_irq_enables(uart0, true, false);
-
-        ClockState csSys = GetClockState(clk_sys);
-        KTime::SetScalingFactor((double)csSys.freq / 125'000'000.0);
-    }
-
-    //    pll_sys            0  XOSC    (change)
-    //    pll_usb   48,000,000  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys   48,000,000  PLL_USB (change)
-    //   clk_peri   48,000,000  CLK_SYS (change)
-    //    clk_usb   48,000,000  PLL_USB
-    static void SetClock48MHz()
-    {
-        Timeline::Global().Event("RP2040_CLOCK_48");
-
-        GoToInitialState();
-
-        // set up new state
-        State newState;
-
-        // shut off pll_sys
-        PllState psSys = GetPllState(pll_sys);
-        psSys.on = false;
-        newState.pllStateList.push_back(psSys);
-
-        // change clk_sys to be driven by PLL_USB
-        ClockState csSys = OverlayClockState(clk_sys, {
-            .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-            .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_USB,
-            .freqSrc = 48'000'000,
-            .freq    = 48'000'000,
-        });
-        newState.clockStateList.push_back(csSys);
-
-        // change clk_peri to be driven by clk_sys at clk_sys's new frequency
-        ClockState csPeri = OverlayClockState(clk_peri, {
-            .src     = 0,
-            .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-            .freqSrc = 48'000'000,
-            .freq    = 48'000'000,
-        });
-        newState.clockStateList.push_back(csPeri);
-
-        if (verbose_)
-        {
-            Log("Applying new state for 48MHz");
-            newState.Print();
-            PrintCount();
-        }
-
-        // apply
-        SetState(newState);
-    }
-
     struct PllConfig
     {
         double mhz;
@@ -1009,7 +869,7 @@ public:
     //    clk_sys   12,000,000  XOSC
     //   clk_peri   12,002,000  XOSC
     //    clk_usb   48,000,000  PLL_USB
-    //    clk_adc   48,000,000  PLL_USB
+    //    clk_adc   48,000,000  XOSC
     //    clk_rtc       47,000  XOSC
     //
     // When something else, change pll_sys
@@ -1017,7 +877,7 @@ public:
     //    pll_usb   48,000,000  XOSC
     //    clk_ref   12,000,000  XOSC
     //    clk_sys    X,000,000  PLL_SYS
-    //   clk_peri    X,000,000  CLK_SYS
+    //   clk_peri    X,000,000  PLL_SYS
     //    clk_usb   48,000,000  PLL_USB
     //    clk_adc   48,000,000  PLL_SYS
     //    clk_rtc       46,000  XOSC
@@ -1030,11 +890,12 @@ public:
             // set up new state
             State newState;
 
+            // disable pll_sys
             PllState psSys = GetPllState(pll_sys);
             psSys.on = false;
             newState.pllStateList.push_back(psSys);
 
-            // change clk_sys to be driven by PLL_USB
+            // change clk_sys to be driven by XOSC
             ClockState csSys = OverlayClockState(clk_sys, {
                 .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
                 .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
@@ -1043,7 +904,7 @@ public:
             });
             newState.clockStateList.push_back(csSys);
 
-            // change clk_peri to be driven by clk_sys at clk_sys's new frequency
+            // change clk_peri to be driven by XOSC
             ClockState csPeri = OverlayClockState(clk_peri, {
                 .src     = 0,
                 .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
@@ -1051,6 +912,15 @@ public:
                 .freq    = 12 * MHZ,
             });
             newState.clockStateList.push_back(csPeri);
+
+            // change clk_adc to be driven by XOSC
+            ClockState csAdc = OverlayClockState(clk_adc, {
+                .src     = 0,
+                .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
+                .freqSrc = 12 * MHZ,
+                .freq    = 12 * MHZ,
+            });
+            newState.clockStateList.push_back(csAdc);
 
             Log("Applying new state for ", mhz, " MHz");
             newState.Print();
@@ -1069,6 +939,7 @@ public:
                 // set up new state
                 State newState;
 
+                // Adjust the frequency of pll_sys
                 PllState psSys = GetPllState(pll_sys);
                 psSys.on = true;
                 psSys.pllData.refdiv = pc.refdiv;
@@ -1077,7 +948,7 @@ public:
                 psSys.pllData.post_div2 = pc.post_div2;
                 newState.pllStateList.push_back(psSys);
 
-                // change clk_sys to be driven by PLL_USB
+                // change clk_sys to be driven by pll_sys
                 ClockState csSys = OverlayClockState(clk_sys, {
                     .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
                     .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
@@ -1086,14 +957,23 @@ public:
                 });
                 newState.clockStateList.push_back(csSys);
 
-                // change clk_peri to be driven by clk_sys at clk_sys's new frequency
+                // change clk_peri to be driven by pll_sys
                 ClockState csPeri = OverlayClockState(clk_peri, {
                     .src     = 0,
-                    .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
+                    .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
                     .freqSrc = (uint32_t)mhz * MHZ,
                     .freq    = (uint32_t)mhz * MHZ,
                 });
                 newState.clockStateList.push_back(csPeri);
+
+                // change clk_adc to be driven by pll_sys
+                ClockState csAdc = OverlayClockState(clk_adc, {
+                    .src     = 0,
+                    .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+                    .freqSrc = (uint32_t)mhz * MHZ,
+                    .freq    = (uint32_t)mhz * MHZ,
+                });
+                newState.clockStateList.push_back(csAdc);
 
                 Log("Applying new state for ", mhz, " MHz");
                 newState.Print();
@@ -1108,65 +988,6 @@ public:
             }
         }
     }
-
-
-
-    //    pll_sys            0  XOSC
-    //    pll_usb            0  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys   12,000,000  XOSC
-    //   clk_peri   12,000,000  CLK_SYS
-    //    clk_usb            0  PLL_USB
-    //    clk_adc            0  PLL_USB
-    //
-    // this isn't really about power saving, this was setting up
-    // for complete shutdown.  effort was to move off of
-    // PLLs.  clock speed unimportant.
-    // better to change the name to reflect that.
-    static void SetClock12MHzPreSleep()
-    {
-        GoToInitialState();
-
-        // set up new state
-        State newState;
-
-        // shut off pll_sys
-        PllState psSys = GetPllState(pll_sys);
-        psSys.on = false;
-        newState.pllStateList.push_back(psSys);
-
-        // shut off pll_usb (shaves off 3.5mA)
-        PllState psUsb = GetPllState(pll_usb);
-        psUsb.on = false;
-        newState.pllStateList.push_back(psUsb);
-
-        // change clk_sys to be driven by XOSC
-        ClockState csSys = GetClockState(clk_sys);
-        csSys.src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX;
-        csSys.auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC;
-        csSys.freqSrc = 12'000'000;
-        csSys.freq    = 12'000'000;
-        newState.clockStateList.push_back(csSys);
-
-        // change clk_peri to be driven by clk_sys at clk_sys's new frequency
-        ClockState csPeri = GetClockState(clk_peri);
-        csPeri.src     = 0;
-        csPeri.auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS;
-        csPeri.freqSrc = 12'000'000;
-        csPeri.freq    = 12'000'000;
-        newState.clockStateList.push_back(csPeri);
-
-        if (verbose_)
-        {
-            Log("Applying new state for 12MHzPreSleep");
-            newState.Print();
-            PrintCount();
-        }
-
-        // apply
-        SetState(newState);
-    }
-
 
 
 public:
@@ -1203,7 +1024,7 @@ public:
         State state = GetState();
 
         // enter state with no plls and everything running on stoppable clock
-        SetClock12MHzPreSleep();
+        // SetClock12MHzPreSleep();
 
 
         // Set RTC timer
@@ -1398,10 +1219,6 @@ static void DoNothingSilent() { }
             GoToInitialState();
         }, { .argCount = 0, .help = "" });
 
-        Shell::AddCommand("clk.freq.48", [](vector<string> argList) {
-            SetClock48MHz();
-        }, { .argCount = 0, .help = "" });
-
         Shell::AddCommand("clk.freq", [](vector<string> argList) {
             double mhz            = atof(argList[0].c_str());
             bool lowPowerPriority = atoi(argList[1].c_str());
@@ -1437,7 +1254,6 @@ static void DoNothingSilent() { }
             i2c_deinit(i2c1);
         }, { .argCount = 0, .help = "" });
 
-
         Shell::AddCommand("clk.sleep2", [](vector<string> argList) {
             static Timeline t;
 
@@ -1449,7 +1265,7 @@ static void DoNothingSilent() { }
             t.Event("got state");
 
             // enter state with no plls and everything running on stoppable clock
-            SetClock12MHzPreSleep();
+            // SetClock12MHzPreSleep();
             t.Event("12 MHz");
 
 
