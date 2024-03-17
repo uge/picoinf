@@ -55,6 +55,8 @@ extern "C"
 void tud_mount_cb(void)
 {
     // Log("USB Mounted");
+
+    USB::fnCbConnected_();
 }
 
 // Invoked when device is unmounted
@@ -67,6 +69,8 @@ void tud_umount_cb(void)
 void tud_suspend_cb(bool remote_wakeup_en)
 {
     // Log("USB Suspended");
+
+    USB::fnCbDisconnected_();
 }
 
 // Invoked when usb bus is resumed

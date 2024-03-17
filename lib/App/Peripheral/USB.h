@@ -94,10 +94,24 @@ public:
         device_ = device;
     }
 
+    static void SetCallbackConnected(function<void()> cbFn)
+    {
+        fnCbConnected_ = cbFn;
+    }
+
+    static void SetCallbackDisconnected(function<void()> cbFn)
+    {
+        fnCbDisconnected_ = cbFn;
+    }
+
 
 public:
 
     static uint8_t const *tud_descriptor_device_cb();
+
+    inline static function<void()> fnCbConnected_    = []{};
+    inline static function<void()> fnCbDisconnected_ = []{};
+
 
 private:
 
