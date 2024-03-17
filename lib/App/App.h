@@ -1,19 +1,19 @@
 #pragma once
 
+#include "ADCInternal.h"
 #include "Ble.h"
-// #include "Esb.h"
 #include "Evm.h"
 #include "FilesystemLittleFS.h"
 #include "Flashable.h"
-// #include "I2C.h"
+#include "I2C.h"
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
 #include "KTask.h"
 #include "Log.h"
-// #include "MPSL.h"
 #include "PAL.h"
 #include "Pin.h"
 #include "PWM.h"
+#include "MYRP2040.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "USB.h"
@@ -29,7 +29,7 @@ class App
 public:
     App()
     {
-        // Init
+        // Init in specific sequence
         TimelineInit();
         LogInit();
         UartInit();
@@ -38,19 +38,27 @@ public:
         FilesystemLittleFS::Init();
         LogNL();
         NukeAppStorageFlashIfFirmwareChanged();
+
+        // Init everything else
+        ADC::Init();
         EvmInit();
+        I2C::Init();
         JSONMsgRouter::Init();
+        RP2040::Init();
 
         // Shell
-        Shell::Init();
+        ADC::SetupShell();
         Ble::SetupShell();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
+        I2C::SetupShell();
         JSONMsgRouter::SetupShell();
         LogSetupShell();
         PALSetupShell();
         PinSetupShell();
         PWM::SetupShell();
+        RP2040::SetupShell();
+        Shell::Init();
         TimelineSetupShell();
         UartSetupShell();
         UtlSetupShell();
@@ -73,8 +81,12 @@ public:
         USB::Init();
         LogNL();
 
-        Ble::Init();
-        LogNL();
+        string board = PICO_BOARD_ACTUAL;
+        if (board == "pico_w")
+        {
+            Ble::Init();
+            LogNL();
+        }
 
         // run app code which depends on prior init
         t.Run();
