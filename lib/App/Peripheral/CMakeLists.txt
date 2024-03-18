@@ -3,17 +3,18 @@
 target_include_directories(LibPico PUBLIC .)
 
 target_sources(LibPico PRIVATE
-    Pin.cpp
     FilesystemLittleFS.cpp
+    I2C.cpp
+    Pin.cpp
     PWM.cpp
     UART.cpp
-    WDT.cpp
-    USB.cpp
     USB_BOSDescriptor.cpp
     USB_CDC.cpp
     USB_ConfigurationDescriptor.cpp
     USB_DeviceDescriptor.cpp
     USB_StringDescriptor.cpp
+    USB.cpp
+    WDT.cpp
 )
 
 # file(GLOB lib_sources *.cpp)

@@ -75,18 +75,24 @@ target_include_directories(LibPico PRIVATE
 add_subdirectory(${LIB_PICO}/App)
 add_subdirectory(${LIB_PICO}/Ble)
 add_subdirectory(${LIB_PICO}/Compiler)
-# add_subdirectory(ESB)
-# add_subdirectory(GPS)
+add_subdirectory(${LIB_PICO}/GPS)
 # add_subdirectory(Motor)
-# add_subdirectory(MPSL)
-# add_subdirectory(Sensor)
+add_subdirectory(${LIB_PICO}/Sensor)
 add_subdirectory(${LIB_PICO}/Signal)
-# add_subdirectory(WSPR)
+add_subdirectory(${LIB_PICO}/WSPR)
 
 target_link_libraries(LibPico
     pico_stdlib
     pico_rand
+    hardware_adc
+    hardware_clocks
+    hardware_i2c
+    hardware_irq
+    hardware_pll
     hardware_pwm
+    hardware_rtc
+    hardware_timer
+    hardware_xosc
     FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap3
     tinyusb_device
@@ -100,4 +106,5 @@ target_link_libraries(LibPico
 target_compile_definitions(LibPico PRIVATE
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     APP_BUILD_VERSION="${APP_BUILD_VERSION}"
+    PICO_BOARD_ACTUAL="${PICO_BOARD_ACTUAL}"
 )
