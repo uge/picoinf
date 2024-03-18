@@ -13,7 +13,6 @@
 #include "hardware/clocks.h"
 #include "hardware/i2c.h"
 #include "hardware/pll.h"
-#include "rosc.h"   // taken from pico-extras
 #include "hardware/irq.h"
 #include "hardware/resets.h"
 #include "hardware/sync.h"
@@ -21,7 +20,7 @@
 #include "hardware/uart.h"
 #include "hardware/vreg.h"
 #include "hardware/xosc.h"
-#include "sleep.h"  // taken from pico-extras
+#include "hardware/rtc.h"
 #include "pico/stdlib.h"
 
 #include "KTime.h"
@@ -1335,12 +1334,6 @@ static void DoNothingSilent() { }
 
             PrintAll();
         }, { .argCount = 1, .help = "clock_stop(clk_<x>)" });
-
-        Shell::AddCommand("clk.disable.rosc", [](vector<string> argList) {
-            rosc_disable();
-
-            PrintAll();
-        }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.disable.xosc", [](vector<string> argList) {
             xosc_disable();
