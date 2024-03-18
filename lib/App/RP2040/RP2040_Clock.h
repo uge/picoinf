@@ -508,21 +508,6 @@ class RP2040_Clock
     // State Capture and Change
     /////////////////////////////////////////////////////////////////
 
-    static void SetInitialStateConditions()
-    {
-        // by default, clk_rtc is tied to pll_usb.
-        // I don't want that to be the runtime default, so change this
-        // before the system comes up so it is established as the
-        // initial state reference.
-        clock_configure(
-            clk_rtc,
-            0,
-            CLOCKS_CLK_RTC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-            12'000'000,
-            46875
-        );
-    }
-
     struct State
     {
         vector<PllState>   pllStateList;
@@ -698,44 +683,44 @@ class RP2040_Clock
 
         Timeline::Global().Event("RP2040_CLOCK_SET_STATE_END");
 
-        LogModeSync();
-        PrintAll();
-        LogModeAsync();
-    }
-
-    inline static bool initialStateCaptured_ = false;
-    inline static State stateInitial_;
-    static void EnsureInitialStateCaptured()
-    {
-        if (initialStateCaptured_ == false)
+        if (verbose_)
         {
-            initialStateCaptured_ = true;
-
-            stateInitial_ = GetState();
+            LogModeSync();
+            PrintAll();
+            LogModeAsync();
         }
     }
 
-    //       rosc    5,235,000
-    //    rosc_ph    5,237,000
-    //       xosc   12,000,000
-    //    pll_sys  125,000,000  XOSC
-    //    pll_usb   48,000,000  XOSC
-    //    clk_ref   12,001,000  XOSC
-    //    clk_sys  125,001,000  PLL_SYS
-    //   clk_peri  125,000,000  CLK_SYS
-    //    clk_usb   48,000,000  PLL_USB
-    //    clk_adc   48,000,000  PLL_USB
-    //    clk_rtc       47,000  XOSC
-    // clk_gpout0            0  PLL_SYS
-    // clk_gpout1            0  PLL_SYS
-    // clk_gpout2            0  PLL_SYS
-    // clk_gpout3            0  PLL_SYS
-    //  clk_gpin0            0
-    //  clk_gpin1            0
+
+    /////////////////////////////////////////////////////////////////
+    // Capture/Restore Initial State
+    /////////////////////////////////////////////////////////////////
+
+    static void SetInitialStateConditions()
+    {
+        uint32_t freq = GetFreqROSC();
+
+        // by default, clk_rtc is tied to pll_usb.
+        // I don't want that to be the runtime default, so change this
+        // before the system comes up so it is established as the
+        // initial state reference.
+        clock_configure(
+            clk_rtc,
+            0,
+            CLOCKS_CLK_RTC_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
+            freq,
+            46'875
+        );
+    }
+
+    inline static State stateInitial_;
+    static void CaptureInitialState()
+    {
+        stateInitial_ = GetState();
+    }
+
     static void GoToInitialState()
     {
-        EnsureInitialStateCaptured();
-
         SetState(stateInitial_);
     }
 
@@ -849,6 +834,20 @@ class RP2040_Clock
         return retVal;
     }
 
+    static uint32_t GetFreqROSC()
+    {
+        // prevent subsequent calls from having a larger frequency
+        // which upsets some clock configuration logic
+        static uint32_t freq = 0;
+
+        if (freq == 0)
+        {
+            freq = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_ROSC_CLKSRC) * 1'000;
+        }
+
+        return freq;
+    }
+
 
 public:
 
@@ -871,11 +870,55 @@ public:
     //    clk_usb   48,000,000  PLL_USB
     //    clk_adc   48,000,000  PLL_SYS
     //    clk_rtc       46,000  XOSC
-    static void SetClockMHz(double mhz, bool lowPowerPriority, bool mustBeExact)
+    static void SetClockMHz(double mhz,
+                            bool   lowPowerPriority = false,
+                            bool   mustBeExact      = false)
     {
-        Timeline::Global().Event("RP2040_CLOCK_X");
+        Timeline::Global().Event("SET_CLOCK_MHZ");
 
-        if (mhz == 12)
+        if (mhz == 6)
+        {
+            // set up new state
+            State newState;
+
+            // disable pll_sys
+            PllState psSys = GetPllState(pll_sys);
+            psSys.on = false;
+            newState.pllStateList.push_back(psSys);
+
+            uint32_t freq = GetFreqROSC();
+
+            // change clk_sys to be driven by ROSC
+            ClockState csSys = OverlayClockState(clk_sys, {
+                .src     = CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
+                .auxsrc  = CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_ROSC_CLKSRC,
+                .freqSrc = freq,
+                .freq    = freq,
+            });
+            newState.clockStateList.push_back(csSys);
+
+            // change clk_peri to be driven by ROSC
+            ClockState csPeri = OverlayClockState(clk_peri, {
+                .src     = 0,
+                .auxsrc  = CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
+                .freqSrc = freq,
+                .freq    = freq,
+            });
+            newState.clockStateList.push_back(csPeri);
+
+            // change clk_adc to be driven by ROSC
+            ClockState csAdc = OverlayClockState(clk_adc, {
+                .src     = 0,
+                .auxsrc  = CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_ROSC_CLKSRC_PH,
+                .freqSrc = freq,
+                .freq    = freq,
+            });
+            newState.clockStateList.push_back(csAdc);
+
+            // apply
+            SetState(newState);
+        }
+        else if (mhz == 12)
         {
             // set up new state
             State newState;
@@ -912,11 +955,7 @@ public:
             });
             newState.clockStateList.push_back(csAdc);
 
-            Log("Applying new state for ", mhz, " MHz");
-            newState.Print();
-
             // apply
-            GoToInitialState();
             SetState(newState);
         }
         else 
@@ -965,11 +1004,7 @@ public:
                 });
                 newState.clockStateList.push_back(csAdc);
 
-                Log("Applying new state for ", mhz, " MHz");
-                newState.Print();
-
                 // apply
-                GoToInitialState();
                 SetState(newState);
             }
             else
@@ -1204,6 +1239,7 @@ static void DoNothingSilent() { }
         Timeline::Global().Event("RP2040_Clock::Init");
 
         SetInitialStateConditions();
+        CaptureInitialState();
     }
 
     static void SetupShell()
@@ -1224,15 +1260,28 @@ static void DoNothingSilent() { }
 
         Shell::AddCommand("clk.freq.orig", [](vector<string> argList) {
             GoToInitialState();
+            PrintAll();
         }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.freq", [](vector<string> argList) {
-            double mhz            = atof(argList[0].c_str());
-            bool lowPowerPriority = atoi(argList[1].c_str());
-            bool mustBeExact      = atoi(argList[2].c_str());
+            double mhz              = atof(argList[0].c_str());
+            bool   lowPowerPriority = false;
+            bool   mustBeExact      = false;
+
+            if (argList.size() >= 2)
+            {
+                lowPowerPriority = atoi(argList[1].c_str());
+            }
+
+            if (argList.size() >= 3)
+            {
+                mustBeExact = atoi(argList[2].c_str());
+            }
 
             SetClockMHz(mhz, lowPowerPriority, mustBeExact);
-        }, { .argCount = 3, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
+
+            PrintAll();
+        }, { .argCount = -1, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
 
         Shell::AddCommand("clk.usb", [](vector<string> argList) {
             if (atoi(argList[0].c_str()))
@@ -1243,6 +1292,8 @@ static void DoNothingSilent() { }
             {
                 DisableUSB();
             }
+
+            PrintAll();
         }, { .argCount = 1, .help = "USB enable(1)/disable(0) " });
 
         Shell::AddCommand("clk.stop", [](vector<string> argList) {
@@ -1254,25 +1305,41 @@ static void DoNothingSilent() { }
             if (clock == "usb")  { clock_stop(clk_usb);  }
             if (clock == "adc")  { clock_stop(clk_adc);  }
             if (clock == "rtc")  { clock_stop(clk_rtc);  }
+
+            PrintAll();
         }, { .argCount = 1, .help = "clock_stop(clk_<x>)" });
 
         Shell::AddCommand("clk.disable.rosc", [](vector<string> argList) {
             rosc_disable();
+
+            PrintAll();
+        }, { .argCount = 0, .help = "" });
+
+        Shell::AddCommand("clk.disable.xosc", [](vector<string> argList) {
+            xosc_disable();
+
+            PrintAll();
         }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.disable.pll_sys", [](vector<string> argList) {
             pll_deinit(pll_sys);
+
+            PrintAll();
         }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.disable.pll_usb", [](vector<string> argList) {
             pll_deinit(pll_usb);
+
+            PrintAll();
         }, { .argCount = 0, .help = "" });
 
         Shell::AddCommand("clk.deinit", [](vector<string> argList) {
             i2c_deinit(i2c1);
+
+            PrintAll();
         }, { .argCount = 0, .help = "" });
 
-        Shell::AddCommand("clk.sleep2", [](vector<string> argList) {
+        Shell::AddCommand("clk.sleep", [](vector<string> argList) {
             static Timeline t;
 
             t.Reset();
@@ -1283,8 +1350,41 @@ static void DoNothingSilent() { }
             t.Event("got state");
 
             // enter state with no plls and everything running on stoppable clock
-            // SetClock12MHzPreSleep();
-            t.Event("12 MHz");
+            SetClockMHz(6); // could turn off ADC but eh(?)
+            DisableUSB();
+            xosc_disable();
+            t.Event("Low MHz");
+
+
+            // make the reference clock continue to work via ROSC?
+                // it doesn't seem to work when I change it to use ROSC
+                // time doesn't update under sleep, not sure why
+
+            
+            // sleep bombs out occasionally when returning from
+            // clocks.c line 51 on assert(src_freq >= freq);
+            // as in, the frequency of the configured source is >= the
+            // frequency I expect this clock to run at.
+            //
+            // not sure why, haven't investigated sufficiently.
+            //
+            // non-deterministic, though, there must be a timining element to it,
+            // because I can sleep again and again, and only occasionally does it
+            // bomb out.
+            // is there some number of clock cycles I'm supposed to wait before
+            // doing a thing, or something?
+            //
+            // I am not going to chase this further at this time, I can easily
+            // just drop to 12MHz (~5mA with USB and peripherals disabled, 
+            // which is ~1mA more than 6MHz ROSC) to do big power savings and
+            // not even have to blink out of computation, AND I get to keep a
+            // sense of passing time and not wrangle with sleep.
+            //
+            // In short, datasheet for pico board says I can get down to 1.4 mA,
+            // for deep sleep (not dormant at 1.2 mA).  I can keep operating
+            // in a working way at 5mA.  I'll take it for now until I have a
+            // requirement to do better.
+
 
 
             // Set RTC timer
@@ -1306,7 +1406,7 @@ static void DoNothingSilent() { }
                     .dotw  = 5, // 0 is Sunday, so 5 is Friday
                     .hour  = 15,
                     .min   = 45,
-                    .sec   = 6
+                    .sec   = 2
             };
 
 
@@ -1332,10 +1432,7 @@ static void DoNothingSilent() { }
 
 
             // Go to sleep
-            Pin::Configure(15, Pin::Type::OUTPUT, 0);
-            Pin::Configure(15, Pin::Type::OUTPUT, 1);
             __wfi();
-            Pin::Configure(15, Pin::Type::OUTPUT, 0);
 
             // restore state
             scb_hw->scr = cacheScr;
@@ -1348,6 +1445,7 @@ static void DoNothingSilent() { }
 
 
             // restore state
+            xosc_init();
             SetState(state);
 
             t.Event("state restored");
@@ -1356,186 +1454,6 @@ static void DoNothingSilent() { }
 
             PrintAll();
         }, { .argCount = 0, .help = "" });
-
-
-        Shell::AddCommand("clk.sleep", [](vector<string> argList) {
-            // sleep_run_from_xosc();
-
-            clock_configure(clk_sys,
-                            CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLKSRC_CLK_SYS_AUX,
-                            CLOCKS_CLK_SYS_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-                            12'000'000,
-                            12'000'000);
-
-
-
-            clock_stop(clk_usb);
-            // clock_stop(clk_adc);
-
-
-
-
-            clock_configure(clk_rtc,
-                            0,
-                            CLOCKS_CLK_RTC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC,
-                            12'000'000,
-                            46875);
-
-            // CLK PERI = clk_sys. Used as reference clock for Peripherals. No dividers so just select and enable
-            clock_configure(clk_peri,
-                            0,
-                            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLK_SYS,
-                            12'000'000,
-                            12'000'000);
-
-
-            pll_deinit(pll_sys);
-            pll_deinit(pll_usb);
-
-
-
-
-
-            while (false)
-            {
-                Pin::Configure(25, Pin::Type::OUTPUT, 1);
-                PAL.DelayBusy(100);
-                Pin::Configure(25, Pin::Type::OUTPUT, 0);
-                PAL.DelayBusy(100);
-            }
-
-            // uart_set_baudrate(uart0, UartGetBaud(UART::UART_0));
-            // uart_set_irq_enables(uart0, true, false);
-
-            KTime::SetScalingFactor(12.0 / 125.0);
-
-
-
-            PrintAll();
-
-
-            Log("ROSC CTRL  : ", Format::ToBin(rosc_hw->ctrl));
-            Log("ROSC STATUS: ", Format::ToBin(rosc_hw->status));
-
-            PAL.Delay(500);
-
-
-            // rosc_disable();  // 200 uA, I'd rather leave it running so resets work
-
-
-            PrintAll();
-
-
-            Log("ROSC CTRL  : ", Format::ToBin(rosc_hw->ctrl));
-            Log("ROSC STATUS: ", Format::ToBin(rosc_hw->status));
-
-
-
-            // return;
-
-            // rtc_sleep();
-
-            // return;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            datetime_t t = {
-                    .year  = 2020,
-                    .month = 06,
-                    .day   = 05,
-                    .dotw  = 5, // 0 is Sunday, so 5 is Friday
-                    .hour  = 15,
-                    .min   = 45,
-                    .sec   = 00
-            };
-
-            // Alarm 10 seconds later
-            datetime_t t_alarm = {
-                    .year  = 2020,
-                    .month = 06,
-                    .day   = 05,
-                    .dotw  = 5, // 0 is Sunday, so 5 is Friday
-                    .hour  = 15,
-                    .min   = 45,
-                    .sec   = 5
-            };
-
-            // Start the RTC
-            rtc_init();
-
-            Log("Sleeping");
-            PAL.Delay(50);
-
-            // sleep_goto_sleep_until(&t_alarm, nullptr);
-
-                volatile irq_handler_t *vtor = (volatile irq_handler_t *)scb_hw->vtor;
-                volatile uint32_t *ptrHandler = (volatile uint32_t *)&(vtor[VTABLE_FIRST_IRQ + RTC_IRQ]);
-                Log("test: ", &vtor[VTABLE_FIRST_IRQ + RTC_IRQ] - &vtor[0]);
-                Log("sizeof(*vtor) : ", sizeof(*vtor));
-                Log("VTOR          : ", Format::ToHex((uint32_t)vtor), ", ", Format::ToBin((uint32_t)vtor));
-                Log("&VTOR[RTC_IRQ]: ", Format::ToHex((uint32_t)ptrHandler), ", ", Format::ToBin((uint32_t)ptrHandler));
-                Log("diff: ", (uint32_t)ptrHandler - (uint32_t)vtor);
-                Log("VTOR[RTC_IRQ] : ", Format::ToHex(*ptrHandler), ", ", Format::ToBin(*ptrHandler));
-                Log("Callback      : ", Format::ToHex((uint32_t)DoNothing), ", ", Format::ToBin((uint32_t)DoNothing));
-                *ptrHandler = (uint32_t)DoNothing;
-                __dmb();
-                Log("VTOR[RTC_IRQ] : ", Format::ToHex(*ptrHandler), ", ", Format::ToBin(*ptrHandler));
-                PAL.Delay(500);
-
-            clocks_hw->sleep_en0 = CLOCKS_SLEEP_EN0_CLK_RTC_RTC_BITS;
-            clocks_hw->sleep_en1 = 0x0;
-
-            rtc_set_datetime(&t);
-            rtc_set_alarm(&t_alarm, DoNothing);
-
-
-                Log("VTOR[RTC_IRQ] : ", Format::ToHex(*ptrHandler), ", ", Format::ToBin(*ptrHandler));
-                *ptrHandler = (uint32_t)DoNothing;
-                __dmb();
-                Log("VTOR[RTC_IRQ] : ", Format::ToHex(*ptrHandler), ", ", Format::ToBin(*ptrHandler));
-                PAL.Delay(500);
-
-
-
-            uint save = scb_hw->scr;
-            // Enable deep sleep at the proc
-            scb_hw->scr = save | M0PLUS_SCR_SLEEPDEEP_BITS;
-
-            // Go to sleep
-            __wfi();
-
-
-            // mine, trying to get reset to work again
-            scb_hw->scr = save;
-            rosc_write(&rosc_hw->ctrl, ROSC_CTRL_ENABLE_BITS);  // rosc_enable basically
-
-
-
-
-
-
-
-
-
-
-
-
-
-        }, { .argCount = 0, .help = "" });
-
 
         // why am I not using dormant?
         // p. 219, 225
