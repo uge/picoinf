@@ -21,9 +21,6 @@ public:
     using Peripheral = RP2040_Peripheral;
 
 public:
-    static uint64_t TimeUs64();
-    static void EnsureAdcChannelIsPinInput(uint8_t channel);
-    static double MeasureVCC();
     static void DebugPrint();
 
     static void Init();
