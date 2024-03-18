@@ -10,7 +10,6 @@ if (lib_sources)
 endif()
 
 # traverse down build-wise
-add_subdirectory(RP2040)
 add_subdirectory(Evm)
 add_subdirectory(Kernel)
 add_subdirectory(Log)

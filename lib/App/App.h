@@ -2,6 +2,7 @@
 
 #include "ADCInternal.h"
 #include "Ble.h"
+#include "Clock.h"
 #include "Evm.h"
 #include "FilesystemLittleFS.h"
 #include "Flashable.h"
@@ -13,7 +14,7 @@
 #include "PAL.h"
 #include "Pin.h"
 #include "PWM.h"
-#include "MYRP2040.h"
+#include "PeripheralControl.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "USB.h"
@@ -41,14 +42,15 @@ public:
 
         // Init everything else
         ADC::Init();
+        Clock::Init();
         EvmInit();
         I2C::Init();
         JSONMsgRouter::Init();
-        RP2040::Init();
 
         // Shell
         ADC::SetupShell();
         Ble::SetupShell();
+        Clock::SetupShell();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
         I2C::SetupShell();
@@ -57,7 +59,7 @@ public:
         PALSetupShell();
         PinSetupShell();
         PWM::SetupShell();
-        RP2040::SetupShell();
+        PeripheralControl::SetupShell();
         Shell::Init();
         TimelineSetupShell();
         UartSetupShell();
