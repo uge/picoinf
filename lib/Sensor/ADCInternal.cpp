@@ -89,6 +89,8 @@ uint16_t ADC::ReadTemperature()
 
 void ADC::Test()
 {
+    static Timeline t;
+
     // The first 3 are normal ADC inputs
     for (uint8_t i = 26; i <= 28; ++i)
     {
@@ -106,6 +108,21 @@ void ADC::Test()
     Log("Pin -- (input 4): (temperature)");
     Log("  TempC: ", TempSensorInternal::GetTempC());
     Log("  TempF: ", TempSensorInternal::GetTempF());
+
+    // Show some timing    
+    t.Reset();
+    t.Event("Test");
+    ADC::GetMilliVolts(26);
+    t.Event("ADC 26");
+    ADC::GetMilliVolts(27);
+    t.Event("ADC 27");
+    ADC::GetMilliVolts(28);
+    t.Event("ADC 28");
+    GetMilliVoltsVCC();
+    t.Event("ADC VCC");
+    TempSensorInternal::GetTempC();
+    t.Event("ADC TempC");
+    t.Report();
 }
 
 
@@ -118,6 +135,7 @@ void ADC::Init()
     Timeline::Global().Event("ADC::Init");
 
     adc_init();
+    adc_set_temp_sensor_enabled(true);
 }
 
 void ADC::SetupShell()

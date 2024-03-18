@@ -7,7 +7,7 @@ class ADC
 {
 private:
     static const uint8_t PICO_FIRST_ADC_PIN = 26;
-    static const uint8_t PICO_POWER_SAMPLE_COUNT = 5;
+    static const uint8_t PICO_POWER_SAMPLE_COUNT = 100;
 
 
 public:
