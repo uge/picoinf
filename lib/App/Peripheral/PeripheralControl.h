@@ -7,7 +7,7 @@ using namespace std;
 #include "hardware/structs/scb.h"
 #include "hardware/clocks.h"
 
-class RP2040_Peripheral
+class PeripheralControl
 {
 public:
 
@@ -98,6 +98,7 @@ public:
 
     static void SetupShell()
     {
+        Timeline::Global().Event("PeripheralControl::SetupShell");
 
         Shell::AddCommand("perip.wake.off", [](vector<string> argList) {
             // take out unused components

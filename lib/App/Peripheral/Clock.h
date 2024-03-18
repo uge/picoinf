@@ -31,7 +31,7 @@
 #include "Utl.h"
 
 
-class RP2040_Clock
+class Clock
 {
 
     /////////////////////////////////////////////////////////////////
@@ -1244,7 +1244,7 @@ static void DoNothingSilent() { }
 
     static void Init()
     {
-        Timeline::Global().Event("RP2040_Clock::Init");
+        Timeline::Global().Event("Clock::Init");
 
         SetInitialStateConditions();
         CaptureInitialState();
@@ -1252,7 +1252,7 @@ static void DoNothingSilent() { }
 
     static void SetupShell()
     {
-        Timeline::Global().Event("RP2040_Clock::SetupShell");
+        Timeline::Global().Event("Clock::SetupShell");
 
         Shell::AddCommand("clk.show", [](vector<string> argList) {
             PrintAll();
