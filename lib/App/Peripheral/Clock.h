@@ -704,6 +704,24 @@ class Clock
             freq,
             46'875
         );
+
+        // clk_adc is also tied to pll_usb by default.
+        // tests show safe to use from other clock sources, and
+        // changing it now upfront leads to a more consistent experience
+        // as the system changes clock speeds.
+        // that is, the first time clock is changed, clk_adc gets pulled away
+        // from pll_usb to pll_sys/xosc/rosc, and never goes back.  inconsistent
+        // experience depending on the sequence of events.
+        // this also allows USB to be shut off at any time/sequence without
+        // affecting adc nor introducing a sequence dependence on getting adc off
+        // usb before shutdown.
+        clock_configure(
+            clk_adc,
+            0,
+            CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS,
+            125'000'000,
+            125'000'000
+        );
     }
 
     inline static State stateInitial_;
