@@ -515,8 +515,6 @@ class RP2040_Clock
 
         void Print()
         {
-            LogModeSync();
-
             Log("State:");
 
             for (auto &pllState : pllStateList)
@@ -530,8 +528,6 @@ class RP2040_Clock
                 clockState.Print();
                 LogNL();
             }
-
-            LogModeAsync();
         }
     };
 
@@ -685,9 +681,7 @@ class RP2040_Clock
 
         if (verbose_)
         {
-            LogModeSync();
             PrintAll();
-            LogModeAsync();
         }
     }
 
@@ -961,7 +955,16 @@ public:
         else 
         {
             // Figure out PLL configuration to get to requested MHz
-            PllConfig pc = GetPllConfigForFreq(mhz, lowPowerPriority, mustBeExact);
+            PllConfig pc;
+            
+            if (freq__data.contains(mhz))
+            {
+                pc = freq__data[mhz];
+            }
+            else
+            {
+                pc = GetPllConfigForFreq(mhz, lowPowerPriority, mustBeExact);
+            }
 
             if (pc.refdiv != 0)
             {
@@ -1031,6 +1034,16 @@ public:
     static void DisableUSB()
     {
         pll_deinit(pll_usb);
+    }
+
+    static void PrepareClockMHz(double mhz, bool lowPowerPriority = false, bool mustBeExact = false)
+    {
+        if (mhz != 6 && mhz != 12)
+        {
+            PllConfig pc = GetPllConfigForFreq(mhz, lowPowerPriority, mustBeExact);
+
+            freq__data[mhz] = pc;
+        }
     }
 
 
@@ -1135,8 +1148,6 @@ public:
 
     static void PrintAll()
     {
-        LogModeSync();
-
         Log("name        freq         src");
         Log("----------------------------");
 
@@ -1194,8 +1205,6 @@ public:
             GetClockState(clk_gpout2).Print();  LogNL();
             GetClockState(clk_gpout3).Print();  LogNL();
         }
-
-        LogModeAsync();
     }
 
     static void PrintSources()
@@ -1282,6 +1291,24 @@ static void DoNothingSilent() { }
 
             PrintAll();
         }, { .argCount = -1, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
+
+        Shell::AddCommand("clk.prep", [](vector<string> argList) {
+            double mhz              = atof(argList[0].c_str());
+            bool   lowPowerPriority = false;
+            bool   mustBeExact      = false;
+
+            if (argList.size() >= 2)
+            {
+                lowPowerPriority = atoi(argList[1].c_str());
+            }
+
+            if (argList.size() >= 3)
+            {
+                mustBeExact = atoi(argList[2].c_str());
+            }
+
+            PrepareClockMHz(mhz, lowPowerPriority, mustBeExact);
+        }, { .argCount = -1, .help = "Prepare <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
 
         Shell::AddCommand("clk.usb", [](vector<string> argList) {
             if (atoi(argList[0].c_str()))
@@ -1489,13 +1516,13 @@ static void DoNothingSilent() { }
 
             vreg_set_voltage((vreg_voltage)vregVal);
         }, { .argCount = 1, .help = "set vreg to 0.85 <= x <= 1.30" });
-
-
     }
 
 
 
 
 private:
+
+    inline static unordered_map<double, PllConfig> freq__data;
 };
 
