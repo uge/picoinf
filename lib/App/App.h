@@ -49,7 +49,10 @@ public:
 
         // Shell
         ADC::SetupShell();
-        Ble::SetupShell();
+        if (PAL.IsPicoW())
+        {
+            Ble::SetupShell();
+        }
         Clock::SetupShell();
         EvmSetupShell();
         FilesystemLittleFS::SetupShell();
@@ -83,8 +86,7 @@ public:
         USB::Init();
         LogNL();
 
-        string board = PICO_BOARD_ACTUAL;
-        if (board == "pico_w")
+        if (PAL.IsPicoW())
         {
             Ble::Init();
             LogNL();
