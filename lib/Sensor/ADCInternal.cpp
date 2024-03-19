@@ -144,7 +144,20 @@ void ADC::SetupShell()
 
     Shell::AddCommand("adc.test", [](vector<string> argList) {
         Test();
-    }, { .argCount = 0, .help = "" });
+    }, { .argCount = 0, .help = "Test all ADC functions" });
+
+    Shell::AddCommand("adc.get", [](vector<string> argList) {
+        Log(GetMilliVolts((uint8_t)atoi(argList[0].c_str())));
+    }, { .argCount = 1, .help = "ADC GetMilliVolts pin x" });
+
+    Shell::AddCommand("adc.vcc", [](vector<string> argList) {
+        Log(GetMilliVoltsVCC());
+    }, { .argCount = 0, .help = "ADC GetMilliVoltsVCC" });
+
+    Shell::AddCommand("sys.temp", [](vector<string> argList) {
+        Log("TempF: ", TempSensorInternal::GetTempF());
+        Log("TempC: ", TempSensorInternal::GetTempC());
+    }, { .argCount = 0, .help = "Get temperature" });
 }
 
 
