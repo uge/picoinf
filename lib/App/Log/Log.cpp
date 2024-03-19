@@ -493,6 +493,16 @@ void LogSetupShell()
         Log("log.testnow success");
         LogModeAsync();
     }, { .help = "" });
+
+
+    Shell::AddCommand("log.mode.sync", [](vector<string>){
+        LogModeSync();
+    }, { .help = "" });
+
+    Shell::AddCommand("log.mode.async", [](vector<string>){
+        LogModeAsync();
+    }, { .help = "" });
+
 }
 
 
