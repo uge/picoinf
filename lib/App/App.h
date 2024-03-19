@@ -96,13 +96,14 @@ public:
         // run app code which depends on prior init
         t.Run();
 
-        // make shell visible
-        LogNL();
-        Shell::DisplayOn();
-
         // start whole application
         KTask<2000> task("Application", []{
             Log("Event Manager Start");
+
+            // make shell visible
+            LogNL();
+            Shell::DisplayOn();
+
             Evm::MainLoop();
         }, 10);
 
