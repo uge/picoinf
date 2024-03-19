@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Clock.h"
 #include "Evm.h"
 #include "KTask.h"
 #include "Log.h"
@@ -71,6 +72,7 @@ class USB
 public:
 
     static void Init();
+    static void SetupShell();
 
 
     /////////////////////////////////////////////
@@ -114,12 +116,75 @@ public:
         fnCbDisconnected_ = cbFn;
     }
 
+    static void EnablePowerSaveMode()
+    {
+        Log("Enabling USB power save mode");
+
+        powerSaveMode_ = true;
+
+        // simulate the level state change if Init hasn't yet been called
+        if (initHasRun_ == false)
+        {
+            OnPinVbusInterrupt();
+        }
+        else
+        {
+            if (pVbus_.DigitalRead())
+            {
+                Clock::EnableUSB();
+            }
+            else
+            {
+                Clock::DisableUSB();
+            }
+        }
+    }
+
+    static void DisablePowerSaveMode()
+    {
+        Log("Disabling USB power save mode");
+
+        powerSaveMode_ = false;
+
+        Clock::EnableUSB();
+    }
+
+
+private:
+
+    static void OnPinVbusInterrupt()
+    {
+        if (pVbus_.DigitalRead())
+        {
+            Log("VBUS Detected HIGH");
+
+            fnCbVbusConnected_();
+
+            if (powerSaveMode_)
+            {
+                Clock::EnableUSB();
+            }
+        }
+        else
+        {
+            Log("VBUS Detected LOW");
+
+            fnCbVbusDisconnected_();
+
+            if (powerSaveMode_)
+            {
+                Clock::DisableUSB();
+            }
+        }
+    }
+
 
 public:
 
     static uint8_t const *tud_descriptor_device_cb();
 
     inline static Pin              pVbus_ = Pin(24, Pin::Type::INPUT);
+    inline static bool             powerSaveMode_ = false;
     inline static function<void()> fnCbVbusConnected_    = []{};
     inline static function<void()> fnCbVbusDisconnected_ = []{};
 
@@ -128,6 +193,8 @@ public:
 
 
 private:
+
+    inline static bool initHasRun_ = false;
 
     inline static uint16_t vid_    = 0x0000;
     inline static uint16_t pid_    = 0x0000;

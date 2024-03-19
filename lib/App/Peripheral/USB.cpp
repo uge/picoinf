@@ -5,6 +5,8 @@
 
 #include "tusb.h"
 
+#include "StrictMode.h"
+
 
 /////////////////////////////////////////////////////////////////////
 // Task running TinyUSB code
@@ -21,16 +23,7 @@ void USB::Init()
         serial_ = PAL.GetAddress();
     }
 
-    pVbus_.SetInterruptCallback([]{
-        if (pVbus_.DigitalRead())
-        {
-            fnCbVbusConnected_();
-        }
-        else
-        {
-            fnCbVbusDisconnected_();
-        }
-    }, Pin::TriggerType::BOTH);
+    pVbus_.SetInterruptCallback([]{ OnPinVbusInterrupt(); }, Pin::TriggerType::BOTH);
     pVbus_.EnableInterrupt();
 
     Log("USB Init");
@@ -53,6 +46,22 @@ void USB::Init()
             tud_task();
         }
     }, 5);
+
+    initHasRun_ = true;
+}
+
+void USB::SetupShell()
+{
+    Shell::AddCommand("usb.powersave", [](vector<string> argList){
+        if (atoi(argList[0].c_str()))
+        {
+            EnablePowerSaveMode();
+        }
+        else
+        {
+            DisablePowerSaveMode();
+        }
+    }, { .argCount = 1, .help = "power save mode on(1) or off(0)"});
 }
 
 

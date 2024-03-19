@@ -66,6 +66,7 @@ public:
         Shell::Init();
         TimelineSetupShell();
         UartSetupShell();
+        USB::SetupShell();
         UtlSetupShell();
         WatchdogSetupShell();
         WorkSetupShell();
@@ -101,7 +102,7 @@ public:
 
         // start whole application
         KTask<2000> task("Application", []{
-            Log("Application running");
+            Log("Event Manager Start");
             Evm::MainLoop();
         }, 10);
 
