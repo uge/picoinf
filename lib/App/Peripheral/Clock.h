@@ -1036,6 +1036,8 @@ public:
 
     static void EnableUSB()
     {
+        Log("Clock::EnableUSB");
+
         PllState psUsb = GetPllState(pll_usb);
 
         pll_init(
@@ -1050,6 +1052,8 @@ public:
     // saves 4mA
     static void DisableUSB()
     {
+        Log("Clock::DisableUSB");
+
         pll_deinit(pll_usb);
     }
 
