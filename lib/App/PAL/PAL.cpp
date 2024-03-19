@@ -293,6 +293,7 @@ void PALInit()
     LogNL();
     Log("Reset reason: ", PAL.GetResetReason());
     Log("Device ID   : ", PAL.GetAddress());
+    Log("Board       : ", PAL.IsPicoW() ? "pico_w" : "pico");
     Log("Version     : ", Version::GetVersion());
 }
 
