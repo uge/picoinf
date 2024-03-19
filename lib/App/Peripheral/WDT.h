@@ -13,10 +13,13 @@ class Watchdog
 public:
 
     static void SetTimeout(uint32_t timeoutMs);
+    static uint32_t GetTimeout();
     static void Start();
     static void Stop();
     static void Feed();
     static bool CausedReboot();
+
+    static void SetupShell();
 
 
 private:

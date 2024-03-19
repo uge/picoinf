@@ -4,6 +4,8 @@
 #include "Shell.h"
 
 #include "hardware/watchdog.h"
+#include "hardware/structs/watchdog.h"
+
 
 // uses LFCLK
 //   will automatically force the 32.768 kHz RC oscillator on as
@@ -44,6 +46,11 @@ void Watchdog::SetTimeout(uint32_t timeoutMs)
     timeoutMs_ = timeoutMs;
 }
 
+uint32_t Watchdog::GetTimeout()
+{
+    return watchdog_get_count() / 1'000;
+}
+
 void Watchdog::Start()
 {
     watchdog_enable(timeoutMs_, true);
@@ -70,41 +77,37 @@ bool Watchdog::CausedReboot()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void WatchdogSetupShell()
+void Watchdog::SetupShell()
 {
-    Timeline::Global().Event("WatchdogSetupShell");
+    Timeline::Global().Event("Watchdog::SetupShell");
 
-    Shell::AddCommand("wdt.timeout", [&](vector<string> argList){
-        Watchdog w;
-
+    Shell::AddCommand("wdt.set", [&](vector<string> argList){
         uint32_t timeoutMs = atol(argList[0].c_str());
         Log("timeoutMs ", timeoutMs);
 
-        w.SetTimeout(timeoutMs);
+        SetTimeout(timeoutMs);
     }, { .argCount = 1, .help = "wdt set timeout <ms>"});
 
-    Shell::AddCommand("wdt.start", [&](vector<string> argList){
-        Watchdog w;
+    Shell::AddCommand("wdt.get", [&](vector<string> argList){
+        Log(Commas(GetTimeout()), " ms timeout");
+    }, { .argCount = 0, .help = "wdt get timeout ms"});
 
+    Shell::AddCommand("wdt.start", [&](vector<string> argList){
         Log("Watchdog start");
 
-        w.Start();
+        Start();
     }, { .argCount = 0, .help = "wdt start"});
 
     Shell::AddCommand("wdt.stop", [&](vector<string> argList){
-        Watchdog w;
-
         Log("Watchdog stop");
 
-        w.Stop();
+        Stop();
     }, { .argCount = 0, .help = "wdt stop"});
 
     Shell::AddCommand("wdt.feed", [&](vector<string> argList){
-        Watchdog w;
-
         Log("Watchdog feed");
 
-        w.Feed();
+        Feed();
     }, { .argCount = 0, .help = "wdt feed"});
 }
 

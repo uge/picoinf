@@ -68,7 +68,7 @@ public:
         UartSetupShell();
         USB::SetupShell();
         UtlSetupShell();
-        WatchdogSetupShell();
+        Watchdog::SetupShell();
         WorkSetupShell();
 
         // JSON
