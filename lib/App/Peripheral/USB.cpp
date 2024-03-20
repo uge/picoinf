@@ -23,8 +23,12 @@ void USB::Init()
         serial_ = PAL.GetAddress();
     }
 
-    pVbus_.SetInterruptCallback([]{ OnPinVbusInterrupt(); }, Pin::TriggerType::BOTH);
-    pVbus_.EnableInterrupt();
+    if (PAL.IsPicoW() == false)
+    {
+        pVbus_ = Pin(24, Pin::Type::INPUT);
+        pVbus_.SetInterruptCallback([]{ OnPinVbusInterrupt(); }, Pin::TriggerType::BOTH);
+        pVbus_.EnableInterrupt();
+    }
 
     Log("USB Init");
     Log("VID: ", ToHex(vid_), ", PID: ", ToHex(pid_), ", Device: ", ToHex(device_));

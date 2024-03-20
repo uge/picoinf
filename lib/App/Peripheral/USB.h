@@ -118,35 +118,50 @@ public:
 
     static void EnablePowerSaveMode()
     {
-        Log("Enabling USB power save mode");
-
-        powerSaveMode_ = true;
-
-        // simulate the level state change if Init hasn't yet been called
-        if (initHasRun_ == false)
+        if (PAL.IsPicoW())
         {
-            OnPinVbusInterrupt();
+            Log("NOT entering USB power save mode -- PicoW");
         }
         else
         {
-            if (pVbus_.DigitalRead())
+            Log("Enabling USB power save mode");
+
+            powerSaveMode_ = true;
+
+            // simulate the level state change if Init hasn't yet been called
+            if (initHasRun_ == false)
             {
-                Clock::EnableUSB();
+                pVbus_ = Pin(24, Pin::Type::INPUT);
+                OnPinVbusInterrupt();
             }
             else
             {
-                Clock::DisableUSB();
+                if (pVbus_.DigitalRead())
+                {
+                    Clock::EnableUSB();
+                }
+                else
+                {
+                    Clock::DisableUSB();
+                }
             }
         }
     }
 
     static void DisablePowerSaveMode()
     {
-        Log("Disabling USB power save mode");
+        if (PAL.IsPicoW())
+        {
+            Log("NOT disabling USB power save mode -- PicoW");
+        }
+        else
+        {
+            Log("Disabling USB power save mode");
 
-        powerSaveMode_ = false;
+            powerSaveMode_ = false;
 
-        Clock::EnableUSB();
+            Clock::EnableUSB();
+        }
     }
 
 
@@ -183,7 +198,7 @@ public:
 
     static uint8_t const *tud_descriptor_device_cb();
 
-    inline static Pin              pVbus_ = Pin(24, Pin::Type::INPUT);
+    inline static Pin              pVbus_;
     inline static bool             powerSaveMode_ = false;
     inline static function<void()> fnCbVbusConnected_    = []{};
     inline static function<void()> fnCbVbusDisconnected_ = []{};
