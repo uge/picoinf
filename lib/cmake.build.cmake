@@ -24,8 +24,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME}
-    pico_stdlib
-    pico_rand
+    cmsis_core
+
     hardware_adc
     hardware_clocks
     hardware_i2c
@@ -35,14 +35,19 @@ target_link_libraries(${PROJECT_NAME}
     hardware_rtc
     hardware_timer
     hardware_xosc
+
     FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap3
-    tinyusb_device
-    tinyusb_host
+
     pico_cyw43_arch_none
     pico_btstack_cyw43
     pico_btstack_ble
-    cmsis_core
+    
+    pico_rand
+    pico_stdlib
+
+    tinyusb_device
+    tinyusb_host
 )
 
 include(${LIB_PICO}/cmake.compiledefs.cmake)
