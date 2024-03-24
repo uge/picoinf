@@ -34,6 +34,10 @@ int _write_r(struct _reent *r, int file, const void *ptr, int len)
 // Maybe pick this up later, I do want to be able to
 // capture the output from the logging, printf, printk, etc
 // https://github.com/picolibc/picolibc/blob/main/doc/os.md
+//
+// Hmm I think it's newlib under pico
+// https://github.com/raspberrypi/pico-sdk/blob/master/README.md
+// https://interrupt.memfault.com/blog/boostrapping-libc-with-newlib
 
 
 ////////////////////////////////////////////////////////////////////////////////
