@@ -38,18 +38,25 @@ void USB::Init()
     Log("CDC Interface   : ", cdcInterface_);
     Log("Vendor Interface: ", vendorInterface_);
     
-    static KTask<256> t("TinyUSB", []{
-        tusb_init();
+    // Start the thread after the event manager has begun, this allows
+    // main code to register for callbacks for events that this
+    // thread would otherwise process before main code had that chance
+    static TimedEventHandlerDelegate ted;
+    ted.SetCallback([]{
+        static KTask<256> t("TinyUSB", []{
+            tusb_init();
 
-        // has to run after scheduler started for some reason
-        tud_init(0);
+            // has to run after scheduler started for some reason
+            tud_init(0);
 
-        while (true)
-        {
-            // blocks via FreeRTOS task sync mechanisms
-            tud_task();
-        }
-    }, 5);
+            while (true)
+            {
+                // blocks via FreeRTOS task sync mechanisms
+                tud_task();
+            }
+        }, 5);
+    });
+    ted.RegisterForTimedEvent(0);
 
     initHasRun_ = true;
 }
