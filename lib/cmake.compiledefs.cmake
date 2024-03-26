@@ -4,3 +4,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     APP_BUILD_VERSION="${APP_BUILD_VERSION}"
     PICO_BOARD_ACTUAL="${PICO_BOARD_ACTUAL}"
 )
+
+# set(PICO_DEOPTIMIZED_DEBUG 1)
+# add_definitions(-O0)
+add_definitions(-Wall)

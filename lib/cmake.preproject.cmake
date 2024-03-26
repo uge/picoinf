@@ -1,10 +1,5 @@
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 23)
-
-# set(PICO_DEOPTIMIZED_DEBUG 1)
-# add_definitions(-O0)
-add_definitions(-Wall)
 
 
 # Initialise pico_sdk from installed location
