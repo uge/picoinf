@@ -1,24 +1,41 @@
-#ifndef _LWIPOPTS_EXAMPLE_COMMONH_H
-#define _LWIPOPTS_EXAMPLE_COMMONH_H
-
+#pragma once
 
 // Common settings used in most of the pico_w examples
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
-// allow override in some examples
-#ifndef NO_SYS
-#define NO_SYS                      1
-#endif
-// allow override in some examples
-#ifndef LWIP_SOCKET
-#define LWIP_SOCKET                 0
-#endif
-#if PICO_CYW43_ARCH_POLL
-#define MEM_LIBC_MALLOC             1
+
+#define USE_FREERTOS 1
+
+#if USE_FREERTOS
+// integrated from pico-examples pin
+#define NO_SYS                      0
+#define TCPIP_THREAD_STACKSIZE 1024
+#define DEFAULT_THREAD_STACKSIZE 1024
+#define DEFAULT_RAW_RECVMBOX_SIZE 8
+#define TCPIP_MBOX_SIZE 8
+#define LWIP_TIMEVAL_PRIVATE 0
+// not necessary, can be done either way
+#define LWIP_TCPIP_CORE_LOCKING_INPUT 1
+// ping_thread sets socket receive timeout, so enable this feature
+#define LWIP_SO_RCVTIMEO 1
+
+// changed looking at freertos/ping example
+#define LWIP_SOCKET                 1
+
 #else
-// MEM_LIBC_MALLOC is incompatible with non polling versions
-#define MEM_LIBC_MALLOC             0
+
+// Trying to test using the threadsafe_background build to see if that works
+#define NO_SYS 1
+#define LWIP_SOCKET 0
+
 #endif
+
+
+
+
+
+
+#define MEM_LIBC_MALLOC             1
 #define MEM_ALIGNMENT               4
 #define MEM_SIZE                    4000
 #define MEMP_NUM_TCP_SEG            32
@@ -87,4 +104,4 @@
 #define SLIP_DEBUG                  LWIP_DBG_OFF
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
-#endif /* __LWIPOPTS_H__ */
+

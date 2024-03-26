@@ -257,13 +257,188 @@ void _exit(int status)
 }
 
 
-// ISR hard fault handler
+// Processor fault handlers
+// https://www.freertos.org/Debugging-Hard-Faults-On-Cortex-M-Microcontrollers.html
 // https://forums.raspberrypi.com/viewtopic.php?t=335571
-// https://forums.raspberrypi.com/viewtopic.php?t=335571
+// https://interrupt.memfault.com/blog/cortex-m-hardfault-debug#registers-prior-to-exception
+// https://www.freertos.org/Debugging-Hard-Faults-On-Cortex-M-Microcontrollers.html
 extern "C"
 {
+
+#define HALT_IF_DEBUGGING()                              \
+  do {                                                   \
+    if ((*(volatile uint32_t *)0xE000EDF0) & (1 << 0)) { \
+      __asm("bkpt 1");                                   \
+    }                                                    \
+} while (0)
+
+typedef struct __attribute__((packed)) ContextStateFrame {
+  uint32_t r0;
+  uint32_t r1;
+  uint32_t r2;
+  uint32_t r3;
+  uint32_t r12;
+  uint32_t lr;  // link register
+  uint32_t return_address;
+  uint32_t xpsr;
+} sContextStateFrame;
+
+
+#if 0
+
+// I'm going to ultimately get either the MSP or PSP (active stack pointer)
+// into R0, such that it appears as the first argument to the fault
+// handler.
+//
+// The original instructions don't work for ARMv6-M, so I'm winging in
+// some hastily coded assembly.  I'm sure there's a better way, I don't care.
+//
+//
+// R1 = 0b0100 for comparing to LR
+//
+// R1 = LR (link register, which tells us which SP to use)
+#define HARDFAULT_HANDLING_ASM(_x)               \
+    __asm volatile(                                \
+        ".thumb \n" \
+        ".syntax unified \n" \
+        "movs r1, #4 \n" \
+        "mov r2, lr \n" \
+        "tst r2, r1 \n" \
+        "bne is_msp \n" \
+        "beq is_psp \n" \
+        "is_msp: \n"    \
+        "mrs r0, msp \n"    \
+        "b do_exec \n" \
+        "is_psp: \n"    \
+        "mrs r0, psp \n"    \
+        "b do_exec \n" \
+        "do_exec: \n"  \
+        "b my_fault_handler_c \n"   \
+    )
+#endif
+
+__attribute__((optimize("O0")))
+void my_fault_handler_c(sContextStateFrame *frame) {
+    HALT_IF_DEBUGGING();
+
+    // application interrupt and reset control register
+    // volatile uint32_t aircr = *(volatile uint32_t *)0xE000ED0C;
+
+    // configurable fault status register
+    volatile uint32_t cfsr  = *(volatile uint32_t *)0xE000ED28;
+
+    const uint32_t usage_fault_mask = 0xffff0000;
+
+    bool nonUsageFault = (cfsr & ~usage_fault_mask);
+
+    if (nonUsageFault)
+    {
+        Log("Non-usage fault");
+    }
+    else
+    {
+        Log("Usage fault");
+    }
+
+    const bool faultedFromException = ((frame->xpsr & 0xFF) != 0);
+
+    Log("faulted from exception: ", faultedFromException);
+
+    Log("CFSR: ", ToBin(cfsr));
+
+    // faultmask
+    // control
+    // apsr
+    // xpsr on the stateframe, return_address shows same as debugger?
+
+
+}
+
+
+
+
+void UsageFault_Handler()
+{
+    // HARDFAULT_HANDLING_ASM();
+    LogNL(5);
+    Log("UsageFault_Handler");
+    LogNL(5);
+}
+
+void BusFault_Handler()
+{
+    // HARDFAULT_HANDLING_ASM();
+    LogNL(5);
+    Log("BusFault_Handler");
+    LogNL(5);
+}
+
+void MemMang_Handler()
+{
+    // HARDFAULT_HANDLING_ASM();
+    LogNL(5);
+    Log("MemMang_Handler");
+    LogNL(5);
+}
+
+
+
 void HardFault_Handler()
 {
+    // HARDFAULT_HANDLING_ASM();
+
+    uint32_t lr = 0;
+    uint32_t msp = 0;
+    uint32_t psp = 0;
+
+    __asm volatile (
+        "mov %[retVal], lr"
+        :
+        [retVal] "=r" (lr)
+    );
+
+    __asm volatile (
+        "mrs r0, msp \n"
+        "mov %[retVal], r0"
+        :
+        [retVal] "=r" (msp)
+    );
+
+    __asm volatile (
+        "mrs r0, psp \n"
+        "mov %[retVal], r0"
+        :
+        [retVal] "=r" (psp)
+    );
+
+    LogModeSync();
+
+    Log("lr : ", ToHex(lr));
+    Log("msp: ", ToHex(msp));
+    Log("psp: ", ToHex(psp));
+
+    ContextStateFrame *frame = nullptr;
+    if (lr & 0b0100)
+    {
+        Log("Thread mode");
+        frame = (ContextStateFrame *)psp;
+    }
+    else
+    {
+        Log("Non-Thread mode");
+        frame = (ContextStateFrame *)msp;
+    }
+
+    my_fault_handler_c(frame);
+
+
+
+    LogNL(2);
+    Log("==========================================");
+    PAL.Reset();
+
+
+
     LogModeSync();
 
     Log("HardFault_Handler");
@@ -272,6 +447,9 @@ void HardFault_Handler()
 
     while (true) {}
 }
+
+
+
 }
 
 

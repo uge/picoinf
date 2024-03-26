@@ -28,76 +28,76 @@ template <typename T>
 class App
 {
 public:
-    App()
+    static void Run()
     {
-        // Init in specific sequence
-        TimelineInit();
-        LogInit();
-        UartInit();
-        PALInit();
-        LogNL();
-        FilesystemLittleFS::Init();
-        LogNL();
-        NukeAppStorageFlashIfFirmwareChanged();
-
-        // Init everything else
-        ADC::Init();
-        Clock::Init();
-        EvmInit();
-        I2C::Init();
-        JSONMsgRouter::Init();
-
-        // Shell
-        ADC::SetupShell();
-        if (PAL.IsPicoW())
-        {
-            Ble::SetupShell();
-        }
-        Clock::SetupShell();
-        EvmSetupShell();
-        FilesystemLittleFS::SetupShell();
-        I2C::SetupShell();
-        JSONMsgRouter::SetupShell();
-        LogSetupShell();
-        PALSetupShell();
-        PinSetupShell();
-        PWM::SetupShell();
-        PeripheralControl::SetupShell();
-        Shell::Init();
-        TimelineSetupShell();
-        UartSetupShell();
-        USB::SetupShell();
-        UtlSetupShell();
-        Watchdog::SetupShell();
-        WorkSetupShell();
-
-        // JSON
-        JSONMsgRouter::SetupJSON();
-        PALSetupJSON();
-        Shell::SetupJSON();
-    }
-
-    void Run()
-    {
-        // let app instantiate and potentially configure
-        // some core systems
-        T t;
-
-        // init configurable core systems
-        USB::Init();
-        LogNL();
-
-        if (PAL.IsPicoW())
-        {
-            Ble::Init();
+        // main() stack vanishes on scheduler start, so
+        // run the whole application state within the task
+        // and make sure the task itself isn't on the main()
+        // stack
+        static KTask<2000> task("Application", [&]{
+            // Init in specific sequence
+            TimelineInit();
+            LogInit();
+            UartInit();
+            PALInit();
             LogNL();
-        }
+            FilesystemLittleFS::Init();
+            LogNL();
+            NukeAppStorageFlashIfFirmwareChanged();
 
-        // run app code which depends on prior init
-        t.Run();
+            // Init everything else
+            ADC::Init();
+            Clock::Init();
+            EvmInit();
+            I2C::Init();
+            JSONMsgRouter::Init();
 
-        // start whole application
-        KTask<2000> task("Application", []{
+            // Shell
+            ADC::SetupShell();
+            if (PAL.IsPicoW())
+            {
+                Ble::SetupShell();
+            }
+            Clock::SetupShell();
+            EvmSetupShell();
+            FilesystemLittleFS::SetupShell();
+            I2C::SetupShell();
+            JSONMsgRouter::SetupShell();
+            LogSetupShell();
+            PALSetupShell();
+            PinSetupShell();
+            PWM::SetupShell();
+            PeripheralControl::SetupShell();
+            Shell::Init();
+            TimelineSetupShell();
+            UartSetupShell();
+            USB::SetupShell();
+            UtlSetupShell();
+            Watchdog::SetupShell();
+            WorkSetupShell();
+
+            // JSON
+            JSONMsgRouter::SetupJSON();
+            PALSetupJSON();
+            Shell::SetupJSON();
+
+            // let app instantiate and potentially configure
+            // some core systems
+            T t;
+
+            // init configurable core systems
+            USB::Init();
+            LogNL();
+
+            if (PAL.IsPicoW())
+            {
+                Ble::Init();
+                LogNL();
+            }
+
+            // run app code which depends on prior init
+            t.Run();
+
             Log("Event Manager Start");
 
             // make shell visible
@@ -112,7 +112,7 @@ public:
 
 private:
     
-    void NukeAppStorageFlashIfFirmwareChanged()
+    static void NukeAppStorageFlashIfFirmwareChanged()
     {
         // We of course want app settings to persist across reboots.
         //

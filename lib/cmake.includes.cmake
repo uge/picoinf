@@ -10,11 +10,10 @@ set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/../pico-sdk")
 
 # Locate FreeRTOS
 # Also include this dir, which is where the FreeRTOSConfig.h is
-set(FRTOS_ROOT "${CMAKE_CURRENT_LIST_DIR}/../FreeRTOS-Kernel")
+set(FREERTOS_KERNEL_PATH "${CMAKE_CURRENT_LIST_DIR}/../FreeRTOS-Kernel")
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
-    ${FRTOS_ROOT}/include
-    ${FRTOS}/portable/GCC/ARM_CM0
+    ${FREERTOS_KERNEL_PATH}/include
 )
 
 # Locate TinyUSB
@@ -37,5 +36,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${BTSTACK_ROOT}/src
 )
 
-
+# Locate LwIP
+# Also include this dir, which is where the lwipopts.h is
+set(LWIP_ROOT ${PICO_SDK_PATH}/lib/lwip)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+)
 
