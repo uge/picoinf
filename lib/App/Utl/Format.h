@@ -42,7 +42,7 @@ public:
 
 
     template <typename T>
-    static pair<const char *, int> StrC(const char *buf, uint8_t bufSizeIn, const char *fmt, T val)
+    static pair<const char *, int> StrC(char *buf, uint8_t bufSizeIn, const char *fmt, T val)
     {
         int bufSize = snprintf((char *) buf, bufSizeIn, fmt, val);
 
