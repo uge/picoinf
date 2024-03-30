@@ -1,4 +1,6 @@
 #include "KHooks.h"
+#include "Log.h"
+
 
 extern "C"
 {
@@ -14,12 +16,16 @@ void vApplicationTickHook()
 
 void vApplicationMallocFailedHook()
 {
-
+    LogModeSync();
+    Log("vApplicationMallocFailedHook");
+    LogModeAsync();
 }
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-
+    LogModeSync();
+    Log("vApplicationStackOverflowHook - \"", pcTaskName, "\"");
+    LogModeAsync();
 }
 
 // https://forums.freertos.org/t/undefined-references-using-static-allocation/11012
