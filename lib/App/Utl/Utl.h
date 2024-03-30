@@ -393,62 +393,6 @@ inline string &CommasStatic(uint32_t num)
 }
 
 
-template <uint8_t CAPACITY>
-class StackString
-{
-public:
-    StackString()
-    {
-        Clear();
-    }
-
-    StackString &operator=(const char *str)
-    {
-        Clear();
-        operator+=(str);
-        return *this;
-    }
-
-    StackString &operator+=(const char *str)
-    {
-        size_t len = strlen(str);
-        size_t spaceRemaining = CAPACITY - size_;
-
-        if (len && spaceRemaining)
-        {
-            size_t bytesToCopy = min(len, spaceRemaining);
-            memcpy(&buf_[size_], str, bytesToCopy);
-
-            size_ += bytesToCopy;
-
-            buf_[size_] = '\0';
-        }
-
-        return *this;
-    }
-
-    void Clear()
-    {
-        size_ = 0;
-        memset(buf_, 0, CAPACITY + 1);
-    }
-
-    char *Data()
-    {
-        return buf_;
-    }
-
-    char *c_str()
-    {
-        return Data();
-    }
-
-private:
-    uint8_t size_ = 0;
-    char buf_[CAPACITY + 1];
-};
-
-
 // purposefully does not do operations which may allocate memory,
 // thus this function is safe to call from ISRs
 inline char *TimestampFromUs(uint64_t usTime)
