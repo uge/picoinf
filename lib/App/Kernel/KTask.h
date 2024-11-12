@@ -33,6 +33,8 @@ private:
         KTask *p = (KTask *)pKtask;
 
         p->fn_();
+
+        vTaskDelete(nullptr);
     }
 
 private:
