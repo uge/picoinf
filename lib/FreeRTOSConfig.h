@@ -27,6 +27,10 @@
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*-----------------------------------------------------------
  * Application specific definitions.
  *
@@ -46,7 +50,8 @@
 #define configUSE_TICK_HOOK                     1
 #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES                    32
-#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
+// #define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
+#define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 2048
 #define configUSE_16_BIT_TICKS                  0
 
 #define configIDLE_SHOULD_YIELD                 1
@@ -56,11 +61,11 @@
 #define configUSE_RECURSIVE_MUTEXES             1
 #define configUSE_APPLICATION_TASK_TAG          0
 #define configUSE_COUNTING_SEMAPHORES           1
-#define configQUEUE_REGISTRY_SIZE               8
+#define configQUEUE_REGISTRY_SIZE               8   // 10
 #define configUSE_QUEUE_SETS                    1
-#define configUSE_TIME_SLICING                  1
+#define configUSE_TIME_SLICING                  1   // 0
 #define configUSE_NEWLIB_REENTRANT              1
-#define configENABLE_BACKWARD_COMPATIBILITY     1
+#define configENABLE_BACKWARD_COMPATIBILITY     1   // 0
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
 
 /* System */
@@ -83,9 +88,13 @@
 #define configTIMER_SERVICE_TASK_NAME           "FR Timer Service"
 
 /* Run time and task stats gathering related definitions. */
-#define configGENERATE_RUN_TIME_STATS           0
+#define configRECORD_STACK_HIGH_ADDRESS         1
+#define configGENERATE_RUN_TIME_STATS           1
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() 
+extern uint64_t time_us_64();
+#define portGET_RUN_TIME_COUNTER_VALUE() (time_us_64())
 #define configUSE_TRACE_FACILITY                1
-#define configUSE_STATS_FORMATTING_FUNCTIONS    0
+#define configUSE_STATS_FORMATTING_FUNCTIONS    1
 
 /* Co-routine related definitions. */
 #define configUSE_CO_ROUTINES                   0
@@ -137,5 +146,9 @@ to exclude the API function. */
 #define INCLUDE_xQueueGetMutexHolder            1
 
 /* A header file that defines trace macro can be included here. */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FREERTOS_CONFIG_H */
