@@ -9,6 +9,7 @@
 #include "I2C.h"
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
+#include "KStats.h"
 #include "KTask.h"
 #include "Log.h"
 #include "PAL.h"
@@ -51,6 +52,7 @@ public:
             EvmInit();
             I2C::Init();
             JSONMsgRouter::Init();
+            KStats::Init();
 
             // Shell
             ADC::SetupShell();
@@ -63,6 +65,7 @@ public:
             FilesystemLittleFS::SetupShell();
             I2C::SetupShell();
             JSONMsgRouter::SetupShell();
+            KStats::SetupShell();
             LogSetupShell();
             PALSetupShell();
             PinSetupShell();

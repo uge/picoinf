@@ -382,8 +382,163 @@ void MemMang_Handler()
 }
 
 
+#include <unordered_map>
+#include "m0FaultDispatch.h"
 
-void HardFault_Handler()
+
+static uint32_t *getRegPtr(struct CortexExcFrame *exc, struct CortexPushedRegs *hiRegs, uint32_t regNo)
+{
+	switch (regNo) {
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+			return &exc->r0_r3[regNo - 0];
+		
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			return &hiRegs->regs4_7[regNo - 4];
+		
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return &hiRegs->regs8_11[regNo - 8];
+		
+		case 12:
+			return &exc->r12;
+		
+		case 13:
+			return 0;	//sp cannot be easily written. you cn relocate the entire exc frame, and that will do it, but we do not support that here
+		
+		case 14:
+			return &exc->lr;
+		
+		case 15:
+			return &exc->pc;
+		
+		default:
+			return 0;
+	}
+}
+
+static uint32_t getReg(struct CortexExcFrame *exc, struct CortexPushedRegs *hiRegs, uint32_t regNo)
+{
+	return *getRegPtr(exc, hiRegs, regNo);
+}
+
+static void setReg(struct CortexExcFrame *exc, struct CortexPushedRegs *hiRegs, uint32_t regNo, uint32_t val)
+{
+	*getRegPtr(exc, hiRegs, regNo) = val;
+}
+
+
+	static unordered_map<int, string> names = {
+		{ EXC_m0_CAUSE_MEM_READ_ACCESS_FAIL, "Memory read failed"},
+		{ EXC_m0_CAUSE_MEM_WRITE_ACCESS_FAIL, "Memory write failed"},
+		{ EXC_m0_CAUSE_DATA_UNALIGNED, "Data alignment fault"},
+		{ EXC_m0_CAUSE_UNDEFINSTR16, "Undef Instr16"},
+		{ EXC_m0_CAUSE_UNDEFINSTR32, "Undef Instr32"},
+		{ EXC_m0_CAUSE_BKPT_HIT, "Breakpoint hit"},
+		{ EXC_m0_CAUSE_BAD_CPU_MODE, "ARM mode entered"},
+		{ EXC_m0_CAUSE_CLASSIFIER_ERROR, "Unclassified fault"},
+	};
+
+void faultHandlerWithExcFrame(struct CortexExcFrame *exc, uint32_t reason, uint32_t addr, struct CortexPushedRegs *hiRegs)
+{
+    LogModeSync();
+    Log("Fault Handler");
+
+
+
+	// static const char *names[] = {
+	// 	[EXC_m0_CAUSE_MEM_READ_ACCESS_FAIL] = "Memory read failed",
+	// 	[EXC_m0_CAUSE_MEM_WRITE_ACCESS_FAIL] = "Memory write failed",
+	// 	[EXC_m0_CAUSE_DATA_UNALIGNED] = "Data alignment fault",
+	// 	[EXC_m0_CAUSE_UNDEFINSTR16] = "Undef Instr16",
+	// 	[EXC_m0_CAUSE_UNDEFINSTR32] = "Undef Instr32",
+	// 	[EXC_m0_CAUSE_BKPT_HIT] = "Breakpoint hit",
+	// 	[EXC_m0_CAUSE_BAD_CPU_MODE] = "ARM mode entered",
+	// 	[EXC_m0_CAUSE_CLASSIFIER_ERROR] = "Unclassified fault",
+	// };
+
+
+
+
+
+	// uint32_t i;
+
+    const char *reasonStr = "????";
+    if (names.contains(reason))
+    {
+        reasonStr = names[reason].c_str();
+    }
+    Log(reasonStr, " sr = 0x", ToHex(exc->sr));
+	
+	// pr("%s sr = 0x%08x\n", (reason < sizeof(names) / sizeof(*names) && names[reason]) ? names[reason] : "????", exc->sr);
+	// pr("R0  = 0x%08x  R8  = 0x%08x\n", exc->r0_r3[0], hiRegs->regs8_11[0]);
+	// pr("R1  = 0x%08x  R9  = 0x%08x\n", exc->r0_r3[1], hiRegs->regs8_11[1]);
+	// pr("R2  = 0x%08x  R10 = 0x%08x\n", exc->r0_r3[2], hiRegs->regs8_11[2]);
+	// pr("R3  = 0x%08x  R11 = 0x%08x\n", exc->r0_r3[3], hiRegs->regs8_11[3]);
+	// pr("R4  = 0x%08x  R12 = 0x%08x\n", hiRegs->regs4_7[0], exc->r12);
+	// pr("R5  = 0x%08x  SP  = 0x%08x\n", hiRegs->regs4_7[1], (exc + 1));
+	// pr("R6  = 0x%08x  LR  = 0x%08x\n", hiRegs->regs4_7[2], exc->lr);
+	// pr("R7  = 0x%08x  PC  = 0x%08x\n", hiRegs->regs4_7[3], exc->pc);
+	
+	switch (reason) {
+		case EXC_m0_CAUSE_MEM_READ_ACCESS_FAIL:
+			Log(" -> failed to read 0x", ToHex(addr));
+			break;
+		case EXC_m0_CAUSE_MEM_WRITE_ACCESS_FAIL:
+			Log(" -> failed to write 0x", ToHex(addr));
+			break;
+		case EXC_m0_CAUSE_DATA_UNALIGNED:
+			Log(" -> unaligned access to 0x", ToHex(addr));
+			break;
+		case EXC_m0_CAUSE_UNDEFINSTR16:
+			Log(" -> undef instr: 0x", ToHex(((uint16_t*)exc->pc)[0]));
+			break;
+		case EXC_m0_CAUSE_UNDEFINSTR32:
+			Log(" -> undef instr32: 0x", ToHex(((uint16_t*)exc->pc)[0]), " 0x", ToHex(((uint16_t*)exc->pc)[1]));
+			
+			//emulate UDIV
+			if ((((uint16_t*)exc->pc)[0] & 0xfff0) == 0xfbb0 && (((uint16_t*)exc->pc)[1] & 0xf0f0) == 0xf0f0) {
+				
+				uint32_t rmNo = ((uint16_t*)exc->pc)[1] & 0x0f;
+				uint32_t rnNo = ((uint16_t*)exc->pc)[0] & 0x0f;
+				uint32_t rdNo = (((uint16_t*)exc->pc)[1] >> 8) & 0x0f;
+				
+				//PC and SP are forbidden. this is the fastest way to test for that!
+				if (((1 << rmNo) | (1 << rnNo) | (1 << rdNo)) & ((1 << 13) | (1 << 15)))
+					Log("invalid UDIV instr seen. Rd=", rdNo, ", Rn=", rnNo, ", Rm=", rmNo);
+				else {
+					
+					uint32_t rmVal = getReg(exc, hiRegs, rmNo);
+					uint32_t ret = rmVal ? (getReg(exc, hiRegs, rnNo) / rmVal) : 0;
+					
+					//set result in the reg instr wqas supposed to write
+					setReg(exc, hiRegs, rdNo, ret);
+					
+					//skip the instr since we emulated it
+					exc->pc += 4;
+					
+					return;
+				}
+			}
+			
+			break;
+	}
+	
+	while(1);
+}
+
+
+
+
+
+void HardFault_Handler_Old()
 {
     // HARDFAULT_HANDLING_ASM();
 
