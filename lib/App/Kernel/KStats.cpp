@@ -155,11 +155,17 @@ void KStats::Init()
     static const uint8_t HISTORY_COUNT = 2;
     frameList_.SetCapacity(HISTORY_COUNT);
 
-    static const uint64_t STATS_INTERVAL_MS = 5000;
+    // commenting out because system crashes when enabled.
+    // there is something wrong fundamentally, and this code was put in during
+    // the time tracking it down. however, at the moment it's causing
+    // otherwise "working" code to bomb out, so put it away until you want
+    // to dig in again.
+
+    // static const uint64_t STATS_INTERVAL_MS = 5000;
     ted_.SetCallback([]{
         CaptureStats();
     });
-    ted_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
+    // ted_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
 }
 
 void KStats::SetupShell()
