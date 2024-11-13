@@ -673,6 +673,16 @@ void PALSetupJSON()
     Timeline::Global().Event("PALSetupJSON");
 
     JSONMsgRouter::RegisterHandler("REQ_SYS_RESET", [](auto &in, auto &out){
+        LogModeSync();
+        Log("REQ_SYS_RESET");
+
         Shell::Eval("sys.reset");
+    });
+
+    JSONMsgRouter::RegisterHandler("REQ_SYS_BOOTLOADER", [](auto &in, auto &out){
+        LogModeSync();
+        Log("REQ_SYS_BOOTLOADER");
+
+        Shell::Eval("sys.bootloader");
     });
 }
