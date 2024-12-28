@@ -1,1 +1,1 @@
-target_include_directories(LibPico PUBLIC .)
+target_include_directories(PicoInf PUBLIC .)

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "ADCInternal.h"
+#if PICO_INF_ENABLE_WIRELESS == 1
 #include "Ble.h"
+#endif
 #include "Clock.h"
 #include "Evm.h"
 #include "FilesystemLittleFS.h"
@@ -56,10 +58,9 @@ public:
 
             // Shell
             ADC::SetupShell();
-            if (PAL.IsPicoW())
-            {
-                Ble::SetupShell();
-            }
+#if PICO_INF_ENABLE_WIRELESS == 1
+            Ble::SetupShell();
+#endif
             Clock::SetupShell();
             EvmSetupShell();
             FilesystemLittleFS::SetupShell();
@@ -92,11 +93,10 @@ public:
             USB::Init();
             LogNL();
 
-            if (PAL.IsPicoW())
-            {
-                Ble::Init();
-                LogNL();
-            }
+#if PICO_INF_ENABLE_WIRELESS == 1
+            Ble::Init();
+            LogNL();
+#endif
 
             // run app code which depends on prior init
             t.Run();

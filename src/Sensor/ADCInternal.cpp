@@ -5,7 +5,9 @@
 #include "Timeline.h"
 
 #include "hardware/adc.h"
+#if PICO_INF_ENABLE_WIRELESS == 1
 #include "pico/cyw43_arch.h"
+#endif
 
 #include "StrictMode.h"
 
@@ -60,19 +62,21 @@ uint16_t ADC::GetMilliVoltsVCC()
 {
     uint16_t retVal = 0;
 
-    if (PAL.IsPicoW())
+#if PICO_INF_ENABLE_WIRELESS == 1
     {
         cyw43_thread_enter();
         // Make sure cyw43 is awake
         cyw43_arch_gpio_get(CYW43_WL_GPIO_VBUS_PIN);
     }
+#endif
 
     retVal = GetMilliVolts(PICO_VSYS_PIN) * 3;
     
-    if (PAL.IsPicoW())
+#if PICO_INF_ENABLE_WIRELESS == 1
     {
         cyw43_thread_exit();
     }
+#endif
 
     return retVal;
 }

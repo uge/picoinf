@@ -59,11 +59,9 @@ public:
     static void ResetToBootloader();
     static void CaptureResetReasonAndClear();
     static std::string GetResetReason();
-    static bool IsPicoW();
+    static string GetPicoBoard();
 
 private:
-    inline static bool isPicoW_ = string{PICO_BOARD_ACTUAL} == "pico_w";
-
     inline static string resetReason_;
 
     inline static bool forceInIsrYes_ = false;

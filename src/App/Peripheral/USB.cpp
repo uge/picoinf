@@ -23,7 +23,7 @@ void USB::Init()
         serial_ = PAL.GetAddress();
     }
 
-    if (PAL.IsPicoW() == false)
+    if (PAL.GetPicoBoard() == "pico_w")
     {
         pVbus_ = Pin(24, Pin::Type::INPUT);
         pVbus_.SetInterruptCallback([]{ OnPinVbusInterrupt(); }, Pin::TriggerType::BOTH);

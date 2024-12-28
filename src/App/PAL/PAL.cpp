@@ -227,9 +227,9 @@ void PlatformAbstractionLayer::CaptureResetReasonAndClear()
     }
 }
 
-bool PlatformAbstractionLayer::IsPicoW()
+string PlatformAbstractionLayer::GetPicoBoard()
 {
-    return isPicoW_;
+    return string{PICO_BOARD};
 }
 
 
@@ -626,7 +626,7 @@ void PALInit()
     LogNL();
     Log("Reset reason: ", PAL.GetResetReason());
     Log("Device ID   : ", PAL.GetAddress());
-    Log("Board       : ", PAL.IsPicoW() ? "pico_w" : "pico");
+    Log("Board       : ", PAL.GetPicoBoard());
     Log("Version     : ", Version::GetVersion());
 }
 

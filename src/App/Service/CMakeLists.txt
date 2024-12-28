@@ -1,3 +1,3 @@
-target_include_directories(LibPico PUBLIC .)
+target_include_directories(PicoInf PUBLIC .)
 
-target_sources(LibPico PRIVATE Work.cpp)
+target_sources(PicoInf PRIVATE Work.cpp)

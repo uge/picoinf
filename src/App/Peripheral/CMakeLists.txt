@@ -1,8 +1,6 @@
-# leaf of library subtree
+target_include_directories(PicoInf PUBLIC .)
 
-target_include_directories(LibPico PUBLIC .)
-
-target_sources(LibPico PRIVATE
+target_sources(PicoInf PRIVATE
     FilesystemLittleFS.cpp
     I2C.cpp
     Pin.cpp
@@ -16,8 +14,3 @@ target_sources(LibPico PRIVATE
     USB.cpp
     WDT.cpp
 )
-
-# file(GLOB lib_sources *.cpp)
-# if (lib_sources)
-#   zephyr_library_sources(${lib_sources})
-# endif()

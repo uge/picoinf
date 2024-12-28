@@ -118,7 +118,7 @@ public:
 
     static void EnablePowerSaveMode()
     {
-        if (PAL.IsPicoW())
+        if (PAL.GetPicoBoard() == "pico_w")
         {
             Log("NOT entering USB power save mode -- PicoW");
         }
@@ -150,7 +150,7 @@ public:
 
     static void DisablePowerSaveMode()
     {
-        if (PAL.IsPicoW())
+        if (PAL.GetPicoBoard() == "pico_w")
         {
             Log("NOT disabling USB power save mode -- PicoW");
         }
