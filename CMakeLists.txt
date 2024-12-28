@@ -4,7 +4,9 @@ cmake_minimum_required(VERSION 3.15...3.31)
 # Library Options
 #####################################################################
 
+set(APP_BUILD_VERSION "1970-01-01 00:00:00")
 set(PICO_BOARD "pico")
+
 
 set(PICO_INF_ENABLE_WIRELESS 0)
 if (PICO_BOARD STREQUAL "pico_w")
@@ -39,7 +41,7 @@ include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 # Project Declaration
 #####################################################################
 
-project(PicoInf LANGUAGES C CXX)
+project(PicoInf LANGUAGES C CXX ASM)
 
 
 #####################################################################
@@ -85,7 +87,7 @@ target_include_directories(PicoInf PRIVATE
 
 # Locate LittleFS
 set(LITTLEFS_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/littlefs")
-target_include_directories(PicoInf PRIVATE
+target_include_directories(PicoInf PUBLIC
     ${LITTLEFS_ROOT}
 )
 
