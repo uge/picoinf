@@ -1,3 +1,6 @@
 [submodule "ext/pico-sdk"]
 	path = ext/pico-sdk
 	url = git@github.com:raspberrypi/pico-sdk.git
+[submodule "ext/FreeRTOS-Kernel"]
+	path = ext/FreeRTOS-Kernel
+	url = git@github.com:FreeRTOS/FreeRTOS-Kernel.git
