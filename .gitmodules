@@ -7,3 +7,6 @@
 [submodule "ext/littlefs"]
 	path = ext/littlefs
 	url = git@github.com:littlefs-project/littlefs.git
+[submodule "ext/WsprEncoded"]
+	path = ext/WsprEncoded
+	url = git@github.com:traquito/WsprEncoded.git
