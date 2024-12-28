@@ -4,8 +4,13 @@ cmake_minimum_required(VERSION 3.15...3.31)
 # Library Options
 #####################################################################
 
-set(APP_BUILD_VERSION "1970-01-01 00:00:00")
-set(PICO_BOARD "pico")
+if (NOT DEFINED APP_BUILD_VERSION)
+    set(APP_BUILD_VERSION "1970-01-01 00:00:00")
+endif()
+
+if (NOT DEFINED PICO_BOARD)
+    set(PICO_BOARD "pico")
+endif()
 
 
 set(PICO_INF_ENABLE_WIRELESS 0)
@@ -102,6 +107,12 @@ target_include_directories(PicoInf PRIVATE
 set(LWIP_ROOT ${PICO_SDK_PATH}/lib/lwip)
 target_include_directories(PicoInf PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/config
+)
+
+# Include WsprEncoded
+set(WSPR_ENCODED_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/WsprEncoded")
+target_include_directories(PicoInf PUBLIC
+    ${WSPR_ENCODED_ROOT}/src
 )
 
 

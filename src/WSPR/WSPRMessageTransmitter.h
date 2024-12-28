@@ -5,7 +5,6 @@
 #include "PAL.h"
 #include "si5351.h"
 #include "Timeline.h"
-#include "WSPRMessage.h"
 #include "WSPREncoder.h"
 
 class WSPRMessageTransmitter
@@ -88,16 +87,14 @@ public:
         on_ = true;
     }
 
-    void Send(const WSPRMessage &msg)
+    void Send(const string &callsign, const string &grid4, uint8_t powerDbm)
     {
         Timeline::Global().Event("send start");
 
         fnOnTxStart_();
 
         // wow this is 34ms
-        wsprEncoder_.EncodeType1(msg.GetCallsign(),
-                                 msg.GetGrid(),
-                                 msg.GetPowerDbm());
+        wsprEncoder_.EncodeType1(callsign, grid4, powerDbm);
 
         Timeline::Global().Event("msg encoded");
 
