@@ -9,6 +9,7 @@
 #include "FilesystemLittleFS.h"
 #include "Flashable.h"
 #include "I2C.h"
+#include "JerryScriptIntegration.h"
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
 #include "KStats.h"
@@ -65,6 +66,7 @@ public:
             EvmSetupShell();
             FilesystemLittleFS::SetupShell();
             I2C::SetupShell();
+            JerryScriptIntegration::SetupShell();
             JSONMsgRouter::SetupShell();
             KStats::SetupShell();
             LogSetupShell();
