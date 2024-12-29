@@ -60,14 +60,8 @@ pico_sdk_init()
 # PicoInf Library
 #####################################################################
 
-# Library and code
+# Declare Library
 add_library(PicoInf)
-add_subdirectory(src)
-
-# Set up test target executable
-add_executable(PicoInfTest test.cpp)
-target_link_libraries(PicoInfTest PicoInf)
-pico_add_extra_outputs(PicoInfTest)
 
 
 #####################################################################
@@ -111,9 +105,7 @@ target_include_directories(PicoInf PRIVATE
 
 # Include WsprEncoded
 set(WSPR_ENCODED_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/WsprEncoded")
-target_include_directories(PicoInf PUBLIC
-    ${WSPR_ENCODED_ROOT}/src
-)
+add_subdirectory(${WSPR_ENCODED_ROOT})
 
 
 #####################################################################
@@ -185,6 +177,10 @@ list(APPEND TARGET_LINK_LIBS_LIST
     tinyusb_host
 )
 
+list(APPEND TARGET_LINK_LIBS_LIST
+    WsprEncoded
+)
+
 target_link_libraries(PicoInf ${TARGET_LINK_LIBS_LIST})
 
 
@@ -220,3 +216,14 @@ add_definitions(-Wno-psabi)
 add_definitions(-fstack-usage)
 
 
+#####################################################################
+# PicoInf Library Code
+#####################################################################
+
+# Code
+add_subdirectory(src)
+
+# Set up test target executable
+add_executable(PicoInfTest test.cpp)
+target_link_libraries(PicoInfTest PicoInf)
+pico_add_extra_outputs(PicoInfTest)
