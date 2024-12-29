@@ -155,7 +155,7 @@ void Shell::ShellCmdExecute(const string &line)
 {
     // this is on the serial in thread
 
-    vector<string> linePartList = Split(line);
+    vector<string> linePartList = SplitQuotedString(line);
 
     string cmdOrig = linePartList[0];
     string cmd     = cmdOrig;
