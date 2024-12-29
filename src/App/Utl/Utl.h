@@ -180,6 +180,63 @@ vector<string> Split(string str,
     return retVal;
 }
 
+inline
+vector<string> SplitQuotedString(const string &input)
+{
+    vector<std::string> retVal;
+
+    string currentToken;
+    bool insideQuotes = false;
+
+    for (size_t i = 0; i < input.length(); ++i)
+    {
+        char ch = input[i];
+
+        if (ch == '"')
+        {
+            if (insideQuotes)
+            {
+                // Closing quote
+                if (currentToken.size() > 0) {
+                    retVal.push_back(currentToken);
+                    currentToken.clear();
+                }
+                insideQuotes = false;
+            }
+            else
+            {
+                // Opening quote
+                if (currentToken.size() > 0) {
+                    retVal.push_back(currentToken);
+                    currentToken.clear();
+                }
+                insideQuotes = true;
+            }
+        }
+        else if (std::isspace(ch) && !insideQuotes)
+        {
+            // Split on spaces, unless inside quotes
+            if (!currentToken.empty())
+            {
+                retVal.push_back(currentToken);
+                currentToken.clear();
+            }
+        }
+        else
+        {
+            currentToken += ch;  // Add character to current token
+        }
+    }
+
+    if (!currentToken.empty())
+    {
+        // Add last token if any
+        retVal.push_back(currentToken);
+    }
+
+    return retVal;
+}
+
 
 // assumes list is sorted smallest/largest
 template <typename T>
