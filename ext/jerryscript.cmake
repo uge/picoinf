@@ -11,9 +11,6 @@ if (WIN32)
     set(IS_SDK_BUILD 0)
 endif()
 
-message(" ==== WIN32: ${WIN32} ===== ")
-message(" ==== IS_SDK_BUILD: ${IS_SDK_BUILD} ===== ")
-
 
 #####################################################################
 # Library Features
