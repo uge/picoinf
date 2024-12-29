@@ -10,3 +10,6 @@
 [submodule "ext/WsprEncoded"]
 	path = ext/WsprEncoded
 	url = git@github.com:traquito/WsprEncoded.git
+[submodule "ext/jerryscript"]
+	path = ext/jerryscript
+	url = git@github.com:jerryscript-project/jerryscript.git
