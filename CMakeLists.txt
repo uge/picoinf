@@ -107,6 +107,9 @@ target_include_directories(PicoInf PRIVATE
 set(WSPR_ENCODED_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/WsprEncoded")
 add_subdirectory(${WSPR_ENCODED_ROOT})
 
+# Include jerryscript
+include(ext/jerryscript.cmake)
+
 
 #####################################################################
 # Library Build
@@ -179,6 +182,10 @@ list(APPEND TARGET_LINK_LIBS_LIST
 
 list(APPEND TARGET_LINK_LIBS_LIST
     WsprEncoded
+)
+
+list(APPEND TARGET_LINK_LIBS_LIST
+    JerryScript
 )
 
 target_link_libraries(PicoInf ${TARGET_LINK_LIBS_LIST})
