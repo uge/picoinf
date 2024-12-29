@@ -1,0 +1,2 @@
+add_executable(TestJerryScript TestJerryScript.cpp)
+target_link_libraries(TestJerryScript PRIVATE JerryScript WsprEncoded)
