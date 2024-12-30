@@ -120,13 +120,17 @@ public:
     static void UseVM(function<void()> fn)
     {
         // init
+        uint64_t timePreInit = TimeNow();
         jerry_init(JERRY_INIT_MEM_STATS);
+        uint64_t timePostInit = TimeNow();
 
         // enable printing
         jerryx_register_global ("print", jerryx_handler_print);
 
         // user code
+        uint64_t timePreCallback = TimeNow();
         fn();
+        uint64_t timePostCallback = TimeNow();
 
         {
             jerry_heap_stats_t stats = {0};
@@ -148,7 +152,14 @@ public:
         }
 
         // cleanup
+        uint64_t timePreCleanup = TimeNow();
         jerry_cleanup();
+        uint64_t timePostCleanup = TimeNow();
+
+        // calculate stats
+        vmDurationMs_         = timePostCleanup - timePreInit;
+        vmOverheadDurationMs_ = (timePostInit - timePreInit) + (timePostCleanup - timePreCleanup);
+        vmCallbackDurationMs_ = timePostCallback - timePreCallback;
     }
 
     static string ParseAndExecuteScript(const string &script, uint64_t timeoutMs = 0)
@@ -177,7 +188,9 @@ public:
         jerry_parse_options_t options;
         options.options = JERRY_PARSE_STRICT_MODE;
 
+        uint64_t timeStart = TimeNow();
         jerry_value_t parsedCode = jerry_parse((const jerry_char_t *)script.c_str(), script.size(), &options);
+        scriptParseDurationMs_ = TimeNow() - timeStart;
 
         UseThenFree(parsedCode, [&](auto parsedCode){
             if (parsedCodeRet)
@@ -203,7 +216,10 @@ public:
         JerryScriptPORT::ClearOutputBuffer();
         SetExecutionTimeoutMs(timeoutMs);
 
+        uint64_t timeStart = TimeNow();
         UseThenFree(jerry_run(parsedCode), [&](auto result){
+            scriptRunDurationMs_ = TimeNow() - timeStart;
+
             if (jerry_value_is_exception(result))
             {
                 err += "[Runtime exception]";
@@ -218,6 +234,31 @@ public:
     static string GetScriptOutput()
     {
         return JerryScriptPORT::GetOutputBuffer();
+    }
+
+    static uint64_t GetVMDurationMs()
+    {
+        return vmDurationMs_;
+    }
+
+    static uint64_t GetVMOverheadDurationMs()
+    {
+        return vmOverheadDurationMs_;
+    }
+
+    static uint64_t GetVMCallbackDurationMs()
+    {
+        return vmCallbackDurationMs_;
+    }
+
+    static uint64_t GetScriptParseDurationMs()
+    {
+        return scriptParseDurationMs_;
+    }
+
+    static uint64_t GetScriptRunDurationMs()
+    {
+        return scriptRunDurationMs_;
     }
 
 
@@ -738,6 +779,12 @@ public:
 
 
 private:
+
+    inline static uint64_t vmDurationMs_ = 0;
+    inline static uint64_t vmOverheadDurationMs_ = 0;
+    inline static uint64_t vmCallbackDurationMs_ = 0;
+    inline static uint64_t scriptParseDurationMs_ = 0;
+    inline static uint64_t scriptRunDurationMs_ = 0;
 };
 
 

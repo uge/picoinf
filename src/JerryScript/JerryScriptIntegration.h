@@ -46,16 +46,16 @@ public:
         Log("------------");
         LogNL();
 
-        uint64_t timeStart = PAL.Millis();
-
         string err;
         JerryScript::UseVM([&]{
             err = JerryScript::ParseAndExecuteScript(script, timeoutMs);
         });
 
-        uint64_t timeDiff = PAL.Millis() - timeStart;
-
-        Log("Script time  : ", Commas(timeDiff), " ms");
+        Log("VM total     : ", Commas(JerryScript::GetVMDurationMs()), " ms");
+        Log("VM overhead  : ", Commas(JerryScript::GetVMOverheadDurationMs()), " ms");
+        Log("VM callback  : ", Commas(JerryScript::GetVMCallbackDurationMs()), " ms");
+        Log("Script parse : ", Commas(JerryScript::GetScriptParseDurationMs()), " ms");
+        Log("Script run   : ", Commas(JerryScript::GetScriptRunDurationMs()), " ms");
         Log("Script status: ", err == "" ? "OK" : "ERR");
         if (err == "")
         {
