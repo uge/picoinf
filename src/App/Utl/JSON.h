@@ -12,7 +12,7 @@ using namespace std;
 
 class JSON
 {
-    static const uint32_t JSON_DOC_BYTE_ALLOC = 256;
+    static const uint32_t JSON_DOC_BYTE_ALLOC = 1024;
 
 public:
     using JSONObj = DynamicJsonDocument;
