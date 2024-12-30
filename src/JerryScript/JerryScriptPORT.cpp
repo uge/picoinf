@@ -1,11 +1,64 @@
+#include <string>
+using namespace std;
+
+#include <string.h>
+
 #include "jerryscript-port.h"
 
+#include "JerryScriptPORT.h"
 #include "Log.h"
 #include "PAL.h"
 #include "UART.h"
 
 // https://jerryscript.net/port-api/
 
+
+/////////////////////////////////////////////////////////////////////
+// Handle capturing output
+/////////////////////////////////////////////////////////////////////
+
+static string warning_ = "\n[TRUNCATED]";
+static const uint16_t OUTPUT_BUF_MAX_SIZE = 1'000;
+static string outputBuffer_;
+static bool stampedTruncated_ = false;
+
+void JerryScriptPORT::ClearOutputBuffer()
+{
+    outputBuffer_.clear();
+    stampedTruncated_ = false;
+}
+
+string JerryScriptPORT::GetOutputBuffer()
+{
+    return outputBuffer_;
+}
+
+static void AddToOutputBuffer(const char *buf, uint16_t bufSize)
+{
+    if (stampedTruncated_ == false)
+    {
+        if (outputBuffer_.size() + bufSize <= OUTPUT_BUF_MAX_SIZE)
+        {
+            outputBuffer_.append(buf, bufSize);
+        }
+        else
+        {
+            outputBuffer_ += warning_;
+
+            stampedTruncated_ = true;
+        }
+    }
+}
+
+static void AddToOutputBuffer(const char *str)
+{
+    AddToOutputBuffer(str, strlen(str));
+}
+
+
+/////////////////////////////////////////////////////////////////////
+// Actual PORT implementation
+/////////////////////////////////////////////////////////////////////
 
 // Process management
 void jerry_port_init()
@@ -58,11 +111,13 @@ void jerry_port_fatal(jerry_fatal_code_t code)
 // I/O
 void jerry_port_log(const char *message)
 {
+    AddToOutputBuffer(message);
     LogNNL(message);
 }
 
 void jerry_port_print_buffer(const jerry_char_t *buf, jerry_size_t bufSize)
 {
+    AddToOutputBuffer((const char *)buf, (uint16_t)bufSize);
     UartSend((uint8_t *)buf, (uint16_t)bufSize);
 }
 
@@ -120,6 +175,4 @@ double jerry_port_current_time()
 {
     return PAL.Millis();
 }
-
-
 

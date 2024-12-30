@@ -48,18 +48,26 @@ public:
 
         uint64_t timeStart = PAL.Millis();
 
-        string ret;
+        string err;
         JerryScript::UseVM([&]{
-            JerryScript::EnableJerryX();
-
-            ret = JerryScript::ParseAndExecuteScript(script, timeoutMs);
+            err = JerryScript::ParseAndExecuteScript(script, timeoutMs);
         });
 
         uint64_t timeDiff = PAL.Millis() - timeStart;
 
         Log("Script time  : ", Commas(timeDiff), " ms");
-        Log("Script status: ", ret == "" ? "OK" : "ERR");
-        Log("Script result: ", ret);
+        Log("Script status: ", err == "" ? "OK" : "ERR");
+        if (err == "")
+        {
+            Log("Script err   : <None>");
+        }
+        else
+        {
+            Log("Script err   :");
+            Log(err);
+        }
+        Log("Script output:");
+        Log(JerryScript::GetScriptOutput());
     }
 
 private:

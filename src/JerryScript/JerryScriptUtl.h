@@ -9,6 +9,8 @@ using namespace std;
 #include "jerryscript-ext/handlers.h"
 #include "jerryscript-ext/properties.h"
 
+#include "JerryScriptPORT.h"
+
 
 // Notes on how this all works.
 //
@@ -115,16 +117,13 @@ public:
     // Runtime management
     ///////////////////////////////////////////////////////////////////////////
 
-    static void EnableJerryX()
-    {
-        /* Register 'print' function from the extensions */
-        jerryx_register_global ("print", jerryx_handler_print);
-    }
-
     static void UseVM(function<void()> fn)
     {
         // init
         jerry_init(JERRY_INIT_MEM_STATS);
+
+        // enable printing
+        jerryx_register_global ("print", jerryx_handler_print);
 
         // user code
         fn();
@@ -154,18 +153,18 @@ public:
 
     static string ParseAndExecuteScript(const string &script, uint64_t timeoutMs = 0)
     {
-        string retVal;
+        string err;
         jerry_value_t parsedCode = jerry_undefined();
 
-        retVal = ParseScript(script, &parsedCode);
+        err = ParseScript(script, &parsedCode);
         UseThenFree(parsedCode, [&](auto parsedCode){
-            if (retVal == "")
+            if (err == "")
             {
-                retVal = RunParsedCode(parsedCode, timeoutMs);
+                err = RunParsedCode(parsedCode, timeoutMs);
             }
         });
 
-        return retVal;
+        return err;
     }
 
     // parses script and returns any exception or error in the return value.
@@ -173,7 +172,7 @@ public:
     // if a parsedCodeRet value is passed, a reference is returned, and must later be freed.
     static string ParseScript(const string &script, jerry_value_t *parsedCodeRet = nullptr)
     {
-        string retVal;
+        string err;
 
         jerry_parse_options_t options;
         options.options = JERRY_PARSE_STRICT_MODE;
@@ -188,31 +187,37 @@ public:
 
             if (jerry_value_is_exception(parsedCode))
             {
-                retVal += "[Script parse exception]";
-                retVal += "\n";
-                retVal += GetExceptionDetails(parsedCode);
+                err += "[Script parse exception]";
+                err += "\n";
+                err += GetExceptionDetails(parsedCode);
             }
         });
 
-        return retVal;
+        return err;
     }
 
     static string RunParsedCode(jerry_value_t parsedCode, uint64_t timeoutMs = 0)
     {
-        string retVal;
+        string err;
 
+        JerryScriptPORT::ClearOutputBuffer();
         SetExecutionTimeoutMs(timeoutMs);
 
         UseThenFree(jerry_run(parsedCode), [&](auto result){
             if (jerry_value_is_exception(result))
             {
-                retVal += "[Runtime exception]";
-                retVal += "\n";
-                retVal += GetExceptionDetails(result);
+                err += "[Runtime exception]";
+                err += "\n";
+                err += GetExceptionDetails(result);
             }
         });
 
-        return retVal;
+        return err;
+    }
+
+    static string GetScriptOutput()
+    {
+        return JerryScriptPORT::GetOutputBuffer();
     }
 
 
