@@ -155,6 +155,25 @@ public:
     static string ParseAndExecuteScript(const string &script, uint64_t timeoutMs = 0)
     {
         string retVal;
+        jerry_value_t parsedCode = jerry_undefined();
+
+        retVal = ParseScript(script, &parsedCode);
+        UseThenFree(parsedCode, [&](auto parsedCode){
+            if (retVal == "")
+            {
+                retVal = RunParsedCode(parsedCode, timeoutMs);
+            }
+        });
+
+        return retVal;
+    }
+
+    // parses script and returns any exception or error in the return value.
+    // parsed code is automatically freed.
+    // if a parsedCodeRet value is passed, a reference is returned, and must later be freed.
+    static string ParseScript(const string &script, jerry_value_t *parsedCodeRet = nullptr)
+    {
+        string retVal;
 
         jerry_parse_options_t options;
         options.options = JERRY_PARSE_STRICT_MODE;
@@ -162,11 +181,12 @@ public:
         jerry_value_t parsedCode = jerry_parse((const jerry_char_t *)script.c_str(), script.size(), &options);
 
         UseThenFree(parsedCode, [&](auto parsedCode){
-            if (!jerry_value_is_exception(parsedCode))
+            if (parsedCodeRet)
             {
-                retVal += RunParsedCode(parsedCode, timeoutMs);
+                *parsedCodeRet = jerry_value_copy(parsedCode);
             }
-            else
+
+            if (jerry_value_is_exception(parsedCode))
             {
                 retVal += "[Script parse exception]";
                 retVal += "\n";
