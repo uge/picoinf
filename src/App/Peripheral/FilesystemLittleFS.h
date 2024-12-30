@@ -148,6 +148,11 @@ public:
         return retVal;
     }
 
+
+    /////////////////////////////////////////////////////////////////
+    // File Commands
+    /////////////////////////////////////////////////////////////////
+
     static bool FileExists(const string &path)
     {
         bool retVal = false;
@@ -180,9 +185,20 @@ public:
         return retVal;
     }
 
-    /////////////////////////////////////////////////////////////////
-    // File Commands
-    /////////////////////////////////////////////////////////////////
+    static bool Write(const string &path, const string &data)
+    {
+        bool retVal = false;
+
+        auto f = GetFile(path);
+        if (f.Open())
+        {
+            retVal = f.Write(data);
+
+            f.Close();
+        }
+
+        return retVal;
+    }
 
     static void Touch(string fileName)
     {
@@ -236,7 +252,7 @@ public:
         int err = lfs_remove(&lfs_, path.c_str());
         if (err)
         {
-            if (err != LFS_ERR_EXIST)
+            if (err != LFS_ERR_NOENT)
             {
                 Err("Remove lfs_remove", err);
             }

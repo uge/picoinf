@@ -328,13 +328,7 @@ void FilesystemLittleFS::SetupShell()
         Timeline t;
         t.Event("start");
 
-        auto f = GetFile(fileName);
-        if (f.Open())
-        {
-            f.Write(data);
-
-            f.Close();
-        }
+        Write(fileName, data);
 
         t.Event("end");
         if (showTimeline_) { t.ReportNow(); }
