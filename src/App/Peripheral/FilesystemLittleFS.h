@@ -44,7 +44,7 @@ public:
     // File Accessor Commands
     /////////////////////////////////////////////////////////////////
 
-    static FilesystemLittleFSFile GetFile(string fileName)
+    static FilesystemLittleFSFile GetFile(const string &fileName)
     {
         return FilesystemLittleFSFile{lfs_, fileName};
     }
@@ -74,7 +74,7 @@ public:
         string   name;
     };
 
-    static bool List(string path, vector<DirEnt> &dirEntList)
+    static bool List(const string &path, vector<DirEnt> &dirEntList)
     {
         bool retVal = false;
 
@@ -126,7 +126,7 @@ public:
         return retVal;
     }
 
-    static bool Stat(string path, DirEnt &dirEnt)
+    static bool Stat(const string &path, DirEnt &dirEnt)
     {
         bool retVal = false;
 
@@ -148,6 +148,38 @@ public:
         return retVal;
     }
 
+    static bool FileExists(const string &path)
+    {
+        bool retVal = false;
+
+        DirEnt dirEnt;
+        if (Stat(path, dirEnt))
+        {
+            retVal = dirEnt.type == DirEnt::Type::FILE;
+        }
+
+        return retVal;
+    }
+
+    static string Read(const string &path)
+    {
+        string retVal;
+
+        if (FileExists(path))
+        {
+            auto f = FilesystemLittleFS::GetFile(path);
+
+            if (f.Open())
+            {
+                f.Read(retVal);
+
+                f.Close();
+            }
+        }
+
+        return retVal;
+    }
+
     /////////////////////////////////////////////////////////////////
     // File Commands
     /////////////////////////////////////////////////////////////////
@@ -159,7 +191,7 @@ public:
         f.Close();
     }
 
-    static void Trunc(string fileName, uint32_t size)
+    static void Trunc(const string &fileName, uint32_t size)
     {
         auto f = GetFile(fileName);
         f.Open();
@@ -197,7 +229,7 @@ public:
     // File and Directory Commands
     /////////////////////////////////////////////////////////////////
 
-    static bool Remove(string path)
+    static bool Remove(const string &path)
     {
         bool retVal = false;
 
@@ -251,7 +283,7 @@ private:
     // Utility
     /////////////////////////////////////////////////////////////////
 
-    static void Err(string where, int err)
+    static void Err(const string &where, int err)
     {
         Log("LFS ERR: ", where, " : ", err);
     }
@@ -349,7 +381,7 @@ Inline files live in metadata, and size must be:
     inline static lfs_t      lfs_;
     inline static lfs_config lfsCfg_;
 
-    static const uint32_t FS_SIZE = 4 * FLASH_SECTOR_SIZE;  // 16,384
+    static const uint32_t FS_SIZE = 16 * FLASH_SECTOR_SIZE;  // 65,536
     // file system offset in flash
     static const uint32_t FS_BASE = PICO_FLASH_SIZE_BYTES - FS_SIZE;
 

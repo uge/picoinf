@@ -216,6 +216,20 @@ void FilesystemLittleFS::SetupShell()
         if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 1, .help = "stat path <x>" });
 
+    Shell::AddCommand("lfs.is.file", [](vector<string> argList){
+        Timeline t;
+        t.Event("start");
+
+        string fileName = argList[0];
+
+        bool retVal = FileExists(fileName);
+
+        Log(fileName, ": ", retVal ? "True" : "False");
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
+    }, { .argCount = 1, .help = "path <x> exists and is a file" });
+
 
     /////////////////////////////////////////
     // File commands
@@ -293,6 +307,38 @@ void FilesystemLittleFS::SetupShell()
         }
     }, { .argCount = 1, .help = "cat file <x>" });
 
+    Shell::AddCommand("lfs.read", [](vector<string> argList){
+        string &fileName = argList[0];
+
+        Timeline t;
+        t.Event("start");
+
+        string retVal = Read(fileName);
+        Log("Bytes: ", retVal.size());
+        Log("\"", retVal, "\"");
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
+    }, { .argCount = 1, .help = "read file <x>" });
+
+    Shell::AddCommand("lfs.write", [](vector<string> argList){
+        string &fileName = argList[0];
+        string &data     = argList[1];
+
+        Timeline t;
+        t.Event("start");
+
+        auto f = GetFile(fileName);
+        if (f.Open())
+        {
+            f.Write(data);
+
+            f.Close();
+        }
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
+    }, { .argCount = 2, .help = "write to file <x> string <y>" });
 
 
     /////////////////////////////////////////

@@ -21,23 +21,23 @@ class FilesystemLittleFSFile
     friend class FilesystemLittleFS;
 
 private:
-    FilesystemLittleFSFile(lfs_t &lfs, string fileName)
+    FilesystemLittleFSFile(lfs_t &lfs, const string &fileName)
     : state_(make_shared<State>(lfs, fileName))
     {
         // Nothing to do
     }
 
-    void ErrNotOpen(string where)
+    void ErrNotOpen(const string &where)
     {
         Log(where, " ERR: ", state_->fileName, " not open");
     }
 
-    void ErrNo(string where, int err)
+    void ErrNo(const string &where, int err)
     {
         Log(where, " ERR: ", err, " on ", state_->fileName);
     }
 
-    void ErrWrongBytes(string where, int wrong, uint32_t right)
+    void ErrWrongBytes(const string &where, int wrong, uint32_t right)
     {
         Log(where, " ERR: Byte mismatch - ", wrong, " bytes instead of ", right, " to ", state_->fileName);
     }
@@ -160,6 +160,27 @@ public:
         return retVal;
     }
 
+    bool Read(string &buf)
+    {
+        bool retVal = false;
+
+        buf = "";
+
+        uint32_t size = Size();
+        if (size)
+        {
+            buf.resize(size);
+
+            uint32_t bytesRead = 0;
+            if (Read((uint8_t *)buf.data(), size, &bytesRead))
+            {
+                retVal = bytesRead == size;
+            }
+        }
+
+        return retVal;
+    }
+
     bool Write(uint8_t *buf, uint32_t bufSize, uint32_t *bytesWritten = nullptr)
     {
         bool retVal = false;
@@ -198,7 +219,7 @@ public:
         return retVal;
     }
 
-    bool Write(string str)
+    bool Write(const string &str)
     {
         return Write((uint8_t *)str.c_str(), (uint32_t)str.length());
     }
