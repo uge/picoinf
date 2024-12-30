@@ -35,6 +35,7 @@ static USB_CDC *cdc0 = USB::GetCdcInstance(0);
 static const uint16_t UART_OUTPUT_PIPE_SIZE   = 1000;
 static const uint16_t UART_INPUT_PIPE_SIZE    = 1002;
 static const uint16_t UART_INPUT_MAX_LINE_LEN = 1000;
+static const uint16_t UART_USB_INPUT_MAX_LINE_LEN = 5000;
 
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
 static KMessagePipe<char, UART_INPUT_PIPE_SIZE>  UART_0_INPUT_PIPE;
@@ -47,7 +48,7 @@ static DataStreamDistributor UART_1_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_1);
 static LineStreamDistributor UART_1_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_1, UART_INPUT_MAX_LINE_LEN, "UART_1_LINE_STREAM_DISTRIBUTOR");
 
 static DataStreamDistributor UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_USB);
-static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
+static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_USB_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
 
 
 ////////////////////////////////////////////////////////////////////////////////
