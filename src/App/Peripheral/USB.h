@@ -6,8 +6,10 @@
 #include "Log.h"
 
 #include <functional>
+#include <vector>
 using namespace std;
 
+#include "Timeline.h"
 
 
 
@@ -22,10 +24,13 @@ class USB_CDC
     friend class USB;
 
 public:
-    USB_CDC(uint8_t instance)
+    USB_CDC(uint8_t instance, Timeline &t)
     : instance_(instance)
+    , t_(t)
     {
-        // nothing to do
+        // this doesn't seem to actually reserve, not sure why, maybe because it's
+        // getting executed during static init and not working as a result?
+        // sendBuf_.reserve(SEND_BUF_SIZE);
     }
 
     void SetCallbackOnRx(function<void(vector<uint8_t> &byteList)> fn)
@@ -38,8 +43,14 @@ public:
         return dtr_;
     }
 
-    void Send(const uint8_t *buf, uint16_t bufLen);
+    uint16_t Send(const uint8_t *buf, uint16_t bufLen);
     void Clear();
+    void ReportStats();
+
+private:
+
+    void SendFromQueue();
+    uint16_t SendImmediate(const uint8_t *buf, uint16_t bufLen);
 
 
 private:
@@ -55,7 +66,24 @@ private:
 
     bool dtr_ = false;
 
+    static const uint16_t SEND_BUF_SIZE = 4096;
+    vector<uint8_t> sendBuf_;
+
     uint8_t instance_;
+
+    Timeline &t_;
+
+    struct Stats
+    {
+        uint32_t rxBytes = 0;
+
+        uint32_t txBytes = 0;
+        uint32_t txBytesQueuedTotal = 0;
+        uint32_t txBytesQueuedMaxAtOnce = 0;
+        uint32_t txBytesOverflow = 0;
+    };
+
+    Stats stats_;
 };
 
 
@@ -322,7 +350,8 @@ public:
 
 private:
 
-    inline static vector<USB_CDC> cdcList_ = { 0 };
+    inline static Timeline t_;
+    inline static vector<USB_CDC> cdcList_ = { { 0, t_ } };
 };
 
 

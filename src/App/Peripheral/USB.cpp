@@ -73,6 +73,20 @@ void USB::SetupShell()
             DisablePowerSaveMode();
         }
     }, { .argCount = 1, .help = "power save mode on(1) or off(0)"});
+
+    Shell::AddCommand("usb.t.max", [](vector<string> argList){
+        t_.SetMaxEvents((uint32_t)atoi(argList[0].c_str()));
+    }, { .argCount = 1, .help = "timeline set max events"});
+
+    Shell::AddCommand("usb.t.report", [](vector<string> argList){
+        t_.Report();
+    }, { .argCount = 0, .help = "timeline report"});
+
+    Shell::AddCommand("usb.cdc0.stats", [](vector<string> argList){
+        USB_CDC *cdc0 = USB::GetCdcInstance(0);
+
+        cdc0->ReportStats();
+    }, { .argCount = 0, .help = "cdc0 stats"});
 }
 
 
