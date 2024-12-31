@@ -32,7 +32,7 @@ static USB_CDC *cdc0 = USB::GetCdcInstance(0);
 // UART Input / Output state
 ////////////////////////////////////////////////////////////////////////////////
 
-static const uint16_t UART_OUTPUT_PIPE_SIZE   = 1000;
+static const uint16_t UART_OUTPUT_PIPE_SIZE   = 5000;
 static const uint16_t UART_INPUT_PIPE_SIZE    = 1002;
 static const uint16_t UART_INPUT_MAX_LINE_LEN = 1000;
 static const uint16_t UART_USB_INPUT_MAX_LINE_LEN = 5000;
@@ -169,14 +169,7 @@ static void UsbOnRx(vector<uint8_t> &byteList)
 
 static void UsbSend(const uint8_t *buf, uint16_t bufLen)
 {
-    if (cdc0->GetDtr())
-    {
-        cdc0->Send(buf, bufLen);
-    }
-    else
-    {
-        cdc0->Clear();
-    }
+    cdc0->Send(buf, bufLen);
 }
 
 
