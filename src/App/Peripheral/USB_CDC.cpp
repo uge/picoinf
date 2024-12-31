@@ -200,10 +200,12 @@ void USB_CDC::Clear()
 
 void USB_CDC::ReportStats()
 {
+    uint8_t pct = round(stats_.txBytesQueuedMaxAtOnce * 100.0 / SEND_BUF_SIZE);
+
     Log("RX Bytes: ", Commas(stats_.rxBytes));
     Log("TX Bytes: ", Commas(stats_.txBytes));
     Log("  Queued Total      : ", Commas(stats_.txBytesQueuedTotal));
-    Log("  Queued Max At Once: ", Commas(stats_.txBytesQueuedMaxAtOnce));
+    Log("  Queued Max At Once: ", Commas(stats_.txBytesQueuedMaxAtOnce), " / ", Commas(SEND_BUF_SIZE), " (", pct, " %)");
     Log("  Overflow          : ", Commas(stats_.txBytesOverflow));
 }
 
