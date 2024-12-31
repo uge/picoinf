@@ -159,7 +159,7 @@ uint16_t USB_CDC::Send(const uint8_t *buf, uint16_t bufLen)
         if (bufQueue && bufQueueLen)
         {
             // this really only happens once
-            sendBuf_.reserve(SEND_BUF_SIZE);
+            sendBuf_.reserve(sendBufCapacity_);
 
             // calculate how much to queue
             uint16_t queueBytesAvailable = sendBuf_.capacity() - sendBuf_.size();
@@ -200,12 +200,12 @@ void USB_CDC::Clear()
 
 void USB_CDC::ReportStats()
 {
-    uint8_t pct = round(stats_.txBytesQueuedMaxAtOnce * 100.0 / SEND_BUF_SIZE);
+    uint8_t pct = round(stats_.txBytesQueuedMaxAtOnce * 100.0 / sendBufCapacity_);
 
     Log("RX Bytes: ", Commas(stats_.rxBytes));
     Log("TX Bytes: ", Commas(stats_.txBytes));
     Log("  Queued Total      : ", Commas(stats_.txBytesQueuedTotal));
-    Log("  Queued Max At Once: ", Commas(stats_.txBytesQueuedMaxAtOnce), " / ", Commas(SEND_BUF_SIZE), " (", pct, " %)");
+    Log("  Queued Max At Once: ", Commas(stats_.txBytesQueuedMaxAtOnce), " / ", Commas(sendBufCapacity_), " (", pct, " %)");
     Log("  Overflow          : ", Commas(stats_.txBytesOverflow));
 }
 

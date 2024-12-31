@@ -33,6 +33,12 @@ public:
         // sendBuf_.reserve(SEND_BUF_SIZE);
     }
 
+    // set buffering capacity, 0 to disable
+    void SetSendBufCapacity(uint16_t capacity)
+    {
+        sendBufCapacity_ = capacity;
+    }
+
     void SetCallbackOnRx(function<void(vector<uint8_t> &byteList)> fn)
     {
         cbFnRx_ = fn;
@@ -66,8 +72,8 @@ private:
 
     bool dtr_ = false;
 
-    static const uint16_t SEND_BUF_SIZE = 4096;
     vector<uint8_t> sendBuf_;
+    uint16_t sendBufCapacity_ = 1000;
 
     uint8_t instance_;
 

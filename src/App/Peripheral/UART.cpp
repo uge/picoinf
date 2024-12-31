@@ -36,6 +36,7 @@ static const uint16_t UART_OUTPUT_PIPE_SIZE   = 5000;
 static const uint16_t UART_INPUT_PIPE_SIZE    = 1002;
 static const uint16_t UART_INPUT_MAX_LINE_LEN = 1000;
 static const uint16_t UART_USB_INPUT_MAX_LINE_LEN = 5000;
+static const uint16_t UART_USB_OUTPUT_BUF_SIZE = 5000;
 
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
 static KMessagePipe<char, UART_INPUT_PIPE_SIZE>  UART_0_INPUT_PIPE;
@@ -611,6 +612,7 @@ void UartInit()
     UartEnable(UART::UART_1);
 
     // Set up USB serial interface
+    cdc0->SetSendBufCapacity(UART_USB_OUTPUT_BUF_SIZE);
     cdc0->SetCallbackOnRx(UsbOnRx);
 }
 
