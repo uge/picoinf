@@ -54,6 +54,7 @@ public:
             Clock::Init();
             EvmInit();
             I2C::Init();
+            JerryScriptIntegration::Init();
             JSONMsgRouter::Init();
             KStats::Init();
 

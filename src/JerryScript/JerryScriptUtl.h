@@ -129,6 +129,7 @@ public:
 
         // user code
         uint64_t timePreCallback = TimeNow();
+        fnPreRunHook_();
         fn();
         uint64_t timePostCallback = TimeNow();
 
@@ -229,6 +230,11 @@ public:
         });
 
         return err;
+    }
+
+    static void SetPreRunHook(function<void()> fn)
+    {
+        fnPreRunHook_ = fn;
     }
 
     static string GetScriptOutput()
@@ -779,6 +785,8 @@ public:
 
 
 private:
+
+    inline static function<void()> fnPreRunHook_ = []{};
 
     inline static uint64_t vmDurationMs_ = 0;
     inline static uint64_t vmOverheadDurationMs_ = 0;

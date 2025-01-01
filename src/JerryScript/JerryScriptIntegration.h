@@ -7,15 +7,28 @@ using namespace std;
 #include "Log.h"
 #include "PAL.h"
 #include "Shell.h"
+#include "Timeline.h"
 #include "Utl.h"
+#include "WDT.h"
 
 
 class JerryScriptIntegration
 {
 public:
 
+    static void Init()
+    {
+        Timeline::Global().Event("JerryScriptIntegration::Init");
+
+        JerryScript::SetPreRunHook([]{
+            Watchdog::Feed();
+        });
+    }
+
     static void SetupShell()
     {
+        Timeline::Global().Event("JerryScriptIntegration::SetupShell");
+
         Shell::AddCommand("js.run", [](vector<string> argList){
             string script;
 
