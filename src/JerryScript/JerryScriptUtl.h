@@ -162,7 +162,7 @@ public:
         vmCallbackDurationMs_ = timePostCallback - timePreCallback;
     }
 
-    static string ParseAndExecuteScript(const string &script, uint64_t timeoutMs = 0)
+    static string ParseAndRunScript(const string &script, uint64_t timeoutMs = 0)
     {
         string err;
         jerry_value_t parsedCode = jerry_undefined();

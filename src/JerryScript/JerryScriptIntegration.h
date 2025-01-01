@@ -48,7 +48,7 @@ public:
 
         string err;
         JerryScript::UseVM([&]{
-            err = JerryScript::ParseAndExecuteScript(script, timeoutMs);
+            err = JerryScript::ParseAndRunScript(script, timeoutMs);
         });
 
         Log("VM total     : ", Commas(JerryScript::GetVMDurationMs()), " ms");
