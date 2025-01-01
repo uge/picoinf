@@ -145,9 +145,9 @@ public:
 
                 // debug report
                 printf("Heap Stats:\n");
-                printf("Size                : %i\n", vmHeapCapacity_);
+                printf("Size                : %li\n", vmHeapCapacity_);
                 printf("Allocated Bytes     : %i\n", stats.allocated_bytes);
-                printf("Peak Allocated Bytes: %i\n", vmHeapSizeMax_);
+                printf("Peak Allocated Bytes: %li\n", vmHeapSizeMax_);
             }
             else
             {
