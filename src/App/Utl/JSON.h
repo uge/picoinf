@@ -39,6 +39,36 @@ public:
         return { ok, docParse };
     }
 
+    static void UseJSON(const string &jsonStr, function<void(JsonObject &json)> fn)
+    {
+        auto [ok, jsonDoc] = DeSerialize(jsonStr);
+        if (ok)
+        {
+            auto json = jsonDoc.as<JsonObject>();
+
+            fn(json);
+        }
+    }
+
+    template <typename T>
+    static bool HasKey(const T &json, const char *key)
+    {
+        return json.containsKey(key);
+    }
+
+    template <typename T>
+    static bool HasKeyList(const T &json, const vector<const char *> &keyList)
+    {
+        bool retVal = true;
+
+        for (auto key : keyList)
+        {
+            retVal &= HasKey(json, key);
+        }
+
+        return retVal;
+    }
+
     static JSONObj GetObj()
     {
         return DynamicJsonDocument{ JSON_DOC_BYTE_ALLOC };
