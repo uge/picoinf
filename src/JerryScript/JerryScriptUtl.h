@@ -134,15 +134,20 @@ public:
         uint64_t timePostCallback = TimeNow();
 
         {
-            jerry_heap_stats_t stats = {0};
-            bool get_stats_ret = jerry_heap_stats (&stats);
+            jerry_heap_stats_t stats = { 0 };
+            bool get_stats_ret = jerry_heap_stats(&stats);
 
             if (get_stats_ret)
             {
+                // capture
+                vmHeapCapacity_ = stats.size;
+                vmHeapSizeMax_  = stats.peak_allocated_bytes;
+
+                // debug report
                 printf("Heap Stats:\n");
-                printf("Size                : %i\n", stats.size);
+                printf("Size                : %i\n", vmHeapCapacity_);
                 printf("Allocated Bytes     : %i\n", stats.allocated_bytes);
-                printf("Peak Allocated Bytes: %i\n", stats.peak_allocated_bytes);
+                printf("Peak Allocated Bytes: %i\n", vmHeapSizeMax_);
             }
             else
             {
@@ -240,6 +245,16 @@ public:
     static string GetScriptOutput()
     {
         return JerryScriptPORT::GetOutputBuffer();
+    }
+
+    static uint32_t GetHeapCapacity()
+    {
+        return vmHeapCapacity_;
+    }
+
+    static uint32_t GetHeapSizeMax()
+    {
+        return vmHeapSizeMax_;
     }
 
     static uint64_t GetVMDurationMs()
@@ -787,6 +802,9 @@ public:
 private:
 
     inline static function<void()> fnPreRunHook_ = []{};
+
+    inline static uint32_t vmHeapCapacity_ = 0;
+    inline static uint32_t vmHeapSizeMax_  = 0;
 
     inline static uint64_t vmDurationMs_ = 0;
     inline static uint64_t vmOverheadDurationMs_ = 0;
