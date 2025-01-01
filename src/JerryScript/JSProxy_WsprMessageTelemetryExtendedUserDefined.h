@@ -1,7 +1,9 @@
+#pragma once
+
 #include "WsprMessageTelemetryExtendedUserDefined.h"
 
 
-class WsprMessageTelemetryExtendedUserDefined_JSProxy
+class JSProxy_WsprMessageTelemetryExtendedUserDefined
 {
 private:
     using Msg = WsprMessageTelemetryExtendedUserDefined<29>;
