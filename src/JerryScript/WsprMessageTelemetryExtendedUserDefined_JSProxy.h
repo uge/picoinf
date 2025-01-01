@@ -10,18 +10,17 @@ public:
 
     static void Proxy(jerry_value_t obj, Msg *msg)
     {
-        // TODO get this list from the message itself, should be dynamic
-        vector<string> fieldNameList = {
-            "AltitudeFeet",
-        };
+        auto     &fieldDefList    = msg->GetFieldDefList();
+        uint16_t  fieldDefListLen = msg->GetFieldDefListLen();
 
-        // create getter/setter for each field
-        for (const auto &fieldName : fieldNameList)
+        for (int i = 0; i < fieldDefListLen; ++i)
         {
-            string getFnName = string{"Get"} + fieldName;
+            const auto &fieldDef = fieldDefList[i];
+
+            string getFnName = string{"Get"} + fieldDef.name;
             JerryScript::SetPropertyToFunction(obj, getFnName, Getter, msg);
 
-            string setFnName = string{"Set"} + fieldName;
+            string setFnName = string{"Set"} + fieldDef.name;
             JerryScript::SetPropertyToFunction(obj, setFnName, Setter, msg);
         }
     }
@@ -42,8 +41,6 @@ private:
 
             if (CheckArgs(retVal, callInfo, "Get", msg, fieldName))
             {
-                printf("Yay, valid, Get of %s\n", fieldName.c_str());
-
                 retVal = jerry_number(msg->Get(fieldName.c_str()));
             }
         }
@@ -70,7 +67,6 @@ private:
             {
                 double val = jerry_value_as_number(argv[0]);
 
-                printf("Yay, valid, Set of %s to %f\n", fieldName.c_str(), val);
                 msg->Set(fieldName.c_str(), val);
             }
         }
@@ -111,8 +107,10 @@ private:
             {
                 string fieldName = name.substr(prefix.length());
 
-                // TODO check suffix is in the defined set of fields
-                if (fieldName == "AltitudeFeet")
+                // Check field exists by getting and seeing if result is NAN
+                // which would mean the field is invalid.
+                double val = msg->Get(fieldName.c_str());
+                if (isnan(val) == false)
                 {
                     retVal = true;
 
