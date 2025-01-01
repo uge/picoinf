@@ -12,10 +12,13 @@
 #include <string.h>
 
 #include <algorithm>
-#include <vector>
-#include <string>
-#include <list>
 #include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <sstream>
+#include <string>
+#include <vector>
 using namespace std;
 
 
@@ -303,6 +306,13 @@ inline char *ToString(uint32_t num)
     return buf;
 }
 
+inline string FloatToString(double val, int precision = 3)
+{
+    ostringstream out;
+    out << fixed << setprecision(precision) << val;
+    return out.str();
+}
+
 inline string ToHex(const uint8_t *buf, uint8_t bufLen, bool addPrefix = true)
 {
     const char *hexList = "0123456789ABCDEF";
@@ -542,6 +552,14 @@ public:
         return valStr;
     }
 
+    static string PadRight(const string& str, char padChar, uint8_t fieldWidthTotal) {
+        if (str.size() >= fieldWidthTotal)
+        {
+            return str;
+        }
+
+        return str + std::string(fieldWidthTotal - str.size(), padChar);
+    }
 };
 
 
