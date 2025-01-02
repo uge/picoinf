@@ -5,6 +5,7 @@
 #include <unordered_set>
 using namespace std;
 
+#include "Log.h"
 #include "UbxMessage.h"
 #include "Utl.h"
 
@@ -212,24 +213,50 @@ struct FixTime
     uint8_t  minute = 0;
     uint8_t  second = 0;
     uint16_t millisecond = 0;
-};
 
+    void Print()
+    {
+        Log("FixTime");
+        Log("year        = ", year);
+        Log("month       = ", month);
+        Log("day         = ", day);
+        Log("hour        = ", hour);
+        Log("minute      = ", minute);
+        Log("second      = ", second);
+        Log("millisecond = ", millisecond);
+    }
+};
 
 struct Fix2D
 : public FixTime
 {
     int16_t  latDeg = 0;
     uint8_t  latMin = 0;
-    double   latSec = 0;
+    uint8_t  latSec = 0;
     int32_t latDegMillionths = 0;
     
     int16_t  lngDeg = 0;
     uint8_t  lngMin = 0;
-    double   lngSec = 0;
+    uint8_t  lngSec = 0;
     int32_t lngDegMillionths = 0;
 
     static const uint8_t MAIDENHEAD_GRID_LEN = 6;
     string maidenheadGrid;
+
+    void Print()
+    {
+        FixTime::Print();
+        Log("Fix2D");
+        Log("latDeg           = ", latDeg);
+        Log("latMin           = ", latMin);
+        Log("latSec           = ", latSec);
+        Log("latDegMillionths = ", latDegMillionths);
+        Log("lngDeg           = ", lngDeg);
+        Log("lngMin           = ", lngMin);
+        Log("lngSec           = ", lngSec);
+        Log("lngDegMillionths = ", lngDegMillionths);
+        Log("maidenheadGrid   = ", maidenheadGrid);
+    }
 };
 
 struct Fix3D
@@ -237,6 +264,14 @@ struct Fix3D
 {
     int32_t altitudeM = 0;
     int32_t altitudeFt = 0;
+
+    void Print()
+    {
+        Fix2D::Print();
+        Log("Fix3D");
+        Log("altitudeM  = ", altitudeM);
+        Log("altitudeFt = ", altitudeFt);
+    }
 };
 
 struct Fix3DPlus
@@ -244,6 +279,18 @@ struct Fix3DPlus
 {
     uint32_t courseDegrees = 0;
     uint32_t speedKnots = 0;
+    uint32_t speedMph = 0;
+    uint32_t speedKph = 0;
+
+    void Print()
+    {
+        Fix3D::Print();
+        Log("Fix3DPlus");
+        Log("courseDegrees = ", courseDegrees);
+        Log("speedKnots    = ", speedKnots);
+        Log("speedMph      = ", speedMph);
+        Log("speedKph      = ", speedKph);
+    }
 };
 
 struct FixSatelliteData
@@ -706,8 +753,15 @@ public:
 
         *(Fix3D *)&retVal = GetFix3D();
 
+        static const double KNOTS_TO_MPH = 1.15078;
+        static const double KNOTS_TO_KPH = 1.852;
+
         retVal.courseDegrees = round(atof(data_.courseDegreesStr.c_str()));
-        retVal.speedKnots = round(atof(data_.speedKnotsStr.c_str()));
+
+        double speedKnots = atof(data_.speedKnotsStr.c_str());
+        retVal.speedKnots = round(speedKnots);
+        retVal.speedMph   = round(speedKnots * KNOTS_TO_MPH);
+        retVal.speedKph   = round(speedKnots * KNOTS_TO_KPH);
         
         return retVal;
     }
