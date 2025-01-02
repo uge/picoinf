@@ -108,6 +108,22 @@ using namespace std;
 // - tie object/scalar names to other objects to have as properties of that object
 //
 
+//
+// Guide to when to use which technique:
+// - JSObj_XXX
+//   - JavaScript may create/destroy instances on a whim
+//   - Supplying-code registers this handler to deal with that
+//     - code can still use 'name' property of function to group handlers
+//
+// - JSProxy_XXX
+//   - JavaScript is given access to a fixed quantity of objects
+//   - Supplying-code does a proxy-per-object
+//     - code can still use 'name' property of function to group handlers
+//
+// - BareFunction
+//   - Supplying code exposes functionality which is sufficiently
+//     in scope that no object oriented approach is needed
+//
 
 class JerryScript
 {
@@ -125,7 +141,7 @@ public:
         uint64_t timePostInit = TimeNow();
 
         // enable printing
-        jerryx_register_global ("print", jerryx_handler_print);
+        jerryx_register_global ("Log", jerryx_handler_print);
 
         // user code
         uint64_t timePreCallback = TimeNow();
@@ -325,7 +341,7 @@ public:
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Property getters and setters
+    // Global Property getters and setters
     ///////////////////////////////////////////////////////////////////////////
 
     static void SetGlobalPropertyNoFree(const string &propertyName, jerry_value_t propertyValue)
@@ -342,12 +358,25 @@ public:
         jerry_value_free(propertyValue);
     }
 
-    static void SetGlobalFunction(const string &name, jerry_external_handler_t handler)
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Global Properties as Functions
+    ///////////////////////////////////////////////////////////////////////////
+
+    // No particular implementation, simply forwards to the non-global function
+    // using the global object as target
+    template <typename T>
+    static void SetGlobalPropertyToBareFunction(const string &name, T fn)
     {
         UseThenFree(jerry_current_realm(), [&](auto globalObj){
-            SetPropertyToFunction(globalObj, name, handler);
+            SetPropertyToBareFunction(globalObj, name, fn);
         });
     }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Property getters and setters
+    ///////////////////////////////////////////////////////////////////////////
 
     // set a property on an object. the property will not be freed.
     static void SetPropertyNoFree(jerry_value_t objTarget, const string &propertyName, jerry_value_t propertyValue)
@@ -364,6 +393,24 @@ public:
 
         jerry_value_free(propertyValue);
     }
+
+    static string GetPropertyAsString(jerry_value_t obj, const string &property)
+    {
+        string retVal;
+
+        UseThenFree(jerry_string_sz(property.c_str()), [&](auto jerryPropertyName){
+            UseThenFree(jerry_object_get(obj, jerryPropertyName), [&](auto jerryPropertyValue){
+                retVal = GetValueAsString(jerryPropertyValue);
+            });
+        });
+
+        return retVal;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Properties as Functions
+    ///////////////////////////////////////////////////////////////////////////
 
     // set an object's property to be a function object.
     // automatically also:
@@ -395,15 +442,46 @@ public:
         jerry_value_free(handlerFn);
     }
 
-    static string GetPropertyAsString(jerry_value_t obj, const string &property)
+    // Here it is possible to use a bare function (one that is not aware of jerry parameters).
+    //
+    // This is accomplished by having a dedicated handler function which knows how to
+    // call the underlying bare function.
+    //
+    // The bare function is passed no context, so this allows the 'native' pointer to be
+    // used to store the actual function pointer to be invoked.
+    //
+    // The tradeoffs here are:
+    // - callers get simpler functions but with no context
+    // - this code requires one handler-per-type, so more work to extend (oh well)
+    //
+    // This allows more instances where a non-capturing lambda can be used as
+    // the function.
+    static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint32_t))
     {
-        string retVal;
+        SetPropertyToFunction(objTarget, name, FnVoidU32Handler, (void *)fn);
+    }
 
-        UseThenFree(jerry_string_sz(property.c_str()), [&](auto jerryPropertyName){
-            UseThenFree(jerry_object_get(obj, jerryPropertyName), [&](auto jerryPropertyValue){
-                retVal = GetValueAsString(jerryPropertyValue);
-            });
-        });
+    static jerry_value_t FnVoidU32Handler(const jerry_call_info_t *callInfo,
+                                          const jerry_value_t      argv[],
+                                          const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        if (argc != 1)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else
+        {
+            uint32_t arg = (uint32_t)jerry_value_as_number(argv[0]);
+
+            void (*fn)(uint32_t) = (void (*)(uint32_t))JerryScript::GetNativePointer(callInfo->function);
+
+            if (fn)
+            {
+                fn(arg);
+            }
+        }
 
         return retVal;
     }
