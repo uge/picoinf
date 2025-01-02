@@ -59,10 +59,6 @@ private:
 
                  if (fnName == "On")  { obj->DigitalWrite(1); }
             else if (fnName == "Off") { obj->DigitalWrite(0); }
-            else
-            {
-                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Unknown function");
-            }
         }
 
         return retVal;
