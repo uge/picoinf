@@ -766,6 +766,36 @@ public:
         return retVal;
     }
 
+    static Fix3DPlus GetFix3DPlusExample()
+    {
+        Fix3DPlus retVal;
+
+        retVal.year             = 2025;
+        retVal.month            = 1;
+        retVal.day              = 2;
+        retVal.hour             = 19;
+        retVal.minute           = 42;
+        retVal.second           = 1;
+        retVal.millisecond      = 25;
+        retVal.latDeg           = 40;
+        retVal.latMin           = 44;
+        retVal.latSec           = 30;
+        retVal.latDegMillionths = 40741668;
+        retVal.lngDeg           = -74;
+        retVal.lngMin           = 1;
+        retVal.lngSec           = 59;
+        retVal.lngDegMillionths = -74032986;
+        retVal.maidenheadGrid   = "FN20XR";
+        retVal.altitudeFt       = 426;
+        retVal.altitudeM        = 130;
+        retVal.speedKnots       = 19;
+        retVal.speedMph         = 22;
+        retVal.speedKph         = 35;
+        retVal.courseDegrees    = 206;
+
+        return retVal;
+    }
+
     vector<string> GetFix3DPlusSourceList()
     {
         return data_.fix3dPlusSourceList;
