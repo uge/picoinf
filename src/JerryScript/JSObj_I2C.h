@@ -18,10 +18,10 @@ public:
 
     static void Register()
     {
-        JerryScript::UseThenFree(jerry_function_external(OnConstructed), [&](auto jsFnObj){
+        JerryScript::UseThenFree(jerry_function_external(OnConstructed), [](auto jsFnObj){
             JerryScript::SetGlobalPropertyNoFree("I2C", jsFnObj);
 
-            JerryScript::UseThenFree(jerry_object(), [&](auto prototype){
+            JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
                 JerryScript::SetPropertyToFunction(prototype, "IsAvailable", IsAvailableHandler);
