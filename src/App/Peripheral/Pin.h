@@ -89,6 +89,11 @@ public:
         }
     }
 
+    uint8_t GetPin() const
+    {
+        return pin_;
+    }
+
     static bool Configure(uint8_t pin, Type type, uint8_t outputLevel = 0)
     {
         bool retVal = false;
