@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 using namespace std;
 
 #include "jerryscript.h"
@@ -333,10 +334,15 @@ public:
     // Automatic storage management
     ///////////////////////////////////////////////////////////////////////////
 
-    static void UseThenFree(jerry_value_t value, function<void(jerry_value_t value)> fnUse)
+    static void UseThenFree(jerry_value_t value, function<void(jerry_value_t value)> &&fnUse)
     {
         fnUse(value);
         jerry_value_free(value);
+    }
+
+    static void UseThenFreeNewObj(function<void(jerry_value_t value)> &&fnUse)
+    {
+        UseThenFree(jerry_object(), forward<function<void(jerry_value_t value)> &&>(fnUse));
     }
 
 
