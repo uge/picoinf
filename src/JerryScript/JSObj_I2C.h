@@ -1,147 +1,240 @@
-#include "JS_I2C.h"
+#pragma once
 
 #include <string>
 using namespace std;
 
+#include "I2C.h"
+
 #include "JerryScriptUtl.h"
 
 
-///////////////////////////////////////////////////////////////////////////
-// Javascript construction/destruction
-///////////////////////////////////////////////////////////////////////////
-
-static void OnGarbageCollected(void *native, struct jerry_object_native_info_t *callInfo)
+class JSObj_I2C
 {
-    if (native)
+public:
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Public Registration Interface
+    ///////////////////////////////////////////////////////////////////////////
+
+    static void Register()
     {
-        JS_I2C *jsI2c = (JS_I2C *)native;
+        JerryScript::UseThenFree(jerry_function_external(OnConstructed), [&](auto jsFnObj){
+            JerryScript::SetGlobalPropertyNoFree("I2C", jsFnObj);
 
-        printf("Addr(%i) - GarbageCollected (%s)\n", jsI2c->address_, jsI2c->name_.c_str());
+            JerryScript::UseThenFree(jerry_object(), [&](auto prototype){
+                JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-        delete jsI2c;
+                JerryScript::SetPropertyToFunction(prototype, "IsAvailable", IsAvailableHandler);
+                JerryScript::SetPropertyToFunction(prototype, "ReadReg8",    ReadHandler);
+                JerryScript::SetPropertyToFunction(prototype, "ReadReg16",   ReadHandler);
+                JerryScript::SetPropertyToFunction(prototype, "WriteReg8",   WriteHandler);
+                JerryScript::SetPropertyToFunction(prototype, "WriteReg16",  WriteHandler);
+            });
+        });
     }
-}
 
-static inline const jerry_object_native_info_t typeInfo_ =
-{
-    .free_cb = OnGarbageCollected,
-};
 
-static jerry_value_t OnConstructed(const jerry_call_info_t *callInfo,
-                                   const jerry_value_t      argv[],
-                                   const jerry_length_t     argc)
-{
-    jerry_value_t retVal;
+private:
 
-    if (argc < 2 || !jerry_value_is_number(argv[0]) || !jerry_value_is_string(argv[1]))
+    ///////////////////////////////////////////////////////////////////////////
+    // JavaScript Function Handlers
+    ///////////////////////////////////////////////////////////////////////////
+
+    static jerry_value_t IsAvailableHandler(const jerry_call_info_t *callInfo,
+                                            const jerry_value_t      argv[],
+                                            const jerry_length_t     argc)
     {
-        retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid arguments to I2C constructor");
-    }
-    else if (JerryScript::CalledAsConstructor(callInfo))
-    {
-        printf("CALLED AS CTOR\n");
+        jerry_value_t retVal = jerry_undefined();
 
-        // Create a new I2C object
-        JS_I2C *jsI2c = new JS_I2C();
-        if (!jsI2c)
+        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+
+        if (argc != 0)
         {
-            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for I2C object");
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else if (!obj)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_REFERENCE, "Failed to retrieve object");
         }
         else
         {
-            retVal = jerry_undefined();
+            retVal = jerry_boolean(I2C::CheckAddr(obj->GetAddr()));
+        }
 
-            // Initialize the C object with parameters from the constructor
-            jsI2c->address_ = (int)jerry_value_as_number(argv[0]);
-            jsI2c->name_ = JerryScript::GetValueAsString(argv[1]);
+        return retVal;
+    }
 
-            printf("Addr(%i) - Constructed (%s)\n", jsI2c->address_, jsI2c->name_.c_str());
+    static jerry_value_t ReadHandler(const jerry_call_info_t *callInfo,
+                                     const jerry_value_t      argv[],
+                                     const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
 
-            // Associate the C state with the JS object
-            JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, jsI2c);
+        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+
+        if (argc != 1 || !jerry_value_is_number(argv[0]))
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else if (!obj)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_REFERENCE, "Failed to retrieve object");
+        }
+        else
+        {
+            string fnName = JerryScript::GetInternalPropertyAsString(callInfo->function, "name");
+            
+            uint8_t reg = (int)jerry_value_as_number(argv[0]);
+
+            if (fnName == "ReadReg8")
+            {
+                uint8_t val = I2C::ReadReg8(obj->GetAddr(), reg);
+
+                retVal = jerry_number(val);
+            }
+            else if (fnName == "ReadReg16")
+            {
+                uint16_t val = I2C::ReadReg16(obj->GetAddr(), reg);
+
+                retVal = jerry_number(val);
+            }
+        }
+
+        return retVal;
+    }
+
+    static jerry_value_t WriteHandler(const jerry_call_info_t *callInfo,
+                                      const jerry_value_t      argv[],
+                                      const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+
+        if (argc != 2 || !jerry_value_is_number(argv[0]) || !jerry_value_is_number(argv[1]))
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else if (!obj)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_REFERENCE, "Failed to retrieve object");
+        }
+        else
+        {
+            string fnName = JerryScript::GetInternalPropertyAsString(callInfo->function, "name");
+            
+            uint8_t reg = (int)jerry_value_as_number(argv[0]);
+
+            if (fnName == "WriteReg8")
+            {
+                uint8_t val = (int)jerry_value_as_number(argv[0]);
+
+                I2C::WriteReg8(obj->GetAddr(), reg, val);
+            }
+            else if (fnName == "WriteReg16")
+            {
+                uint16_t val = (int)jerry_value_as_number(argv[0]);
+
+                I2C::WriteReg16(obj->GetAddr(), reg, val);
+            }
+        }
+
+        return retVal;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // JavaScript Construction / Destruction
+    ///////////////////////////////////////////////////////////////////////////
+
+    static jerry_value_t OnConstructed(const jerry_call_info_t *callInfo,
+                                       const jerry_value_t      argv[],
+                                       const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        if (JerryScript::CalledAsConstructor(callInfo) == false)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Improperly called as function and not constructor");
+        }
+        else if (argc != 1 || !jerry_value_is_number(argv[0]))
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid arguments to constructor");
+        }
+        else
+        {
+            // Extract parameters
+            uint8_t addr = (int)jerry_value_as_number(argv[0]);
+
+            // Create a new I2C object
+            Log("new I2C(", addr, ")");
+            JSObj_I2C *obj = new JSObj_I2C(addr);
+
+            if (!obj)
+            {
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+            }
+            else
+            {
+                // Associate the C state with the JS object
+                JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, obj);
+            }
+        }
+
+        return retVal;
+    }
+
+    static void OnGarbageCollected(void *native, struct jerry_object_native_info_t *callInfo)
+    {
+        if (native)
+        {
+            JSObj_I2C *obj = (JSObj_I2C *)native;
+
+            Log("~I2C(", obj->addr_, ")");
+
+            delete obj;
         }
     }
-    else
-    {
-        printf("WOW CALLED AS JUST A FUNCTION\n");
 
-        // called as a function
-        retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Called as function instead of constructor");
+
+private:
+
+    ///////////////////////////////////////////////////////////////////////////
+    // JavaScript Type Identifier
+    ///////////////////////////////////////////////////////////////////////////
+
+    static inline const jerry_object_native_info_t typeInfo_ =
+    {
+        .free_cb = OnGarbageCollected,
+    };
+
+
+private:
+
+    ///////////////////////////////////////////////////////////////////////////
+    // C++ Construction / Destruction
+    ///////////////////////////////////////////////////////////////////////////
+
+    JSObj_I2C(uint8_t addr)
+    {
+        addr_ = addr;
     }
 
-    return retVal;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////
-// Javascript-facing public interface
-///////////////////////////////////////////////////////////////////////////
-
-static jerry_value_t JsFnGetAddress(const jerry_call_info_t *callInfo,
-                                    const jerry_value_t      argv[],
-                                    const jerry_length_t     argc)
-{
-    jerry_value_t retVal;
-
-    JS_I2C *jsI2c = (JS_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
-    if (jsI2c)
+    uint8_t GetAddr() const
     {
-        retVal = jerry_number(jsI2c->address_);
-
-        printf("Addr(%i) - JsFnGetAddress\n", jsI2c->address_);
-    }
-    else
-    {
-        retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to retrieve I2C object");
+        return addr_;
     }
 
-    return retVal;
-}
-
-static jerry_value_t JsFnPrint(const jerry_call_info_t *callInfo,
-                               const jerry_value_t      argv[],
-                               const jerry_length_t     argc)
-{
-    jerry_value_t retVal;
-
-    JS_I2C *jsI2c = (JS_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
-    if (jsI2c)
+    ~JSObj_I2C()
     {
-        printf("Addr(%i) - JsFnPrint (%s)\n", jsI2c->address_, jsI2c->name_.c_str());
-
-        retVal = jerry_undefined();
-    }
-    else
-    {
-        retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to retrieve I2C object");
+        // nothing to do
     }
 
-    return retVal;
-}
 
+private:
 
-
-
-
-
-///////////////////////////////////////////////////////////////////////////
-// Public interface
-///////////////////////////////////////////////////////////////////////////
-
-void JS_I2C::Register()
-{
-    JerryScript::UseThenFree(jerry_function_external(OnConstructed), [&](auto jsClassObj){
-        JerryScript::SetGlobalPropertyNoFree("I2C", jsClassObj);
-
-        JerryScript::UseThenFree(jerry_object(), [&](auto prototype){
-            JerryScript::SetPropertyNoFree(jsClassObj, "prototype", prototype);
-
-            JerryScript::SetPropertyToFunction(prototype, "getAddress", JsFnGetAddress);
-            JerryScript::SetPropertyToFunction(prototype, "print",      JsFnPrint);
-        });
-    });
-}
+    uint8_t addr_ = 0;
+};
 
 
 
