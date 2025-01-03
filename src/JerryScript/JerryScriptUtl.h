@@ -463,7 +463,7 @@ public:
     // This allows more instances where a non-capturing lambda can be used as
     // the function.
 
-    // void Function(uint32_t)
+    // void(uint32_t)
     static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint32_t))
     {
         SetPropertyToFunction(objTarget, name, FnVoidU32Handler, (void *)fn);
@@ -494,7 +494,7 @@ public:
         return retVal;
     }
 
-    // double Function()
+    // double(void)
     static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, double (*fn)())
     {
         SetPropertyToFunction(objTarget, name, FnDoubleVoidHandler, (void *)fn);
