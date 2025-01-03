@@ -852,6 +852,27 @@ inline string ToString(const vector<uint8_t> &byteList)
     return retVal;
 }
 
+template <typename Container>
+inline string ContainerToString(const Container& container)
+{
+    string retVal;
+
+    retVal += "[";
+
+    string sep = "";
+    for (const auto &val : container)
+    {
+        retVal += sep;
+        retVal += to_string(val);
+
+        sep = ", ";
+    }
+
+    retVal += "]";
+
+    return retVal;
+}
+
 inline string Join(const vector<string> &valList, const string &sep)
 {
     string retVal;
