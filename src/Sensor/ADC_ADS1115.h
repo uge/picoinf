@@ -12,6 +12,12 @@ static const uint8_t ADS1115_REG_ADDR_CONVERSION = 0x00;
 
 public:
 
+    ADC_ADS1115()
+    : i2c_(ADS1115_DEVICE_ID)
+    {
+        // nothing to do
+    }
+
     struct Config
     {
         uint8_t opStatus = 0;
@@ -63,7 +69,7 @@ public:
 
     Config GetAdcConfig()
     {
-        uint16_t retVal = i2c_.ReadReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONFIG);
+        uint16_t retVal = i2c_.ReadReg16(ADS1115_REG_ADDR_CONFIG);
 
         // convert to config
         Config cfg = {
@@ -107,7 +113,7 @@ public:
         val |= BitsPut(cfg.compLat,   2,  2);
         val |= BitsPut(cfg.compQue,   1,  0);
 
-        i2c_.WriteReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONFIG, val);
+        i2c_.WriteReg16(ADS1115_REG_ADDR_CONFIG, val);
 
         return cfg;
     }
@@ -118,7 +124,7 @@ public:
 
         ConfigureAdc();
 
-        uint16_t val = i2c_.ReadReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONVERSION);
+        uint16_t val = i2c_.ReadReg16(ADS1115_REG_ADDR_CONVERSION);
 
         static const uint16_t ADC_MAX = 0x7FFF;
         double adcPct = (double)val / ADC_MAX;

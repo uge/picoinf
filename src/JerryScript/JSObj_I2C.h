@@ -13,6 +13,15 @@ class JSObj_I2C
 public:
 
     ///////////////////////////////////////////////////////////////////////////
+    // Public Configuration Interface
+    ///////////////////////////////////////////////////////////////////////////
+
+    static void SetI2CInstance(I2C::Instance instance)
+    {
+        instance_ = instance;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
     // Public Registration Interface
     ///////////////////////////////////////////////////////////////////////////
 
@@ -24,7 +33,7 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "IsAvailable", IsAvailableHandler);
+                JerryScript::SetPropertyToFunction(prototype, "IsAlive",     IsAliveHandler);
                 JerryScript::SetPropertyToFunction(prototype, "ReadReg8",    ReadHandler);
                 JerryScript::SetPropertyToFunction(prototype, "ReadReg16",   ReadHandler);
                 JerryScript::SetPropertyToFunction(prototype, "WriteReg8",   WriteHandler);
@@ -40,13 +49,13 @@ private:
     // JavaScript Function Handlers
     ///////////////////////////////////////////////////////////////////////////
 
-    static jerry_value_t IsAvailableHandler(const jerry_call_info_t *callInfo,
-                                            const jerry_value_t      argv[],
-                                            const jerry_length_t     argc)
+    static jerry_value_t IsAliveHandler(const jerry_call_info_t *callInfo,
+                                        const jerry_value_t      argv[],
+                                        const jerry_length_t     argc)
     {
         jerry_value_t retVal = jerry_undefined();
 
-        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+        I2C *obj = (I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
 
         if (argc != 0)
         {
@@ -58,7 +67,7 @@ private:
         }
         else
         {
-            retVal = jerry_boolean(I2C::CheckAddr(obj->GetAddr()));
+            retVal = jerry_boolean(obj->IsAlive());
         }
 
         return retVal;
@@ -70,7 +79,7 @@ private:
     {
         jerry_value_t retVal = jerry_undefined();
 
-        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+        I2C *obj = (I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
 
         if (argc != 1 || !jerry_value_is_number(argv[0]))
         {
@@ -88,13 +97,13 @@ private:
 
             if (fnName == "ReadReg8")
             {
-                uint8_t val = I2C::ReadReg8(obj->GetAddr(), reg);
+                uint8_t val = obj->ReadReg8(reg);
 
                 retVal = jerry_number(val);
             }
             else if (fnName == "ReadReg16")
             {
-                uint16_t val = I2C::ReadReg16(obj->GetAddr(), reg);
+                uint16_t val = obj->ReadReg16(reg);
 
                 retVal = jerry_number(val);
             }
@@ -109,7 +118,7 @@ private:
     {
         jerry_value_t retVal = jerry_undefined();
 
-        JSObj_I2C *obj = (JSObj_I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
+        I2C *obj = (I2C *)JerryScript::GetNativePointer(callInfo->this_value, &typeInfo_);
 
         if (argc != 2 || !jerry_value_is_number(argv[0]) || !jerry_value_is_number(argv[1]))
         {
@@ -129,13 +138,13 @@ private:
             {
                 uint8_t val = (int)jerry_value_as_number(argv[0]);
 
-                I2C::WriteReg8(obj->GetAddr(), reg, val);
+                obj->WriteReg8(reg, val);
             }
             else if (fnName == "WriteReg16")
             {
                 uint16_t val = (int)jerry_value_as_number(argv[0]);
 
-                I2C::WriteReg16(obj->GetAddr(), reg, val);
+                obj->WriteReg16(reg, val);
             }
         }
 
@@ -168,7 +177,7 @@ private:
 
             // Create a new I2C object
             Log("new I2C(", addr, ")");
-            JSObj_I2C *obj = new JSObj_I2C(addr);
+            I2C *obj = new I2C(addr, instance_);
 
             if (!obj)
             {
@@ -188,9 +197,9 @@ private:
     {
         if (native)
         {
-            JSObj_I2C *obj = (JSObj_I2C *)native;
+            I2C *obj = (I2C *)native;
 
-            Log("~I2C(", obj->addr_, ")");
+            Log("~I2C()");
 
             delete obj;
         }
@@ -199,41 +208,14 @@ private:
 
 private:
 
-    ///////////////////////////////////////////////////////////////////////////
-    // JavaScript Type Identifier
-    ///////////////////////////////////////////////////////////////////////////
+    // Default to I2C0 instance
+    inline static I2C::Instance instance_ = I2C::Instance::I2C0;
 
+    // JavaScript Type Identifier
     static inline const jerry_object_native_info_t typeInfo_ =
     {
         .free_cb = OnGarbageCollected,
     };
-
-
-private:
-
-    ///////////////////////////////////////////////////////////////////////////
-    // C++ Construction / Destruction
-    ///////////////////////////////////////////////////////////////////////////
-
-    JSObj_I2C(uint8_t addr)
-    {
-        addr_ = addr;
-    }
-
-    uint8_t GetAddr() const
-    {
-        return addr_;
-    }
-
-    ~JSObj_I2C()
-    {
-        // nothing to do
-    }
-
-
-private:
-
-    uint8_t addr_ = 0;
 };
 
 

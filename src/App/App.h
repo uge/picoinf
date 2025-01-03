@@ -53,7 +53,7 @@ public:
             ADC::Init();
             Clock::Init();
             EvmInit();
-            I2C::Init();
+            I2C::Init0();
             JerryScriptIntegration::Init();
             JSONMsgRouter::Init();
             KStats::Init();
@@ -66,7 +66,7 @@ public:
             Clock::SetupShell();
             EvmSetupShell();
             FilesystemLittleFS::SetupShell();
-            I2C::SetupShell();
+            I2C::SetupShell0();
             JerryScriptIntegration::SetupShell();
             JSONMsgRouter::SetupShell();
             KStats::SetupShell();
