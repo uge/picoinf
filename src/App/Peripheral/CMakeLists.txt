@@ -5,6 +5,7 @@ target_sources(PicoInf PRIVATE
     FilesystemLittleFS.cpp
     FilesystemLittleFSFile.cpp
     I2C.cpp
+    PeripheralControl.cpp
     Pin.cpp
     PWM.cpp
     UART.cpp
