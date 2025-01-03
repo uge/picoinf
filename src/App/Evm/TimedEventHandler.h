@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <functional>
 #include <source_location>
-using namespace std;
 
 
 //////////////////////////////////////////////////////////////////////
@@ -95,13 +94,13 @@ public:
     
     // tried to the nice way but none worked
     // https://www.techiedelight.com/find-name-of-the-calling-function-in-cpp/
-    void SetCallback(function<void()> cbFn, const char *origin = std::source_location::current().function_name())
+    void SetCallback(std::function<void()> cbFn, const char *origin = std::source_location::current().function_name())
     {
         cbFn_ = cbFn;
         origin_ = origin;
     }
     
-    function<void()> GetCallback()
+    std::function<void()> GetCallback()
     {
         return cbFn_;
     }
@@ -114,7 +113,7 @@ public:
 private:
     virtual void OnTimedEvent();
 
-    function<void()> cbFn_;
+    std::function<void()> cbFn_;
 };
 
 
