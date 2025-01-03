@@ -1,5 +1,6 @@
 target_include_directories(PicoInf PUBLIC .)
 target_sources(PicoInf PRIVATE
-    ADCInternal.cpp
-    BMP280.cpp
+    Arduino.cpp
+    SPI.cpp
+    Wire.cpp
 )

@@ -68,6 +68,45 @@ set(TARGET_LINK_LIBS_LIST)
 
 
 #####################################################################
+# Shims
+#####################################################################
+
+add_subdirectory(shim)
+
+
+#####################################################################
+# Adafruit Library Integration
+#####################################################################
+
+set(ADAFRUIT_BUSIO_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BusIO")
+target_include_directories(PicoInf PRIVATE ${ADAFRUIT_BUSIO_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_SENSOR_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_Sensor")
+target_include_directories(PicoInf PRIVATE ${ADAFRUIT_SENSOR_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_BMP280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BMP280_Library")
+target_include_directories(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+
+#####################################################################
 # FreeRTOS Integration
 #####################################################################
 
