@@ -239,19 +239,48 @@ void I2C::Init1()
     gpio_pull_up(15);
 }
 
+static void ScanPretty(I2C::Instance instance)
+{
+    // show column headers
+    Log("   |  0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F");
+    Log("---|------------------------------------------------");
+
+    // Generate
+    for (uint8_t row = 0x00; row <= 0x70; row += 0x10)
+    {
+        LogNNL(Format::ToHex(row, false), " |");
+
+        for (uint8_t col = 0x0; col <= 0xF; ++col)
+        {
+            uint8_t addr = row + col;
+
+            I2C i2c(addr, instance);
+
+            LogNNL(" ");
+            if (i2c.IsAlive())
+            {
+                LogNNL(Format::ToHex(addr, false));
+            }
+            else
+            {
+                LogNNL("--");
+            }
+        }
+
+        LogNL();
+    }
+}
+
 void I2C::SetupShell0()
 {
     Timeline::Global().Event("I2C::SetupShell0");
 
     Shell::AddCommand("i2c0.scan", [&](vector<string> argList){
-        vector<uint8_t> addrList = I2C::Scan(Instance::I2C0);
-        Log("Count found: ", addrList.size());
-        LogNNL("List:");
-        for (auto addr : addrList)
-        {
-            LogNNL(" ", Format::ToHex(addr), "(", addr, ")");
-        }
         LogNL();
+        ScanPretty(Instance::I2C0);
+        vector<uint8_t> addrList = I2C::Scan(Instance::I2C0);
+        LogNL();
+        Log("Found: ", addrList.size(), ": ", ContainerToString(addrList));
     }, { .argCount = 0, .help = "I2C scan all addresses"});
 
     Shell::AddCommand("i2c0.addr", [&](vector<string> argList){
@@ -325,14 +354,11 @@ void I2C::SetupShell1()
     Timeline::Global().Event("I2C::SetupShell1");
 
     Shell::AddCommand("i2c1.scan", [&](vector<string> argList){
-        vector<uint8_t> addrList = I2C::Scan(Instance::I2C1);
-        Log("Count found: ", addrList.size());
-        LogNNL("List:");
-        for (auto addr : addrList)
-        {
-            LogNNL(" ", Format::ToHex(addr), "(", addr, ")");
-        }
         LogNL();
+        ScanPretty(Instance::I2C1);
+        vector<uint8_t> addrList = I2C::Scan(Instance::I2C1);
+        LogNL();
+        Log("Found: ", addrList.size(), ": ", ContainerToString(addrList));
     }, { .argCount = 0, .help = "I2C scan all addresses"});
 
     Shell::AddCommand("i2c1.addr", [&](vector<string> argList){
