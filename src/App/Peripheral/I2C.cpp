@@ -51,8 +51,8 @@ uint8_t I2C::ReadReg8(uint8_t reg)
 {
     uint8_t retVal;
     
-    i2c_write_blocking(i2c_, addr_, &reg, 1, true);
-    i2c_read_blocking(i2c_, addr_, &retVal, 1, false);
+    AnalyzeRetVal(i2c_write_blocking_until(i2c_, addr_, &reg, 1, true, make_timeout_time_ms(TIMEOUT_MS)));
+    AnalyzeRetVal(i2c_read_blocking_until(i2c_, addr_, &retVal, 1, false, make_timeout_time_ms(TIMEOUT_MS)));
 
     return retVal;
 }
@@ -64,8 +64,8 @@ uint16_t I2C::ReadReg16(uint8_t reg)
     // I2C is MSB, so create our own MSB buffer
     uint16_t buf = 0;
 
-    i2c_write_blocking(i2c_, addr_, &reg, 1, true);
-    i2c_read_blocking(i2c_, addr_, (uint8_t *)&buf, 2, false);
+    AnalyzeRetVal(i2c_write_blocking_until(i2c_, addr_, &reg, 1, true, make_timeout_time_ms(TIMEOUT_MS)));
+    AnalyzeRetVal(i2c_read_blocking_until(i2c_, addr_, (uint8_t *)&buf, 2, false, make_timeout_time_ms(TIMEOUT_MS)));
 
     // put in host order
     retVal = ntohs(buf);
@@ -80,7 +80,7 @@ void I2C::WriteReg8(uint8_t reg, uint8_t val)
         val,
     };
 
-    i2c_write_blocking(i2c_, addr_, (uint8_t *)&buf, sizeof(buf), false);
+    AnalyzeRetVal(i2c_write_blocking_until(i2c_, addr_, (uint8_t *)&buf, sizeof(buf), false, make_timeout_time_ms(TIMEOUT_MS)));
 }
 
 void I2C::WriteReg16(uint8_t reg, uint16_t val)
@@ -99,7 +99,7 @@ void I2C::WriteReg16(uint8_t reg, uint16_t val)
         (uint8_t)(val & 0xFF),
     };
 
-    i2c_write_blocking(i2c_, addr_, (uint8_t *)&buf, sizeof(buf), false);
+    AnalyzeRetVal(i2c_write_blocking_until(i2c_, addr_, (uint8_t *)&buf, sizeof(buf), false, make_timeout_time_ms(TIMEOUT_MS)));
 }
 
 // No endianness conversions done here, caller has to swap around bytes
@@ -121,7 +121,29 @@ void I2C::WriteDirect(uint8_t reg, uint8_t *buf, uint8_t bufSize)
     // copy in all the data that was given
     memcpy(&bufLocal[1], buf, bufSize);
 
-    i2c_write_blocking(i2c_, addr_, (uint8_t *)&bufLocal, sizeof(bufLocal), false);
+    AnalyzeRetVal(i2c_write_blocking_until(i2c_, addr_, (uint8_t *)&bufLocal, sizeof(bufLocal), false, make_timeout_time_ms(TIMEOUT_MS)));
+}
+
+void I2C::AnalyzeRetVal(int retVal)
+{
+    Stats &stats = stats_[i2c_ == i2c0 ? 0 : 1];
+
+    if (retVal == PICO_ERROR_GENERIC)
+    {
+        ++stats.PICO_ERROR_GENERIC;
+    }
+    else if (retVal == PICO_ERROR_TIMEOUT)
+    {
+        ++stats.PICO_ERROR_TIMEOUT;
+    }
+    else if (retVal < 0)
+    {
+        ++stats.PICO_ERROR_OTHER;
+    }
+    else if (retVal >= 0)
+    {
+        ++stats.PICO_OK;
+    }
 }
 
 
@@ -135,7 +157,7 @@ bool I2C::IsAlive(uint8_t addr, Instance instance)
     i2c_inst_t *i2c = instance == Instance::I2C0 ? i2c0 : i2c1;
 
     uint8_t byte;
-    int ret = i2c_read_blocking(i2c, addr, &byte, 1, false);
+    int ret = i2c_read_blocking_until(i2c, addr, &byte, 1, false, make_timeout_time_ms(TIMEOUT_MS));
 
     return ret >= 0;
 }
@@ -158,13 +180,23 @@ vector<uint8_t> I2C::Scan(Instance instance)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialization
+//
+// Bus Speeds:
+// Standard Mode  :  100 Kbit
+// Fast Mode      :  400 Kbit
+// Fast Mode Plus : 1000 Kbit (1.0 Mbit)
+// High Speed Mode: 3400 Kbit (3.4 Mbit)
+//
+// Pico can do 1Mbit, but we choose to do 400 Kbit for stability after seeing
+// some farther-away sensors fail at 1Mbit. Works fine at this speed.
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 void I2C::Init0()
 {
-    Timeline::Global().Event("I2C::Init1");
+    Timeline::Global().Event("I2C::Init0");
 
-    i2c_init(i2c0, 1000 * 1000);
+    i2c_init(i2c0, 400 * 1000);
     gpio_set_function(4, GPIO_FUNC_I2C);
     gpio_set_function(5, GPIO_FUNC_I2C);
     gpio_pull_up(4);
@@ -173,17 +205,13 @@ void I2C::Init0()
 
 void I2C::Init1()
 {
-    LogModeSync();
+    Timeline::Global().Event("I2C::Init1");
 
-    Timeline::Global().Event("I2C::Init2");
-
-    i2c_init(i2c1, 1000 * 1000);
+    i2c_init(i2c1, 400 * 1000);
     gpio_set_function(14, GPIO_FUNC_I2C);
     gpio_set_function(15, GPIO_FUNC_I2C);
     gpio_pull_up(14);
     gpio_pull_up(15);
-
-    LogModeAsync();
 }
 
 void I2C::SetupShell0()
@@ -261,6 +289,10 @@ void I2C::SetupShell0()
 
         Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
+
+    Shell::AddCommand("i2c0.stats", [&](vector<string> argList){
+        stats_[0].Print();
+    }, { .argCount = 0, .help = ""});
 }
 
 void I2C::SetupShell1()
@@ -338,6 +370,10 @@ void I2C::SetupShell1()
 
         Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
+
+    Shell::AddCommand("i2c1.stats", [&](vector<string> argList){
+        stats_[1].Print();
+    }, { .argCount = 0, .help = ""});
 }
 
 

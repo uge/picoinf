@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "Log.h"
+#include "Utl.h"
+
 #include "hardware/i2c.h"
 
 
@@ -24,6 +27,19 @@ public:
     void     WriteReg16(uint8_t reg, uint16_t val);
     void     WriteDirect(uint8_t reg, uint8_t *buf, uint8_t bufSize);
 
+private:
+
+    void AnalyzeRetVal(int retVal);
+
+
+private:
+
+    uint8_t     addr_ = 0;
+    i2c_inst_t *i2c_  = nullptr;
+
+
+public:
+
     static bool IsAlive(uint8_t addr, Instance instance = Instance::I2C0);
     static std::vector<uint8_t> Scan(Instance instance = Instance::I2C0);
 
@@ -34,8 +50,25 @@ public:
 
 private:
 
-    uint8_t     addr_ = 0;
-    i2c_inst_t *i2c_  = nullptr;
+    static const uint32_t TIMEOUT_MS = 5;
+
+    struct Stats
+    {
+        uint64_t PICO_OK;
+        uint64_t PICO_ERROR_GENERIC;
+        uint64_t PICO_ERROR_TIMEOUT;
+        uint64_t PICO_ERROR_OTHER;
+
+        void Print()
+        {
+            Log("PICO_OK           : ", Commas(PICO_OK));
+            Log("PICO_ERROR_GENERIC: ", Commas(PICO_ERROR_GENERIC));
+            Log("PICO_ERROR_TIMEOUT: ", Commas(PICO_ERROR_TIMEOUT));
+            Log("PICO_ERROR_OTHER  : ", Commas(PICO_ERROR_OTHER));
+        }
+    };
+
+    inline static Stats stats_[2];
 };
 
 
