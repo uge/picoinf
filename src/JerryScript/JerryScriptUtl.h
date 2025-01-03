@@ -462,6 +462,8 @@ public:
     //
     // This allows more instances where a non-capturing lambda can be used as
     // the function.
+
+    // void Function(uint32_t)
     static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint32_t))
     {
         SetPropertyToFunction(objTarget, name, FnVoidU32Handler, (void *)fn);
@@ -486,6 +488,35 @@ public:
             if (fn)
             {
                 fn(arg);
+            }
+        }
+
+        return retVal;
+    }
+
+    // double Function()
+    static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, double (*fn)())
+    {
+        SetPropertyToFunction(objTarget, name, FnDoubleVoidHandler, (void *)fn);
+    }
+
+    static jerry_value_t FnDoubleVoidHandler(const jerry_call_info_t *callInfo,
+                                             const jerry_value_t      argv[],
+                                             const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        if (argc != 0)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else
+        {
+            double (*fn)() = (double (*)())JerryScript::GetNativePointer(callInfo->function);
+
+            if (fn)
+            {
+                retVal = jerry_number(fn());
             }
         }
 
