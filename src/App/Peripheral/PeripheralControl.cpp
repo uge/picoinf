@@ -7,6 +7,8 @@ using namespace std;
 #include "hardware/structs/scb.h"
 #include "hardware/clocks.h"
 
+#include "StrictMode.h"
+
 
 void PeripheralControl::DisablePeripheralList(vector<Peripheral> peripheralList)
 {
