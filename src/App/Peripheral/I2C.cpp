@@ -8,6 +8,29 @@
 #include "StrictMode.h"
 
 
+// link about I2C
+// https://developerhelp.microchip.com/xwiki/bin/view/applications/i2c/
+
+
+// Useful list of known I2C addresses
+// https://learn.adafruit.com/i2c-addresses?view=all
+// https://github.com/adafruit/I2C_Addresses
+
+
+// Repeated Start
+// - not something I support across multiple Read/Write operations, but could be added if necessary
+// - I think basically it would be
+//   - add StartTransaction()/EndTranscation()
+//   - StartTransaction() would set a member variable which would be checked in the Write/Read functions
+//     to determine if the bus should be held
+//   - EndTransaction() would clear that member variable and also issue a stop somehow
+//     - possibly do a read with a stop just to end the transaction without complicating the read/write functions
+// 
+// link to some info on repeated start
+// https://learn.adafruit.com/working-with-i2c-devices/repeated-start
+
+
+
 // the first param of each is the dev ptr.
 // all are synchronous.
 //
@@ -160,7 +183,7 @@ void I2C::AnalyzeRetVal(int retVal)
 bool I2C::IsAlive(uint8_t addr, Instance instance)
 {
     I2C i2c(addr, instance);
-    
+
     return i2c.IsAlive();
 }
 
