@@ -13,3 +13,6 @@
 [submodule "ext/jerryscript"]
 	path = ext/jerryscript
 	url = git@github.com:jerryscript-project/jerryscript.git
+[submodule "ext/Adafruit_Sensor"]
+	path = ext/Adafruit_Sensor
+	url = git@github.com:adafruit/Adafruit_Sensor.git
