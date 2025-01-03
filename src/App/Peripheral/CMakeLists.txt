@@ -1,6 +1,7 @@
 target_include_directories(PicoInf PUBLIC .)
 
 target_sources(PicoInf PRIVATE
+    Clock.cpp
     FilesystemLittleFS.cpp
     I2C.cpp
     Pin.cpp
