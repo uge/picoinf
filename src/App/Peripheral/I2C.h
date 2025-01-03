@@ -3,9 +3,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "Log.h"
-#include "Utl.h"
-
 #include "hardware/i2c.h"
 
 
@@ -59,13 +56,7 @@ private:
         uint64_t PICO_ERROR_TIMEOUT;
         uint64_t PICO_ERROR_OTHER;
 
-        void Print()
-        {
-            Log("PICO_OK           : ", Commas(PICO_OK));
-            Log("PICO_ERROR_GENERIC: ", Commas(PICO_ERROR_GENERIC));
-            Log("PICO_ERROR_TIMEOUT: ", Commas(PICO_ERROR_TIMEOUT));
-            Log("PICO_ERROR_OTHER  : ", Commas(PICO_ERROR_OTHER));
-        }
+        void Print();
     };
 
     inline static Stats stats_[2];

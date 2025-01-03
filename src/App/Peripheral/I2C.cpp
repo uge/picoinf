@@ -428,5 +428,11 @@ void I2C::SetupShell1()
 }
 
 
-
+void I2C::Stats::Print()
+{
+    Log("PICO_OK           : ", Commas(PICO_OK));
+    Log("PICO_ERROR_GENERIC: ", Commas(PICO_ERROR_GENERIC));
+    Log("PICO_ERROR_TIMEOUT: ", Commas(PICO_ERROR_TIMEOUT));
+    Log("PICO_ERROR_OTHER  : ", Commas(PICO_ERROR_OTHER));
+}
 
