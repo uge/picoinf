@@ -19,6 +19,7 @@
 #include "Pin.h"
 #include "PWM.h"
 #include "PeripheralControl.h"
+#include "Sensor.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "USB.h"
@@ -75,6 +76,7 @@ public:
             PinSetupShell();
             PWM::SetupShell();
             PeripheralControl::SetupShell();
+            Sensor::SetupShell();
             Shell::Init();
             TimelineSetupShell();
             UartSetupShell();
