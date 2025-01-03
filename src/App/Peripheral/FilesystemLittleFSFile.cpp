@@ -6,6 +6,8 @@ using namespace std;
 
 #include "lfs.h"
 
+#include "StrictMode.h"
+
 
 FilesystemLittleFSFile::FilesystemLittleFSFile(lfs_t &lfs, const string &fileName)
 : state_(make_shared<State>(lfs, fileName))
@@ -93,7 +95,7 @@ bool FilesystemLittleFSFile::Read(uint8_t *buf, uint32_t bufSize, uint32_t *byte
 
             if (bytesRead)
             {
-                *bytesRead = err;
+                *bytesRead = (uint32_t)err;
             }
         }
     }
@@ -175,7 +177,7 @@ bool FilesystemLittleFSFile::Write(uint8_t *buf, uint32_t bufSize, uint32_t *byt
 
             if (bytesWritten)
             {
-                *bytesWritten = err;
+                *bytesWritten = (uint32_t)err;
             }
         }
     }
@@ -206,7 +208,7 @@ uint32_t FilesystemLittleFSFile::Size()
         }
         else
         {
-            retVal = err;
+            retVal = (uint32_t)err;
         }
     }
     else
@@ -231,7 +233,7 @@ uint32_t FilesystemLittleFSFile::Tell()
         }
         else
         {
-            retVal = err;
+            retVal = (uint32_t)err;
         }
     }
     else
