@@ -44,7 +44,12 @@ I2C::I2C(uint8_t addr, Instance instance)
 
 bool I2C::IsAlive()
 {
-    return I2C::IsAlive(addr_, i2c_ == i2c0 ? Instance::I2C0 : Instance::I2C1);
+    uint8_t byte;
+    int ret = i2c_read_blocking_until(i2c_, addr_, &byte, 1, false, make_timeout_time_ms(TIMEOUT_MS));
+
+    AnalyzeRetVal(ret);
+
+    return ret >= 0;
 }
 
 uint8_t I2C::ReadReg8(uint8_t reg)
@@ -154,12 +159,9 @@ void I2C::AnalyzeRetVal(int retVal)
 
 bool I2C::IsAlive(uint8_t addr, Instance instance)
 {
-    i2c_inst_t *i2c = instance == Instance::I2C0 ? i2c0 : i2c1;
-
-    uint8_t byte;
-    int ret = i2c_read_blocking_until(i2c, addr, &byte, 1, false, make_timeout_time_ms(TIMEOUT_MS));
-
-    return ret >= 0;
+    I2C i2c(addr, instance);
+    
+    return i2c.IsAlive();
 }
 
 vector<uint8_t> I2C::Scan(Instance instance)
