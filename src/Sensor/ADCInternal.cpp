@@ -22,6 +22,11 @@ ADC::ADC(uint8_t pin)
     // Nothing to do
 }
 
+uint16_t ADC::Read()
+{
+    return Read(pin_);
+}
+
 uint16_t ADC::GetMilliVolts()
 {
     return GetMilliVolts(pin_);
