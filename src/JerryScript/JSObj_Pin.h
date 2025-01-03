@@ -1,16 +1,30 @@
 #pragma once
 
 #include <string>
+#include <unordered_set>
+#include <vector>
 using namespace std;
 
 #include "Pin.h"
-
 #include "JerryScriptUtl.h"
 
 
 class JSObj_Pin
 {
 public:
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Public Configuration Interface
+    ///////////////////////////////////////////////////////////////////////////
+
+    static void SetPinWhitelist(const vector<uint8_t> &pinList)
+    {
+        pinWhitelistSet_.clear();
+        pinWhitelistSet_.insert(pinList.begin(), pinList.end());
+
+        pinWhitelistStr_ = ContainerToString(pinList);
+    }
+
 
     ///////////////////////////////////////////////////////////////////////////
     // Public Registration Interface
@@ -88,17 +102,26 @@ private:
             // Extract parameters
             uint8_t pin = (int)jerry_value_as_number(argv[0]);
 
-            // Create a new I2C object
-            Pin *obj = new Pin(pin);
-
-            if (!obj)
+            if (pinWhitelistSet_.contains(pin) == false)
             {
-                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+                string errMsg = "Invalid pin specified, must be one of: " + pinWhitelistStr_;
+
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, errMsg.c_str());
             }
             else
             {
-                // Associate the C state with the JS object
-                JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, obj);
+                // Create a new I2C object
+                Pin *obj = new Pin(pin);
+
+                if (!obj)
+                {
+                    retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+                }
+                else
+                {
+                    // Associate the C state with the JS object
+                    JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, obj);
+                }
             }
         }
 
@@ -118,10 +141,11 @@ private:
 
 private:
 
-    ///////////////////////////////////////////////////////////////////////////
-    // JavaScript Type Identifier
-    ///////////////////////////////////////////////////////////////////////////
+    // pin whitelist
+    static inline unordered_set<uint8_t> pinWhitelistSet_;
+    static inline string                 pinWhitelistStr_;
 
+    // JavaScript Type Identifier
     static inline const jerry_object_native_info_t typeInfo_ =
     {
         .free_cb = OnGarbageCollected,
