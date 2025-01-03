@@ -19,3 +19,6 @@
 [submodule "ext/Adafruit_BMP280_Library"]
 	path = ext/Adafruit_BMP280_Library
 	url = git@github.com:adafruit/Adafruit_BMP280_Library.git
+[submodule "ext/Adafruit_BusIO"]
+	path = ext/Adafruit_BusIO
+	url = git@github.com:adafruit/Adafruit_BusIO.git
