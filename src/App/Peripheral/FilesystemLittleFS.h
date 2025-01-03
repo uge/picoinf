@@ -46,7 +46,7 @@ public:
 
 
     static void NukeFilesystem();
-    static bool List(const std::string &path, vector<DirEnt> &dirEntList);
+    static bool List(const std::string &path, std::vector<DirEnt> &dirEntList);
     static bool Stat(const std::string &path, DirEnt &dirEnt);
 
 
