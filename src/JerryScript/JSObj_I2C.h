@@ -176,7 +176,6 @@ private:
             uint8_t addr = (int)jerry_value_as_number(argv[0]);
 
             // Create a new I2C object
-            Log("new I2C(", addr, ")");
             I2C *obj = new I2C(addr, instance_);
 
             if (!obj)
@@ -198,8 +197,6 @@ private:
         if (native)
         {
             I2C *obj = (I2C *)native;
-
-            Log("~I2C()");
 
             delete obj;
         }

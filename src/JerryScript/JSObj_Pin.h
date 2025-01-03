@@ -89,7 +89,6 @@ private:
             uint8_t pin = (int)jerry_value_as_number(argv[0]);
 
             // Create a new I2C object
-            Log("new Pin(", pin, ")");
             Pin *obj = new Pin(pin);
 
             if (!obj)
@@ -111,8 +110,6 @@ private:
         if (native)
         {
             Pin *obj = (Pin *)native;
-
-            Log("~Pin(", obj->GetPin(), ")");
 
             delete obj;
         }
