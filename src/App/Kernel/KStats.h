@@ -4,7 +4,6 @@
 #include "Utl.h"
 
 #include <vector>
-using namespace std;
 
 
 class KStats
@@ -47,5 +46,5 @@ public:
 public:
     static void Init();
     static void SetupShell();
-    static vector<KTaskStats> GetTaskStats();
+    static std::vector<KTaskStats> GetTaskStats();
 };

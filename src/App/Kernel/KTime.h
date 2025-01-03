@@ -2,12 +2,9 @@
 
 #include <stdint.h>
 
-#include <cmath>
+
 #include <functional>
 #include <vector>
-using namespace std;
-
-#include "FreeRTOS.h"
 
 
 /*
@@ -29,24 +26,9 @@ differences.  Only the deepest libraries should know or care.
 class KTime
 {
 public:
-    KTime(uint64_t us)
-    {
-        us_ = us;
-    }
+    KTime(uint64_t us);
 
-    operator uint32_t()
-    {
-        // the kernel is operating on ticks, and each tick is 1ms (awful rez).
-        // Here we convert to ms, allowing truncation, would rather be
-        // early than late.
-        uint32_t ms = us_;
-        if (ms != portMAX_DELAY)
-        {
-            ms = round(us_ / 1'000 * scalingFactor_);
-        }
-
-        return ms;
-    }
+    operator uint32_t();
 
     static void SetScalingFactor(double scalingFactor);
 
@@ -56,16 +38,13 @@ public:
     // instead, for, say, evm, expose a callback which it can handle
     // and do whatever it thinks is the right thing.
     // not perfect, but better than nothing/impossible.
-    static void RegisterCallbackScalingFactorChange(function<void()> cb)
-    {
-        cbList_.push_back(cb);
-    }
+    static void RegisterCallbackScalingFactorChange(std::function<void()> cb);
 
 private:
     uint64_t us_ = 0;
 
     inline static double scalingFactor_ = 1.0;
 
-    inline static vector<function<void()>> cbList_;
+    inline static std::vector<std::function<void()>> cbList_;
 };
 
