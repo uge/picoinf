@@ -2,6 +2,7 @@
 
 #include "Timeline.h"
 
+#include <cstdint>
 #include <functional>
 #include <vector>
 
@@ -21,7 +22,7 @@ public:
 
     // set buffering capacity, 0 to disable
     void SetSendBufCapacity(uint16_t capacity);
-    void SetCallbackOnRx(std::function<void(vector<uint8_t> &byteList)> fn);
+    void SetCallbackOnRx(std::function<void(std::vector<uint8_t> &byteList)> fn);
     bool GetDtr();
     uint16_t Send(const uint8_t *buf, uint16_t bufLen);
     void Clear();
@@ -43,11 +44,11 @@ private:
 
 private:
 
-    function<void(vector<uint8_t> &byteList)> cbFnRx_ = [](vector<uint8_t> &){};
+    std::function<void(std::vector<uint8_t> &byteList)> cbFnRx_ = [](std::vector<uint8_t> &){};
 
     bool dtr_ = false;
 
-    vector<uint8_t> sendBuf_;
+    std::vector<uint8_t> sendBuf_;
     uint16_t sendBufCapacity_ = 1000;
 
     uint8_t instance_;

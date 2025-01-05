@@ -2,10 +2,12 @@
 #include "Log.h"
 #include "USB.h"
 #include "USB_CDC.h"
+#include "Utl.h"
 
 #include "tusb.h"
 
 #include <algorithm>
+#include <cmath>
 using namespace std;
 
 #include "StrictMode.h"

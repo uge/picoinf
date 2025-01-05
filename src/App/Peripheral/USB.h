@@ -115,7 +115,7 @@ public:
 
 private:
 
-    inline static vector<std::string> strList_ = {
+    inline static std::vector<std::string> strList_ = {
         "Manufacturer",
         "Product",
         "",
@@ -149,7 +149,7 @@ public:
 private:
 
     inline static Timeline t_;
-    inline static vector<USB_CDC> cdcList_ = { { 0, t_ } };
+    inline static std::vector<USB_CDC> cdcList_ = { { 0, t_ } };
 };
 
 

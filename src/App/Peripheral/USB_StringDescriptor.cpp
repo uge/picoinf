@@ -2,6 +2,8 @@
 
 #include "tusb.h"
 
+using namespace std;
+
 #include "StrictMode.h"
 
 

@@ -1,9 +1,13 @@
 #include "USB.h"
 #include "Log.h"
 #include "KTask.h"
+#include "Shell.h"
 #include "Timeline.h"
+#include "Utl.h"
 
 #include "tusb.h"
+
+using namespace std;
 
 #include "StrictMode.h"
 
