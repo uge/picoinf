@@ -2,6 +2,10 @@
 #include "Shell.h"
 #include "Timeline.h"
 
+using namespace std;
+
+#include "StrictMode.h"
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initilization
@@ -59,7 +63,3 @@ int FormatSetupShell()
 
     return 1;
 }
-
-
-#include <zephyr/init.h>
-SYS_INIT(FormatSetupShell, APPLICATION, 80);

@@ -1,13 +1,10 @@
 #pragma once
 
-#include <stdint.h>
-
-#include <string>
-#include <utility>
-
 #include "Log.h"
 
-using namespace std;
+#include <cstdint>
+#include <string>
+#include <utility>
 
 
 // uint64_t max = 18446744073709551615 (20 chars) + 1 null
@@ -42,7 +39,7 @@ public:
 
 
     template <typename T>
-    static pair<const char *, int> StrC(char *buf, uint8_t bufSizeIn, const char *fmt, T val)
+    static std::pair<const char *, int> StrC(char *buf, uint8_t bufSizeIn, const char *fmt, T val)
     {
         int bufSize = snprintf((char *) buf, bufSizeIn, fmt, val);
 
@@ -50,7 +47,7 @@ public:
     }
 
     template <typename T>
-    static pair<const char *, int> StrC(const char *fmt, T val)
+    static std::pair<const char *, int> StrC(const char *fmt, T val)
     {
         return StrC(FormatTemplateBase::BUF, FormatTemplateBase::BUF_SIZE, fmt, val);
     }
@@ -60,50 +57,50 @@ public:
     // Not good for ISRs
     ///////////////////////////////////////////////////////////////////////////
     template <typename T>
-    static string Str(string fmt, T val)
+    static std::string Str(std::string fmt, T val)
     {
         auto [buf, bufSize] = StrC(fmt.c_str(), val);
 
         return buf;
     }
 
-    static string ToHex(uint8_t val, bool prependIdentifier = true)
+    static std::string ToHex(uint8_t val, bool prependIdentifier = true)
     {
         auto buf = Str("%02X", val);
 
         if (prependIdentifier)
         {
-            buf = string{"0x"} + buf;
+            buf = std::string{"0x"} + buf;
         }
 
         return buf;
     }
 
-    static string ToHex(uint16_t val, bool prependIdentifier = true)
+    static std::string ToHex(uint16_t val, bool prependIdentifier = true)
     {
         auto buf = Str("%04X", val);
 
         if (prependIdentifier)
         {
-            buf = string{"0x"} + buf;
+            buf = std::string{"0x"} + buf;
         }
 
         return buf;
     }
 
-    static string ToHex(uint32_t val, bool prependIdentifier = true)
+    static std::string ToHex(uint32_t val, bool prependIdentifier = true)
     {
         auto buf = Str("%08X", val);
 
         if (prependIdentifier)
         {
-            buf = string{"0x"} + buf;
+            buf = std::string{"0x"} + buf;
         }
 
         return buf;
     }
 
-    static string ToHex(uint64_t val, bool prependIdentifier = true)
+    static std::string ToHex(uint64_t val, bool prependIdentifier = true)
     {
         uint32_t u321 = (val >> 32) & 0xFFFFFFFF;
         uint32_t u322 = val & 0xFFFFFFFF;
@@ -113,14 +110,14 @@ public:
 
         if (prependIdentifier)
         {
-            buf = string{"0x"} + buf;
+            buf = std::string{"0x"} + buf;
         }
 
         return buf;
     }
 
     // supports 0x prefix, and all caps or not
-    static const uint64_t FromHex(string val)
+    static const uint64_t FromHex(std::string val)
     {
         uint64_t retVal = 0;
         const char *str = val.c_str();
@@ -130,9 +127,9 @@ public:
         return retVal;
     }
 
-    static string ToBin(uint8_t val, bool prependIdentifier = true, uint8_t places = 8)
+    static std::string ToBin(uint8_t val, bool prependIdentifier = true, uint8_t places = 8)
     {
-        string retVal;
+        std::string retVal;
 
         uint8_t mask = 0b10000000;
 
@@ -162,9 +159,9 @@ public:
         return retVal;
     }
 
-    static string ToBin(uint16_t val, bool prependIdentifier = true)
+    static std::string ToBin(uint16_t val, bool prependIdentifier = true)
     {
-        string retVal;
+        std::string retVal;
 
         // MSB
         uint8_t b1 = (uint8_t)((val >> 8) & 0xFF);
@@ -177,9 +174,9 @@ public:
         return retVal;
     }
 
-    static string ToBin(uint32_t val, bool prependIdentifier = true)
+    static std::string ToBin(uint32_t val, bool prependIdentifier = true)
     {
-        string retVal;
+        std::string retVal;
 
         // MSB
         uint16_t u161 = (uint16_t)((val >> 16) & 0xFFFF);
@@ -192,9 +189,9 @@ public:
         return retVal;
     }
 
-    static string ToBin(uint64_t val, bool prependIdentifier = true)
+    static std::string ToBin(uint64_t val, bool prependIdentifier = true)
     {
-        string retVal;
+        std::string retVal;
 
         // MSB
         uint32_t u321 = (uint32_t)((val >> 32) & 0xFFFFFFFF);
@@ -208,10 +205,10 @@ public:
     }
 
     template <typename T>
-    static void PrintAll(string str, T val)
+    static void PrintAll(std::string str, T val)
     {
         Log(str, ": ", val, ", ", ToHex(val), ", ", ToBin(val));
-        string toHex = ToHex(val);
+        std::string toHex = ToHex(val);
         T valParsed = (T)FromHex(toHex);
 
         if (valParsed == val)
