@@ -1,12 +1,16 @@
 #pragma once
 
 #include <bitset>
+#include <cstdint>
+#include <utility>
+
+
 template <uint8_t CAPACITY = 32>
 class IDMaker
 {
 public:
     // Next available, not necessarily next highest
-    pair<bool, uint8_t> GetNextId()
+    std::pair<bool, uint8_t> GetNextId()
     {
         bool ok = bits_.count() != CAPACITY;
         uint8_t id = 0;
@@ -90,7 +94,7 @@ public:
             return *this;
         }
 
-        Iterator(uint8_t idx, bitset<CAPACITY> &bits)
+        Iterator(uint8_t idx, std::bitset<CAPACITY> &bits)
         : idx_(idx)
         , bits_(bits)
         {
@@ -101,7 +105,7 @@ public:
     private:
 
         uint8_t idx_;
-        bitset<CAPACITY> &bits_;
+        std::bitset<CAPACITY> &bits_;
     };
 
     Iterator begin()
@@ -126,5 +130,5 @@ public:
 
 
 private:
-    bitset<CAPACITY> bits_;
+    std::bitset<CAPACITY> bits_;
 };
