@@ -1,10 +1,10 @@
 #pragma once
 
+#include "Evm.h"
+
 #include <cstdint>
 #include <functional>
 #include <string>
-
-#include "Evm.h"
 
 
 class Blinker
