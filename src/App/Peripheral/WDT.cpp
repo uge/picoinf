@@ -1,10 +1,12 @@
-#include "WDT.h"
-#include "Timeline.h"
 #include "Log.h"
 #include "Shell.h"
+#include "Timeline.h"
+#include "WDT.h"
 
 #include "hardware/watchdog.h"
 #include "hardware/structs/watchdog.h"
+
+#include "StrictMode.h"
 
 
 // uses LFCLK
@@ -82,7 +84,7 @@ void Watchdog::SetupShell()
     Timeline::Global().Event("Watchdog::SetupShell");
 
     Shell::AddCommand("wdt.set", [&](vector<string> argList){
-        uint32_t timeoutMs = atol(argList[0].c_str());
+        uint32_t timeoutMs = (uint32_t)atol(argList[0].c_str());
         Log("timeoutMs ", timeoutMs);
 
         SetTimeout(timeoutMs);
