@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 
 
 extern void UartInit();
@@ -43,15 +44,15 @@ extern void UartSend(const std::vector<uint8_t> &byteList);
 
 // Input handling for raw data streams
 // Low frills (no auto-uart re-direct of output), cb executes in smaller thread stack
-extern pair<bool, uint8_t> UartAddDataStreamCallback(UART uart, std::function<void(const std::vector<uint8_t> &data)> cbFn);
-extern bool                UartSetDataStreamCallback(UART uart, std::function<void(const std::vector<uint8_t> &data)> cbFn, uint8_t id = 0);
-extern bool                UartRemoveDataStreamCallback(UART uart, uint8_t id = 0);
+extern std::pair<bool, uint8_t> UartAddDataStreamCallback(UART uart, std::function<void(const std::vector<uint8_t> &data)> cbFn);
+extern bool                     UartSetDataStreamCallback(UART uart, std::function<void(const std::vector<uint8_t> &data)> cbFn, uint8_t id = 0);
+extern bool                     UartRemoveDataStreamCallback(UART uart, uint8_t id = 0);
 
 // Input handling for ASCII-only lines
 // high frills (auto-redirect output), cb executes in main evm thread
-extern pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, std::function<void(const std::string &line)> cbFn, bool hideBlankLines = true);
-extern bool                UartSetLineStreamCallback(UART uart, std::function<void(const std::string &line)> cbFn, uint8_t id = 0, bool hideBlankLines = true);
-extern bool                UartRemoveLineStreamCallback(UART uart, uint8_t id = 0);
+extern std::pair<bool, uint8_t> UartAddLineStreamCallback(UART uart, std::function<void(const std::string &line)> cbFn, bool hideBlankLines = true);
+extern bool                     UartSetLineStreamCallback(UART uart, std::function<void(const std::string &line)> cbFn, uint8_t id = 0, bool hideBlankLines = true);
+extern bool                     UartRemoveLineStreamCallback(UART uart, uint8_t id = 0);
 
 
 
