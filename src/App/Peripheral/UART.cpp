@@ -1,3 +1,8 @@
+#include <algorithm>
+#include <cstring>
+#include <vector>
+using namespace std;
+
 #include "Evm.h"
 #include "DataStreamDistributor.h"
 #include "IDMaker.h"
@@ -10,15 +15,12 @@
 #include "UART.h"
 #include "USB.h"
 
-#include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+#include "pico/stdlib.h"
 
-#include <string.h>
+#include "StrictMode.h"
 
-#include <algorithm>
-#include <vector>
-using namespace std;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +273,7 @@ void UartSend(const uint8_t *buf, uint16_t bufLen)
 
 void UartSend(const vector<uint8_t> &byteList)
 {
-    UartSend(byteList.data(), byteList.size());
+    UartSend(byteList.data(), (uint16_t)byteList.size());
 }
 
 
@@ -486,7 +488,7 @@ static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
     // Set up a RX interrupt
     // We need to set up the handler first
     // Select correct interrupt for the UART we are using
-    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+    uint UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
 
     // And set up and enable the interrupt handlers
     if (irq_get_exclusive_handler(UART_IRQ) == nullptr)
@@ -501,7 +503,7 @@ static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
 
 static void UartDeInitDeviceInterrupts(uart_inst_t *uart)
 {
-    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+    uint UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
 
     irq_set_enabled(UART_IRQ, false);
 }
