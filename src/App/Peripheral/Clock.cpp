@@ -1,6 +1,7 @@
 #include "Clock.h"
 #include "KTime.h"
 #include "Log.h"
+#include "Pin.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "UART.h"
@@ -1651,13 +1652,13 @@ void Clock::SetupShell()
 
     // do more with this, I don't remember learning if this was useful or not
     Shell::AddCommand("clk.wake.regs", [](vector<string> argList) {
-        Log("WAKE_EN0: ", Format::ToBin(clocks_hw->wake_en0));
-        Log("WAKE_EN1: ", Format::ToBin(clocks_hw->wake_en1));
+        Log("WAKE_EN0: ", ToBin(clocks_hw->wake_en0));
+        Log("WAKE_EN1: ", ToBin(clocks_hw->wake_en1));
     }, { .argCount = 0, .help = "" });
 
     Shell::AddCommand("clk.sleep.regs", [](vector<string> argList) {
-        Log("SLEEP_EN0: ", Format::ToBin(clocks_hw->sleep_en0));
-        Log("SLEEP_EN1: ", Format::ToBin(clocks_hw->sleep_en1));
+        Log("SLEEP_EN0: ", ToBin(clocks_hw->sleep_en0));
+        Log("SLEEP_EN1: ", ToBin(clocks_hw->sleep_en1));
     }, { .argCount = 0, .help = "" });
 
     Shell::AddCommand("clk.vreg", [](vector<string> argList) {
@@ -1672,7 +1673,7 @@ void Clock::SetupShell()
         // handles increments of 0.05 starting at 0.85
         uint8_t vregVal = VREG_VOLTAGE_0_85 + (uint8_t)((v - 0.85) / 0.05);
 
-        Log("vregVal: ", Format::ToBin(vregVal));
+        Log("vregVal: ", ToBin(vregVal));
 
         vreg_set_voltage((vreg_voltage)vregVal);
     }, { .argCount = 1, .help = "set vreg to 0.85 <= x <= 1.30" });

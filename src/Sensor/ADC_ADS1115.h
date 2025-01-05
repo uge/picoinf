@@ -56,15 +56,15 @@ public:
     {
         Log(str);
 
-        Log("opStatus: ", cfg.opStatus, ", ", Format::ToBin(cfg.opStatus, false, 1));
-        Log("mux     : ", cfg.mux, ", ", Format::ToBin(cfg.mux, false, 3));
-        Log("pga     : ", cfg.pga, ", ", Format::ToBin(cfg.pga, false, 3));
-        Log("mode    : ", cfg.mode, ", ", Format::ToBin(cfg.mode, false, 1));
-        Log("dr      : ", cfg.dr, ", ", Format::ToBin(cfg.dr, false, 3));
-        Log("compMode: ", cfg.compMode, ", ", Format::ToBin(cfg.compMode, false, 1));
-        Log("compPol : ", cfg.compPol, ", ", Format::ToBin(cfg.compPol, false, 1));
-        Log("compLat : ", cfg.compLat, ", ", Format::ToBin(cfg.compLat, false, 1));
-        Log("compQue : ", cfg.compQue, ", ", Format::ToBin(cfg.compQue, false, 2));
+        Log("opStatus: ", cfg.opStatus, ", ", ToBin(cfg.opStatus, false, 1));
+        Log("mux     : ", cfg.mux,      ", ", ToBin(cfg.mux,      false, 3));
+        Log("pga     : ", cfg.pga,      ", ", ToBin(cfg.pga,      false, 3));
+        Log("mode    : ", cfg.mode,     ", ", ToBin(cfg.mode,     false, 1));
+        Log("dr      : ", cfg.dr,       ", ", ToBin(cfg.dr,       false, 3));
+        Log("compMode: ", cfg.compMode, ", ", ToBin(cfg.compMode, false, 1));
+        Log("compPol : ", cfg.compPol,  ", ", ToBin(cfg.compPol,  false, 1));
+        Log("compLat : ", cfg.compLat,  ", ", ToBin(cfg.compLat,  false, 1));
+        Log("compQue : ", cfg.compQue,  ", ", ToBin(cfg.compQue,  false, 2));
     }
 
     Config GetAdcConfig()

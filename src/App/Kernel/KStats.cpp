@@ -64,7 +64,7 @@ struct KTaskCpuTimeFrame
 
         for (const auto &[name, taskCpuTime]: taskCpuTimeList)
         {
-            string nameFormatted = Format::Str("%-15s", taskCpuTime.name.c_str());
+            string nameFormatted = FormatStr("%-15s", taskCpuTime.name.c_str());
 
             Log("  ", nameFormatted, " : ", Commas(taskCpuTime.runDuration), " of total ", Commas(taskCpuTime.totalRunDuration));
         }

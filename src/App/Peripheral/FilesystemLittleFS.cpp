@@ -1,5 +1,4 @@
 #include "FilesystemLittleFS.h"
-#include "Format.h"
 #include "PAL.h"
 #include "Shell.h"
 #include "Timeline.h"
@@ -601,11 +600,11 @@ void FilesystemLittleFS::SetupShell()
         LogXNNL('-', maxLen);
         Log("------");
 
-        string formatString = Format::Str("%%%is", maxLen);
+        string formatString = FormatStr("%%%is", maxLen);
 
         for (const auto &dirEnt : dirEntList)
         {
-            string size = Format::Str(formatString, Commas(dirEnt.size).c_str());
+            string size = FormatStr(formatString, Commas(dirEnt.size).c_str());
 
             Log(size, "  ", dirEnt.name, dirEnt.type == DirEnt::Type::DIR ? "/" : "");
         }

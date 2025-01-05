@@ -4,9 +4,9 @@
 
 #include "PAL.h"
 #include "Shell.h"
-#include "UART.h"
-#include "Format.h"
 #include "Timeline.h"
+#include "UART.h"
+#include "Utl.h"
 
 #include <cstring>
 using namespace std;
@@ -66,9 +66,10 @@ void LogModeAsync()
 template <typename T>
 void FormatAndUartSend(const char *fmt, T val)
 {
-    char bufFmt[FormatBase::BUF_SIZE];
+    static const uint8_t BUF_SIZE = 64;
+    char bufFmt[BUF_SIZE];
 
-    auto [buf, bufSize] = Format::StrC(bufFmt, FormatBase::BUF_SIZE, fmt, val);
+    auto [buf, bufSize] = FormatStrC(bufFmt, BUF_SIZE, fmt, val);
     if (bufSize > 0)
     {
         UartSend((uint8_t *)buf, (uint16_t)bufSize);

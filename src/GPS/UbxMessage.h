@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "Format.h"
+#include "Utl.h"
 
 
 /////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ private:
                 }
                 else
                 {
-                    // Log("    discarding ", Format::ToHex(buf_[0]));
+                    // Log("    discarding ", ToHex(buf_[0]));
                     
                     // nope, maybe the last byte that came in is the start,
                     // shift it to the start and carry on
@@ -123,7 +123,7 @@ private:
 
             buf_.push_back(b);
             
-            // Log("    class: ", Format::ToHex(b));
+            // Log("    class: ", ToHex(b));
 
             state_ = State::LOOKING_FOR_ID;
         }
@@ -133,7 +133,7 @@ private:
 
             buf_.push_back(b);
 
-            // Log("       id: ", Format::ToHex(b));
+            // Log("       id: ", ToHex(b));
 
             state_ = State::LOOKING_FOR_LEN;
         }
@@ -348,7 +348,7 @@ public:
         if (retVal == false)
         {
             UartTarget(UART::UART_0);
-            Log("ERR: Bad finish - ", Format::ToHex(GetClassId()));
+            Log("ERR: Bad finish - ", ToHex(GetClassId()));
         }
 
         return retVal;
@@ -641,11 +641,11 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-NAV5 GET/SET - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-NAV5 GET/SET - ", ToHex(GetClassId()));
 
         if (Ok())
         {
-            Log("  Bitmask: ", Format::ToBin(GetU2AtIdx(0)));
+            Log("  Bitmask: ", ToBin(GetU2AtIdx(0)));
 
             uint8_t dynModel = GetDynModel();
             string dynModelStr;
@@ -701,11 +701,11 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-RST - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-RST - ", ToHex(GetClassId()));
 
         if (Ok())
         {
-            Log("  Bitmask: ", Format::ToBin(GetU2AtIdx(0)));
+            Log("  Bitmask: ", ToBin(GetU2AtIdx(0)));
 
             if (GetU2AtIdx(0) == 0x0000 && GetPayloadData()[2] == 0x00)
             {
@@ -777,7 +777,7 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-CFG - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-CFG - ", ToHex(GetClassId()));
 
         if (Ok())
         {
@@ -830,7 +830,7 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-MSG - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-MSG - ", ToHex(GetClassId()));
 
         if (Ok())
         {
@@ -841,8 +841,8 @@ public:
             uint8_t rateSecs = p[2];
 
             Log("  Set NMEA ClassId ",
-                Format::ToHex(msgClass, false),
-                Format::ToHex(msgId, false),
+                ToHex(msgClass, false),
+                ToHex(msgId, false),
                 " to rate of ", rateSecs, " per sec");
         }
         else
@@ -866,7 +866,7 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-TP Poll - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-TP Poll - ", ToHex(GetClassId()));
 
         if (Ok())
         {
@@ -894,7 +894,7 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-TP5 Poll - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-TP5 Poll - ", ToHex(GetClassId()));
 
         if (Ok())
         {
@@ -997,7 +997,7 @@ public:
 
     void Dump()
     {
-        Log("UBX CFG-TP5 - ", Format::ToHex(GetClassId()));
+        Log("UBX CFG-TP5 - ", ToHex(GetClassId()));
 
         if (Ok())
         {

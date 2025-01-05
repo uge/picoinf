@@ -4,6 +4,8 @@
 #include "UART.h"
 #include "Utl.h"
 
+using namespace std;
+
 #include "StrictMode.h"
 
 

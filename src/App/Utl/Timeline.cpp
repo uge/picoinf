@@ -268,7 +268,7 @@ void Timeline::SetupShell()
         }
         else
         {
-            Timeline::Global().SetMaxEvents(atoi(argList[0].c_str()));
+            Timeline::Global().SetMaxEvents((uint32_t)atoi(argList[0].c_str()));
         }
     }, { .argCount = -1, .help = "Global Timeline See/Set max events" });
 

@@ -9,5 +9,9 @@ target_sources(PicoInf PRIVATE
     LineStreamDistributor.cpp
     Timeline.cpp
     Utl.cpp
+    UtlBits.cpp
+    UtlFormat.cpp
+    UtlString.cpp
+    UtlTime.cpp
     VersionStr.cpp
 )

@@ -76,7 +76,7 @@ public:
             checksum = checksum ^ c;
         }
 
-        retVal = Format::ToHex(checksum, false);
+        retVal = ToHex(checksum, false);
 
         return retVal;
     }
@@ -2215,21 +2215,21 @@ private:
                     if (verboseLogging_)
                     {
                         LogNL();
-                        Log("UBX Msg found -- ", Format::ToHex(pUbx_.GetClassId()));
+                        Log("UBX Msg found -- ", ToHex(pUbx_.GetClassId()));
 
                         if (UbxMsgAckAck::MessageValid(pUbx_))
                         {
                             UbxMsgAckAck msg(pUbx_);
-                            Log("ACK from ", Format::ToHex(msg.GetAckClassId()));
+                            Log("ACK from ", ToHex(msg.GetAckClassId()));
                         }
                         else if (UbxMsgAckNak::MessageValid(pUbx_))
                         {
                             UbxMsgAckNak msg(pUbx_);
-                            Log("NAK from ", Format::ToHex(msg.GetNakClassId()));
+                            Log("NAK from ", ToHex(msg.GetNakClassId()));
                         }
                         else
                         {
-                            Log("Unknown message: ", Format::ToHex(pUbx_.GetClassId()));
+                            Log("Unknown message: ", ToHex(pUbx_.GetClassId()));
                             LogBlob(dat.data(), dat.size());
                         }
                         LogNL();
