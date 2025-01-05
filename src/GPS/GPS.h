@@ -1,197 +1,16 @@
 #pragma once
 
+#include "Log.h"
+#include "NMEAStringMaker.h"
+#include "NMEAStringParser.h"
+#include "UbxMessage.h"
+#include "Utl.h"
+
 #include <string>
 #include <vector>
 #include <unordered_set>
 using namespace std;
 
-#include "Log.h"
-#include "UbxMessage.h"
-#include "Utl.h"
-
-
-// Assumes one line at a time, ascii only, no newlines
-// Format of the line:
-// $<data>*<CC>
-// CC is the 2-digit hex checksum of <data>
-class NmeaStringParser
-{
-public:
-
-    // return only <data> length between $ and *
-    // -1 on invalid line
-    static int GetDataLength(const string &line)
-    {
-        int dataLength = -1;
-
-        if (MeetsPreconditions(line))
-        {
-            // ignore the first char ($)
-            // ignore the last 3 chars (checksum)
-            dataLength = line.length() - 4;
-        }
-
-        return dataLength;
-    }
-
-    // empty on invalid line
-    static string GetLineData(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            int dataLength = GetDataLength(line);
-
-            retVal = line.substr(1, dataLength);
-        }
-
-        return retVal;
-    }
-
-    // empty string if invalid
-    static string GetCalcdChecksum(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            // XOR of all the bytes between the $ and the *, written in hexadecimal
-            string lineData = GetLineData(line);
-
-            retVal = CalculateChecksum(lineData);
-        }
-
-        return retVal;
-    }
-
-    // everything between $ and *
-    static string CalculateChecksum(const string &data)
-    {
-        string retVal;
-
-        uint8_t checksum = 0;
-        for (char c : data)
-        {
-            checksum = checksum ^ c;
-        }
-
-        retVal = ToHex(checksum, false);
-
-        return retVal;
-    }
-
-    static string GetNmeaStringChecksum(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            retVal = line.substr(1 + GetDataLength(line) + 1, 2);
-        }
-
-        return retVal;
-    }
-
-    static bool IsValid(const string &line)
-    {
-        bool retVal = false;
-
-        if (MeetsPreconditions(line))
-        {
-            string checksumCalcd = GetCalcdChecksum(line);
-            string checksumNmea  = GetNmeaStringChecksum(line);
-
-            retVal = (checksumCalcd == checksumNmea);
-        }
-
-        return retVal;
-    }
-
-    static vector<string> GetLineDataPartList(const string &line)
-    {
-        vector<string> retVal;
-
-        if (IsValid(line))
-        {
-            string lineData = GetLineData(line);
-
-            bool trimmed = true;
-            bool allowEmpty = true;
-            retVal = Split(lineData, ",", trimmed, allowEmpty);
-        }
-
-        return retVal;
-    }
-
-    static string GetMessageTypeFull(const string &line)
-    {
-        string retVal;
-
-        if (IsValid(line))
-        {
-            auto linePartList = GetLineDataPartList(line);
-
-            if (linePartList.size())
-            {
-                retVal = linePartList[0];
-            }
-        }
-
-        return retVal;
-    }
-
-private:
-
-    static bool MeetsPreconditions(const string &line)
-    {
-        bool retVal = false;
-
-        if (line.length() >= 4)
-        {
-            int starIdx = line.length() - 3;
-
-            if (line[0] == '$' && line[starIdx] == '*')
-            {
-                retVal = true;
-            }
-        }
-
-        return retVal;
-    }
-};
-
-
-class NMEAStringMaker
-{
-public:
-
-    // Everything between $ and *
-    // msgType,data,data,...
-    static string Make(const vector<string> &dataList)
-    {
-        // build the data part
-        string tmp;
-        const char *sep = "";
-        for (const string &data : dataList)
-        {
-            tmp += sep;
-            tmp += data;
-
-            sep = ",";
-        }
-        string checksum = NmeaStringParser::CalculateChecksum(tmp);
-
-        // construct entire string
-        string retVal;
-        retVal += "$";
-        retVal += tmp;
-        retVal += "*";
-        retVal += checksum;
-
-        return retVal;
-    }
-};
 
 
 // https://receiverhelp.trimble.com/alloy-gnss/en-us/NMEA-0183messages_CommonMessageElements.html
@@ -400,9 +219,9 @@ public:
 
         uint64_t timeStart = PAL.Micros();
 
-        if (NmeaStringParser::IsValid(line))
+        if (NMEAStringParser::IsValid(line))
         {
-            vector<string> linePartList = NmeaStringParser::GetLineDataPartList(line);
+            vector<string> linePartList = NMEAStringParser::GetLineDataPartList(line);
 
             string &type = linePartList[0];
 
@@ -1855,7 +1674,7 @@ public:
     void SendCASIC(const string &line)
     {
         Log("Sending: \"", line, "\"");
-        Log("Valid  : ", NmeaStringParser::IsValid(line));
+        Log("Valid  : ", NMEAStringParser::IsValid(line));
 
         UartPush(UART::UART_1);
         LogNNL(line, "\r\n");
