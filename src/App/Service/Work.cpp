@@ -1,6 +1,3 @@
-#include <list>
-using namespace std;
-
 #include "KTask.h"
 #include "Work.h"
 #include "Log.h"
@@ -9,6 +6,9 @@ using namespace std;
 #include "HeapAllocators.h"
 #include "Timeline.h"
 #include "Shell.h"
+
+#include <list>
+using namespace std;
 
 #include "StrictMode.h"
 
