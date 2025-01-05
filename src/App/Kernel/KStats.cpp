@@ -10,10 +10,10 @@
 #include "task.h"
 
 #include <map>
+using namespace std;
 
 #include "StrictMode.h"
 
-using namespace std;
 
 
 // We're feeding a 32-bit microsecond value to the FreeRTOS stats
