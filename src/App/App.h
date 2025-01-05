@@ -24,6 +24,7 @@
 #include "Timeline.h"
 #include "USB.h"
 #include "Utl.h"
+#include "UART.h"
 #include "VersionStr.h"
 #include "WDT.h"
 #include "Work.h"
