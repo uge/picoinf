@@ -2,9 +2,7 @@
 
 #include <cstdint>
 #include <set>
-#include <list>
 #include <functional>
-using namespace std;
 
 #include "PAL.h"
 #include "Log.h"
@@ -44,7 +42,7 @@ private:
     //////////////////////////////////////////////////////////////////////
 
 public:
-    using FnWork = function<void()>;
+    using FnWork = std::function<void()>;
 private:
     struct WorkData
     {
@@ -168,7 +166,7 @@ private:
             return retVal;
         }
     };
-    static multiset<TimedEventHandler *, CmpTimedEventHandler> timedEventHandlerList_;
+    static std::multiset<TimedEventHandler *, CmpTimedEventHandler> timedEventHandlerList_;
 
 
     //////////////////////////////////////////////////////////////////////
