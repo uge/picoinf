@@ -44,7 +44,7 @@ public:
             Timeline::Init();
             LogInit();
             UartInit();
-            PALInit();
+            PlatformAbstractionLayer::Init();
             LogNL();
             FilesystemLittleFS::Init();
             LogNL();
@@ -72,7 +72,7 @@ public:
             JSONMsgRouter::SetupShell();
             KStats::SetupShell();
             LogSetupShell();
-            PALSetupShell();
+            PlatformAbstractionLayer::SetupShell();
             PinSetupShell();
             PWM::SetupShell();
             PeripheralControl::SetupShell();
@@ -87,7 +87,7 @@ public:
 
             // JSON
             JSONMsgRouter::SetupJSON();
-            PALSetupJSON();
+            PlatformAbstractionLayer::SetupJSON();
             Shell::SetupJSON();
 
             // let app instantiate and potentially configure

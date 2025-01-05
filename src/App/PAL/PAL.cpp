@@ -1,5 +1,11 @@
+#include <vector>
+#include <string>
+using namespace std;
+
 #include "PAL.h"
+#include "JSONMsgRouter.h"
 #include "Log.h"
+#include "Shell.h"
 #include "Timeline.h"
 #include "VersionStr.h"
 #include "WDT.h"
@@ -10,9 +16,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include <vector>
-#include <string>
-using namespace std;
 
 
 
@@ -613,10 +616,9 @@ void HardFault_Handler_Old()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Shell.h"
-void PALInit()
+void PlatformAbstractionLayer::Init()
 {
-    Timeline::Global().Event("PALInit");
+    Timeline::Global().Event("PAL::Init");
 
     LogNL(5);  // Give some visual space from prior run
     Log("----------------------------------------");
@@ -630,9 +632,9 @@ void PALInit()
     Log("Version     : ", Version::GetVersion());
 }
 
-void PALSetupShell()
+void PlatformAbstractionLayer::SetupShell()
 {
-    Timeline::Global().Event("PALSetupShell");
+    Timeline::Global().Event("PAL::SetupShell");
 
     Shell::AddCommand("sys.reset", [](vector<string>){
         PAL.Reset();
@@ -667,10 +669,9 @@ void PALSetupShell()
     }, { .argCount = 0, .help = "" });
 }
 
-#include "JSONMsgRouter.h"
-void PALSetupJSON()
+void PlatformAbstractionLayer::SetupJSON()
 {
-    Timeline::Global().Event("PALSetupJSON");
+    Timeline::Global().Event("PAL::SetupJSON");
 
     JSONMsgRouter::RegisterHandler("REQ_SYS_RESET", [](auto &in, auto &out){
         LogModeSync();
