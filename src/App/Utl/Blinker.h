@@ -24,6 +24,8 @@ public:
     void Off();
     void Toggle();
 
+    static void SetupShell();
+
 private:
 
     void OnTimeout();

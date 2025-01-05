@@ -1,4 +1,5 @@
 #include "Blinker.h"
+#include "Shell.h"
 
 using namespace std;
 
@@ -136,4 +137,46 @@ void Blinker::OnTimeout()
 
         ted_.RegisterForTimedEvent(offMs_);
     }
+}
+
+void Blinker::SetupShell()
+{
+    static Blinker blinker;
+
+    blinker.SetName("TIMER_BLINKER_UTL");
+
+    Shell::AddCommand("blinker.set.pin", [](vector<string> argList){
+        uint8_t pin = (uint8_t)atoi(argList[0].c_str());
+
+        blinker.SetPin({pin});
+    }, { .argCount = 1, .help = "set <pin>"});
+
+    Shell::AddCommand("blinker.set.onoff", [](vector<string> argList){
+        uint32_t onMs = (uint32_t)atoi(argList[0].c_str());
+        uint32_t offMs = (uint32_t)atoi(argList[1].c_str());
+
+        blinker.SetBlinkOnOffTime(onMs, offMs);
+    }, { .argCount = 2, .help = "set <on> <off> ms"});
+
+    Shell::AddCommand("blinker.blink", [](vector<string> argList){
+        uint32_t blinkCount = (uint32_t)atoi(argList[0].c_str());
+
+        blinker.Blink(blinkCount);
+    }, { .argCount = 1, .help = "blink <x> times"});
+
+    Shell::AddCommand("blinker.on", [](vector<string> argList){
+        blinker.On();
+    }, { .argCount = 0, .help = ""});
+
+    Shell::AddCommand("blinker.off", [](vector<string> argList){
+        blinker.Off();
+    }, { .argCount = 0, .help = ""});
+
+    Shell::AddCommand("blinker.async.on", [](vector<string> argList){
+        blinker.EnableAsyncBlink();
+    }, { .argCount = 0, .help = ""});
+
+    Shell::AddCommand("blinker.async.off", [](vector<string> argList){
+        blinker.DisableAsyncBlink();
+    }, { .argCount = 0, .help = ""});
 }
