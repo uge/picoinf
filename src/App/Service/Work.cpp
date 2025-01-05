@@ -6,6 +6,7 @@
 #include "HeapAllocators.h"
 #include "Timeline.h"
 #include "Shell.h"
+#include "Utl.h"
 
 #include <list>
 using namespace std;
