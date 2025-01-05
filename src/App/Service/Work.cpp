@@ -10,6 +10,8 @@ using namespace std;
 #include "Timeline.h"
 #include "Shell.h"
 
+#include "StrictMode.h"
+
 
 static const uint32_t COUNT_LIMIT = 5;
 
