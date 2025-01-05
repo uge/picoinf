@@ -6,9 +6,6 @@
 #include "hardware/gpio.h"
 
 
-extern void PinSetupShell();
-
-
 class Pin
 {
     friend class Evm;
@@ -49,6 +46,8 @@ public:
     void SetInterruptCallback(std::function<void()> cbFn, TriggerType triggerType);
     void EnableInterrupt();
     void DisableInterrupt();
+
+    static void SetupShell();
 
 
 private:

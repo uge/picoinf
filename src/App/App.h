@@ -73,7 +73,7 @@ public:
             KStats::SetupShell();
             LogSetupShell();
             PlatformAbstractionLayer::SetupShell();
-            PinSetupShell();
+            Pin::SetupShell();
             PWM::SetupShell();
             PeripheralControl::SetupShell();
             Sensor::SetupShell();

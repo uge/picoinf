@@ -296,9 +296,9 @@ Pin::PinData &Pin::GetPinData(uint8_t pin)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void PinSetupShell()
+void Pin::SetupShell()
 {
-    Timeline::Global().Event("PinSetupShell");
+    Timeline::Global().Event("Pin::SetupShell");
 
     Shell::AddCommand("pin.time.out", [](vector<string> argList){
         uint8_t pin  = (uint8_t)atoi(argList[0].c_str());
