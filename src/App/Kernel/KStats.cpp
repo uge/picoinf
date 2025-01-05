@@ -1,8 +1,10 @@
 #include "Container.h"
 #include "Evm.h"
 #include "KStats.h"
+#include "Log.h"
 #include "Shell.h"
 #include "Timeline.h"
+#include "Utl.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -237,3 +239,23 @@ vector<KStats::KTaskStats> KStats::GetTaskStats()
     return retVal;
 }
 
+
+void KStats::KTaskStats::Print() const
+{
+    Log("Task");
+    Log("-----------------------------------------");
+    Log("name            : ", name);
+    Log("number          : ", number);
+    Log("state           : ", state);
+    Log("currentPriority : ", currentPriority);
+    Log("basePriority    : ", basePriority);
+    Log("totalRunDuration: ", Commas(totalRunDuration));
+    Log("stackEnd        : ", ToHex((uint32_t)stackEnd));
+    Log("stackTop        : ", ToHex((uint32_t)stackTop));
+    Log("stackBase       : ", ToHex((uint32_t)stackBase));
+    Log("stackSize       : ", Commas((uint32_t)stackEnd - (uint32_t)stackBase));
+    Log("  stackUsed     : ", Commas((uint32_t)stackEnd - (uint32_t)stackTop));
+    Log("  stackRem      : ", Commas((uint32_t)stackTop - (uint32_t)stackBase));
+    Log("  stackUsedMax  : ", Commas((uint32_t)stackEnd - (uint32_t)stackBase - (uint32_t)(highWaterMark)));
+    Log("  stackRemMin   : ", Commas((uint32_t)(highWaterMark)));
+}
