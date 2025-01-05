@@ -1,12 +1,13 @@
-using namespace std;
-
 #include "FilesystemLittleFS.h"
 #include "FilesystemLittleFSFile.h"
 #include "Log.h"
 
 #include "lfs.h"
 
+using namespace std;
+
 #include "StrictMode.h"
+
 
 
 FilesystemLittleFSFile::FilesystemLittleFSFile(lfs_t &lfs, const string &fileName)

@@ -2,9 +2,11 @@
 #include "Format.h"
 #include "Timeline.h"
 
+#include "lfs.h"
+
 #include "hardware/flash.h"
 
-#include "lfs.h"
+using namespace std;
 
 #include "StrictMode.h"
 
