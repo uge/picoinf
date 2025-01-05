@@ -6,6 +6,7 @@
 #include "Timeline.h"
 #include "VersionStr.h"
 #include "WDT.h"
+#include "Utl.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
