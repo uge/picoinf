@@ -8,6 +8,170 @@
 #include "StrictMode.h"
 
 
+
+/////////////////////////////////////////////
+// Device Descriptor functionality
+/////////////////////////////////////////////
+
+void USB::SetVid(uint16_t vid)
+{
+    vid_ = vid;
+}
+
+void USB::SetPid(uint16_t pid)
+{
+    pid_ = pid;
+}
+
+void USB::SetDevice(uint16_t device)
+{
+    device_ = device;
+}
+
+void USB::SetCallbackVbusConnected(std::function<void()> cbFn)
+{
+    fnCbVbusConnected_ = cbFn;
+}
+
+void USB::SetCallbackVbusDisconnected(std::function<void()> cbFn)
+{
+    fnCbVbusDisconnected_ = cbFn;
+}
+
+void USB::SetCallbackConnected(std::function<void()> cbFn)
+{
+    fnCbConnected_ = cbFn;
+}
+
+void USB::SetCallbackDisconnected(std::function<void()> cbFn)
+{
+    fnCbDisconnected_ = cbFn;
+}
+
+void USB::EnablePowerSaveMode()
+{
+    if (PAL.GetPicoBoard() == "pico_w")
+    {
+        Log("NOT entering USB power save mode -- PicoW");
+    }
+    else
+    {
+        Log("Enabling USB power save mode");
+
+        powerSaveMode_ = true;
+
+        // simulate the level state change if Init hasn't yet been called
+        if (initHasRun_ == false)
+        {
+            pVbus_ = Pin(24, Pin::Type::INPUT);
+            OnPinVbusInterrupt();
+        }
+        else
+        {
+            if (pVbus_.DigitalRead())
+            {
+                Clock::EnableUSB();
+            }
+            else
+            {
+                Clock::DisableUSB();
+            }
+        }
+    }
+}
+
+void USB::DisablePowerSaveMode()
+{
+    if (PAL.GetPicoBoard() == "pico_w")
+    {
+        Log("NOT disabling USB power save mode -- PicoW");
+    }
+    else
+    {
+        Log("Disabling USB power save mode");
+
+        powerSaveMode_ = false;
+
+        Clock::EnableUSB();
+    }
+}
+
+void USB::OnPinVbusInterrupt()
+{
+    if (pVbus_.DigitalRead())
+    {
+        Log("VBUS Detected HIGH");
+
+        fnCbVbusConnected_();
+
+        if (powerSaveMode_)
+        {
+            Clock::EnableUSB();
+        }
+    }
+    else
+    {
+        Log("VBUS Detected LOW");
+
+        fnCbVbusDisconnected_();
+
+        if (powerSaveMode_)
+        {
+            Clock::DisableUSB();
+        }
+    }
+}
+
+
+
+/////////////////////////////////////////////
+// String Descriptor functionality
+/////////////////////////////////////////////
+
+void USB::SetStringManufacturer(std::string str)
+{
+    manufacturer_ = str;
+}
+
+void USB::SetStringProduct(std::string str)
+{
+    product_ = str;
+}
+
+void USB::SetStringSerial(std::string str)
+{
+    serial_ = str;
+}
+
+void USB::SetStringCdcInterface(std::string str)
+{
+    cdcInterface_ = str;
+}
+
+void USB::SetStringVendorInterface(std::string str)
+{
+    vendorInterface_ = str;
+}
+
+
+
+/////////////////////////////////////////////
+// CDC functionality
+/////////////////////////////////////////////
+
+USB_CDC *USB::GetCdcInstance(uint8_t instance)
+{
+    USB_CDC *retVal = nullptr;
+
+    if (instance < cdcList_.size())
+    {
+        retVal = &cdcList_[instance];
+    }
+
+    return retVal;
+}
+
+
 /////////////////////////////////////////////////////////////////////
 // Task running TinyUSB code
 /////////////////////////////////////////////////////////////////////

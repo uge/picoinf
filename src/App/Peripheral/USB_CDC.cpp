@@ -1,12 +1,44 @@
-#include "Evm.h"
-#include "USB.h"
-
-#include "tusb.h"
-
 #include <algorithm>
 using namespace std;
 
+#include "Evm.h"
 #include "Log.h"
+#include "USB.h"
+#include "USB_CDC.h"
+
+#include "tusb.h"
+
+#include "StrictMode.h"
+
+
+/////////////////////////////////////////////////////////////////////
+// Instance
+/////////////////////////////////////////////////////////////////////
+
+USB_CDC::USB_CDC(uint8_t instance, Timeline &t)
+: instance_(instance)
+, t_(t)
+{
+    // this doesn't seem to actually reserve, not sure why, maybe because it's
+    // getting executed during static init and not working as a result?
+    // sendBuf_.reserve(SEND_BUF_SIZE);
+}
+
+// set buffering capacity, 0 to disable
+void USB_CDC::SetSendBufCapacity(uint16_t capacity)
+{
+    sendBufCapacity_ = capacity;
+}
+
+void USB_CDC::SetCallbackOnRx(std::function<void(vector<uint8_t> &byteList)> fn)
+{
+    cbFnRx_ = fn;
+}
+
+bool USB_CDC::GetDtr()
+{
+    return dtr_;
+}
 
 
 /////////////////////////////////////////////////////////////////////
@@ -162,7 +194,7 @@ uint16_t USB_CDC::Send(const uint8_t *buf, uint16_t bufLen)
             sendBuf_.reserve(sendBufCapacity_);
 
             // calculate how much to queue
-            uint16_t queueBytesAvailable = sendBuf_.capacity() - sendBuf_.size();
+            uint16_t queueBytesAvailable = (uint16_t)(sendBuf_.capacity() - sendBuf_.size());
             uint16_t bytesToQueue = min(bufQueueLen, queueBytesAvailable);
 
             // queue
@@ -200,7 +232,7 @@ void USB_CDC::Clear()
 
 void USB_CDC::ReportStats()
 {
-    uint8_t pct = round(stats_.txBytesQueuedMaxAtOnce * 100.0 / sendBufCapacity_);
+    uint8_t pct = (uint8_t)round(stats_.txBytesQueuedMaxAtOnce * 100.0 / sendBufCapacity_);
 
     Log("RX Bytes: ", Commas(stats_.rxBytes));
     Log("TX Bytes: ", Commas(stats_.txBytes));
@@ -218,7 +250,7 @@ void USB_CDC::SendFromQueue()
 {
     if (sendBuf_.size())
     {
-        uint16_t bytesSent = SendImmediate(sendBuf_.data(), sendBuf_.size());
+        uint16_t bytesSent = SendImmediate(sendBuf_.data(), (uint16_t)sendBuf_.size());
 
         if (bytesSent == sendBuf_.size())
         {
@@ -238,7 +270,7 @@ void USB_CDC::SendFromQueue()
 
 uint16_t USB_CDC::SendImmediate(const uint8_t *buf, uint16_t bufLen)
 {
-    uint16_t bufMin = min((uint32_t)bufLen, tud_cdc_n_write_available(instance_));
+    uint16_t bufMin = (uint16_t)min((uint32_t)bufLen, tud_cdc_n_write_available(instance_));
 
     tud_cdc_n_write(instance_, buf, bufMin);
     tud_cdc_n_write_flush(instance_);

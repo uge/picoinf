@@ -1,96 +1,14 @@
 #pragma once
 
+#include <functional>
+#include <vector>
+
 #include "Clock.h"
 #include "Evm.h"
 #include "KTask.h"
 #include "Log.h"
-
-#include <functional>
-#include <vector>
-using namespace std;
-
 #include "Timeline.h"
-
-
-
-/////////////////////////////////////////////////////////////////////
-// USB_CDC
-/////////////////////////////////////////////////////////////////////
-
-class USB;
-
-class USB_CDC
-{
-    friend class USB;
-
-public:
-    USB_CDC(uint8_t instance, Timeline &t)
-    : instance_(instance)
-    , t_(t)
-    {
-        // this doesn't seem to actually reserve, not sure why, maybe because it's
-        // getting executed during static init and not working as a result?
-        // sendBuf_.reserve(SEND_BUF_SIZE);
-    }
-
-    // set buffering capacity, 0 to disable
-    void SetSendBufCapacity(uint16_t capacity)
-    {
-        sendBufCapacity_ = capacity;
-    }
-
-    void SetCallbackOnRx(function<void(vector<uint8_t> &byteList)> fn)
-    {
-        cbFnRx_ = fn;
-    }
-
-    bool GetDtr()
-    {
-        return dtr_;
-    }
-
-    uint16_t Send(const uint8_t *buf, uint16_t bufLen);
-    void Clear();
-    void ReportStats();
-
-private:
-
-    void SendFromQueue();
-    uint16_t SendImmediate(const uint8_t *buf, uint16_t bufLen);
-
-
-private:
-
-    void tud_cdc_rx_cb();
-    void tud_cdc_tx_complete_cb();
-    void tud_cdc_line_state_cb(bool dtr, bool rts);
-
-
-private:
-
-    function<void(vector<uint8_t> &byteList)> cbFnRx_ = [](vector<uint8_t> &){};
-
-    bool dtr_ = false;
-
-    vector<uint8_t> sendBuf_;
-    uint16_t sendBufCapacity_ = 1000;
-
-    uint8_t instance_;
-
-    Timeline &t_;
-
-    struct Stats
-    {
-        uint32_t rxBytes = 0;
-
-        uint32_t txBytes = 0;
-        uint32_t txBytesQueuedTotal = 0;
-        uint32_t txBytesQueuedMaxAtOnce = 0;
-        uint32_t txBytesOverflow = 0;
-    };
-
-    Stats stats_;
-};
+#include "USB_CDC.h"
 
 
 /////////////////////////////////////////////////////////////////////
@@ -115,130 +33,33 @@ public:
 
 public:
 
-    static void SetVid(uint16_t vid)
-    {
-        vid_ = vid;
-    }
-
-    static void SetPid(uint16_t pid)
-    {
-        pid_ = pid;
-    }
-
-    static void SetDevice(uint16_t device)
-    {
-        device_ = device;
-    }
-
-    static void SetCallbackVbusConnected(function<void()> cbFn)
-    {
-        fnCbVbusConnected_ = cbFn;
-    }
-
-    static void SetCallbackVbusDisconnected(function<void()> cbFn)
-    {
-        fnCbVbusDisconnected_ = cbFn;
-    }
-
-    static void SetCallbackConnected(function<void()> cbFn)
-    {
-        fnCbConnected_ = cbFn;
-    }
-
-    static void SetCallbackDisconnected(function<void()> cbFn)
-    {
-        fnCbDisconnected_ = cbFn;
-    }
-
-    static void EnablePowerSaveMode()
-    {
-        if (PAL.GetPicoBoard() == "pico_w")
-        {
-            Log("NOT entering USB power save mode -- PicoW");
-        }
-        else
-        {
-            Log("Enabling USB power save mode");
-
-            powerSaveMode_ = true;
-
-            // simulate the level state change if Init hasn't yet been called
-            if (initHasRun_ == false)
-            {
-                pVbus_ = Pin(24, Pin::Type::INPUT);
-                OnPinVbusInterrupt();
-            }
-            else
-            {
-                if (pVbus_.DigitalRead())
-                {
-                    Clock::EnableUSB();
-                }
-                else
-                {
-                    Clock::DisableUSB();
-                }
-            }
-        }
-    }
-
-    static void DisablePowerSaveMode()
-    {
-        if (PAL.GetPicoBoard() == "pico_w")
-        {
-            Log("NOT disabling USB power save mode -- PicoW");
-        }
-        else
-        {
-            Log("Disabling USB power save mode");
-
-            powerSaveMode_ = false;
-
-            Clock::EnableUSB();
-        }
-    }
+    static void SetVid(uint16_t vid);
+    static void SetPid(uint16_t pid);
+    static void SetDevice(uint16_t device);
+    static void SetCallbackVbusConnected(std::function<void()> cbFn);
+    static void SetCallbackVbusDisconnected(std::function<void()> cbFn);
+    static void SetCallbackConnected(std::function<void()> cbFn);
+    static void SetCallbackDisconnected(std::function<void()> cbFn);
+    static void EnablePowerSaveMode();
+    static void DisablePowerSaveMode();
 
 
 private:
 
-    static void OnPinVbusInterrupt()
-    {
-        if (pVbus_.DigitalRead())
-        {
-            Log("VBUS Detected HIGH");
-
-            fnCbVbusConnected_();
-
-            if (powerSaveMode_)
-            {
-                Clock::EnableUSB();
-            }
-        }
-        else
-        {
-            Log("VBUS Detected LOW");
-
-            fnCbVbusDisconnected_();
-
-            if (powerSaveMode_)
-            {
-                Clock::DisableUSB();
-            }
-        }
-    }
+    static void OnPinVbusInterrupt();
 
 
 public:
 
     static uint8_t const *tud_descriptor_device_cb();
 
-    inline static Pin              pVbus_;
-    inline static bool             powerSaveMode_ = false;
-    inline static function<void()> fnCbVbusConnected_    = []{};
-    inline static function<void()> fnCbVbusDisconnected_ = []{};
+    inline static Pin                   pVbus_;
+    inline static bool                  powerSaveMode_ = false;
+    inline static std::function<void()> fnCbVbusConnected_    = []{};
+    inline static std::function<void()> fnCbVbusDisconnected_ = []{};
 
-    inline static function<void()> fnCbConnected_    = []{};
-    inline static function<void()> fnCbDisconnected_ = []{};
+    inline static std::function<void()> fnCbConnected_    = []{};
+    inline static std::function<void()> fnCbDisconnected_ = []{};
 
 
 private:
@@ -280,30 +101,11 @@ public:
 
 public:
 
-    static void SetStringManufacturer(string str)
-    {
-        manufacturer_ = str;
-    }
-
-    static void SetStringProduct(string str)
-    {
-        product_ = str;
-    }
-
-    static void SetStringSerial(string str)
-    {
-        serial_ = str;
-    }
-
-    static void SetStringCdcInterface(string str)
-    {
-        cdcInterface_ = str;
-    }
-
-    static void SetStringVendorInterface(string str)
-    {
-        vendorInterface_ = str;
-    }
+    static void SetStringManufacturer(std::string str);
+    static void SetStringProduct(std::string str);
+    static void SetStringSerial(std::string str);
+    static void SetStringCdcInterface(std::string str);
+    static void SetStringVendorInterface(std::string str);
 
 
 public:
@@ -313,7 +115,7 @@ public:
 
 private:
 
-    inline static vector<string> strList_ = {
+    inline static vector<std::string> strList_ = {
         "Manufacturer",
         "Product",
         "",
@@ -321,11 +123,11 @@ private:
         "Vendor Interface",
     };
 
-    inline static string &manufacturer_    = strList_[0];
-    inline static string &product_         = strList_[1];
-    inline static string &serial_          = strList_[2];;
-    inline static string &cdcInterface_    = strList_[3];
-    inline static string &vendorInterface_ = strList_[4];
+    inline static std::string &manufacturer_    = strList_[0];
+    inline static std::string &product_         = strList_[1];
+    inline static std::string &serial_          = strList_[2];;
+    inline static std::string &cdcInterface_    = strList_[3];
+    inline static std::string &vendorInterface_ = strList_[4];
 
 
     /////////////////////////////////////////////
@@ -334,17 +136,7 @@ private:
 
 public:
 
-    static USB_CDC *GetCdcInstance(uint8_t instance)
-    {
-        USB_CDC *retVal = nullptr;
-
-        if (instance < cdcList_.size())
-        {
-            retVal = &cdcList_[instance];
-        }
-
-        return retVal;
-    }
+    static USB_CDC *GetCdcInstance(uint8_t instance);
 
 
 public:
