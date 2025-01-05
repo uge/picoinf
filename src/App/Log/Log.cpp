@@ -1,13 +1,17 @@
 #include "Log.h"
 
 #include <stdio.h>
-#include <string.h>
 
 #include "PAL.h"
 #include "Shell.h"
 #include "UART.h"
 #include "Format.h"
 #include "Timeline.h"
+
+#include <cstring>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18,7 +22,7 @@ int _write(int file, char *ptr, int len)
 {
     (void)file;
 
-    UartSend((uint8_t *)ptr, len);
+    UartSend((uint8_t *)ptr, (uint16_t)len);
 
     return len;
 }
@@ -67,7 +71,7 @@ void FormatAndUartSend(const char *fmt, T val)
     auto [buf, bufSize] = Format::StrC(bufFmt, FormatBase::BUF_SIZE, fmt, val);
     if (bufSize > 0)
     {
-        UartSend((uint8_t *)buf, bufSize);
+        UartSend((uint8_t *)buf, (uint16_t)bufSize);
     }
 }
 
@@ -98,7 +102,7 @@ void LogNNL(const char *str)
 {
     if (str)
     {
-        UartSend((uint8_t *)str, strlen(str));
+        UartSend((uint8_t *)str, (uint16_t)strlen(str));
     }
 }
 
@@ -134,7 +138,7 @@ void Log(const std::string &str)
 
 void LogNNL(const std::string_view &str)
 {
-    UartSend((uint8_t *)str.data(), str.size());
+    UartSend((uint8_t *)str.data(), (uint16_t)str.size());
 }
 
 void Log(const std::string_view &str)
@@ -328,7 +332,7 @@ void LogHexNNL(const uint8_t *buf, uint8_t bufLen, bool withSpaces)
                 sep = " ";
             }
 
-            UartSend((uint8_t *)sep, strlen(sep));
+            UartSend((uint8_t *)sep, (uint16_t)strlen(sep));
             FormatAndUartSend("%02X", buf[i]);
         }
     }
@@ -375,7 +379,7 @@ uint8_t LogBlobRow(uint16_t  byteCount,
     LogNNL("0x", bufSprintf, ": ");
     
     // Calculate how many real vs pad bytes to output
-    uint8_t realBytes = min(8, (int)bufSize);
+    uint8_t realBytes = (uint8_t)min(8, (int)bufSize);
     uint8_t padBytes = 8 - realBytes;
     
     // Print hex
