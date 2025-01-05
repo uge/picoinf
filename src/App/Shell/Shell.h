@@ -1,14 +1,13 @@
 #pragma once
 
+#include "PAL.h"
+#include "Log.h"
+
 #include <string>
 #include <vector>
 #include <functional>
 #include <map>
 #include <unordered_set>
-
-#include "PAL.h"
-#include "Log.h"
-
 
 
 class Shell
