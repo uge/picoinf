@@ -1,9 +1,9 @@
 #pragma once
 
+#include "hardware/i2c.h"
+
 #include <cstdint>
 #include <vector>
-
-#include "hardware/i2c.h"
 
 
 class I2C
