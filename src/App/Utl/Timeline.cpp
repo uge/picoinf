@@ -1,7 +1,13 @@
-#include "Timeline.h"
-#include "Shell.h"
 #include "PAL.h"
+#include "Shell.h"
+#include "Timeline.h"
+#include "Utl.h"
 #include "Work.h"
+
+#include <cstring>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 Timeline::Timeline(const char *str)

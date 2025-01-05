@@ -1,15 +1,9 @@
 #pragma once
 
 #include "ClassTypes.h"
-#include "PAL.h"
-#include "Log.h"
-#include "Shell.h"
-#include "Utl.h"
 #include "Container.h"
 
-#include <stdlib.h>
-#include <string>
-using namespace std;
+#include <cstdint>
 
 
 class Timeline
