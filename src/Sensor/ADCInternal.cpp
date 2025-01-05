@@ -1,6 +1,7 @@
 #include "ADCInternal.h"
 #include "Log.h"
 #include "PAL.h"
+#include "Shell.h"
 #include "TempSensorInternal.h"
 #include "Timeline.h"
 
@@ -8,6 +9,10 @@
 #if PICO_INF_ENABLE_WIRELESS == 1
 #include "pico/cyw43_arch.h"
 #endif
+
+#include <string>
+#include <vector>
+using namespace std;
 
 #include "StrictMode.h"
 
