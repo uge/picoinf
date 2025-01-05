@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Log.h"
+
 #include <cstdint>
 #include <vector>
-
-#include "Log.h"
 
 
 template <typename T>
