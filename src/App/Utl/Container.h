@@ -1,7 +1,7 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
-using namespace std;
 
 #include "Log.h"
 
@@ -162,7 +162,7 @@ public:
     }
 
 private:
-    vector<T> list_;
+    std::vector<T> list_;
 
     uint32_t capacity_;
     uint32_t size_ = 0;
