@@ -1,10 +1,13 @@
 #include "Log.h"
 #include "Shell.h"
 #include "Timeline.h"
+#include "Utl.h"
 #include "WDT.h"
 
 #include "hardware/watchdog.h"
 #include "hardware/structs/watchdog.h"
+
+using namespace std;
 
 #include "StrictMode.h"
 
