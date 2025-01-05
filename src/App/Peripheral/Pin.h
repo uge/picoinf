@@ -1,9 +1,9 @@
 #pragma once
 
+#include "hardware/gpio.h"
+
 #include <cstdint>
 #include <functional>
-
-#include "hardware/gpio.h"
 
 
 class Pin
