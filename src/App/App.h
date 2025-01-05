@@ -83,7 +83,7 @@ public:
             USB::SetupShell();
             UtlSetupShell();
             Watchdog::SetupShell();
-            WorkSetupShell();
+            Work::SetupShell();
 
             // JSON
             JSONMsgRouter::SetupJSON();

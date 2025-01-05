@@ -62,9 +62,9 @@ void Work::Queue(const char *label, function<void()> &&fn)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkSetupShell()
+void Work::SetupShell()
 {
-    Timeline::Global().Event("WorkSetupShell");
+    Timeline::Global().Event("Work::SetupShell");
 
     Shell::AddCommand("work.report", [&](vector<string> argList){
         Work::Report();
