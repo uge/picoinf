@@ -1,11 +1,11 @@
-using namespace std;
-
 #include "PeripheralControl.h"
 #include "Shell.h"
 #include "Timeline.h"
 
-#include "hardware/structs/scb.h"
 #include "hardware/clocks.h"
+#include "hardware/structs/scb.h"
+
+using namespace std;
 
 #include "StrictMode.h"
 

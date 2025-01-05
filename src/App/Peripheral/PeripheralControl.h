@@ -1,9 +1,9 @@
 #pragma once
 
+#include "hardware/clocks.h"
+
 #include <cstdint>
 #include <vector>
-
-#include "hardware/clocks.h"
 
 
 class PeripheralControl
