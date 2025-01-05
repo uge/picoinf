@@ -1,9 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <set>
-#include <functional>
-
 #include "PAL.h"
 #include "Log.h"
 #include "TimedEventHandler.h"
@@ -13,6 +9,9 @@
 #include "Container.h"
 #include "WDT.h"
 
+#include <cstdint>
+#include <set>
+#include <functional>
 
 
 class Evm
