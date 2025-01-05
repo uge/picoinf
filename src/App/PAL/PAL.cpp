@@ -1,6 +1,3 @@
-#include <vector>
-#include <string>
-using namespace std;
 
 #include "PAL.h"
 #include "JSONMsgRouter.h"
@@ -10,13 +7,17 @@ using namespace std;
 #include "VersionStr.h"
 #include "WDT.h"
 
-#include "pico/time.h"
-#include "pico/unique_id.h"
-
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "pico/time.h"
+#include "pico/unique_id.h"
 
+#include <vector>
+#include <string>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 string PlatformAbstractionLayer::GetAddress()
@@ -474,9 +475,9 @@ void faultHandlerWithExcFrame(struct CortexExcFrame *exc, uint32_t reason, uint3
 	// uint32_t i;
 
     const char *reasonStr = "????";
-    if (names.contains(reason))
+    if (names.contains((int)reason))
     {
-        reasonStr = names[reason].c_str();
+        reasonStr = names[(int)reason].c_str();
     }
     Log(reasonStr, " sr = 0x", ToHex(exc->sr));
 	
@@ -655,12 +656,12 @@ void PlatformAbstractionLayer::SetupShell()
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){
-        PAL.Delay(atoi(argList[0].c_str()));
+        PAL.Delay((uint64_t)atoi(argList[0].c_str()));
         Log("done");
     }, { .argCount = 1, .help = "delay x ms" });
 
     Shell::AddCommand("pal.delaybusy", [](vector<string> argList){
-        PAL.DelayBusy(atoi(argList[0].c_str()));
+        PAL.DelayBusy((uint64_t)atoi(argList[0].c_str()));
         Log("done");
     }, { .argCount = 1, .help = "delaybusy x ms" });
 
