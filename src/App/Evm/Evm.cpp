@@ -4,6 +4,8 @@
 #include "Shell.h"
 #include "Timeline.h"
 
+#include <vector>
+using namespace std;
 
 Timeline timeline_;
 
