@@ -1,8 +1,3 @@
-#include <algorithm>
-#include <cstring>
-#include <vector>
-using namespace std;
-
 #include "Evm.h"
 #include "DataStreamDistributor.h"
 #include "IDMaker.h"
@@ -15,9 +10,14 @@ using namespace std;
 #include "UART.h"
 #include "USB.h"
 
-#include "hardware/uart.h"
 #include "hardware/irq.h"
+#include "hardware/uart.h"
 #include "pico/stdlib.h"
+
+#include <algorithm>
+#include <cstring>
+#include <vector>
+using namespace std;
 
 #include "StrictMode.h"
 
