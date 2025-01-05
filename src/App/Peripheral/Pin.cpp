@@ -4,6 +4,8 @@
 #include "Shell.h"
 #include "Timeline.h"
 
+using namespace std;
+
 #include "StrictMode.h"
 
 
