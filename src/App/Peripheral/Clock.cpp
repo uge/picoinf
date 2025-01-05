@@ -1,9 +1,10 @@
-#include <algorithm>
-#include <cstring>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <utility>
+#include "Clock.h"
+#include "KTime.h"
+#include "Log.h"
+#include "Shell.h"
+#include "Timeline.h"
+#include "UART.h"
+#include "Utl.h"
 
 #include "hardware/regs/intctrl.h"
 #include "hardware/structs/clocks.h"
@@ -22,13 +23,15 @@
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
 
-#include "Clock.h"
-#include "KTime.h"
-#include "Log.h"
-#include "Shell.h"
-#include "Timeline.h"
-#include "UART.h"
-#include "Utl.h"
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <utility>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 /////////////////////////////////////////////////////////////////
@@ -439,7 +442,7 @@ static ClockState GetClockState(clock_index clk, ClockState *overlay = nullptr)
 
                 if (overlay)
                 {
-                    cmpVal = overlay->src;
+                    cmpVal = (uint8_t)overlay->src;
                 }
 
                 for (auto &idData : csd.sourceMapPrimary)
@@ -466,7 +469,7 @@ static ClockState GetClockState(clock_index clk, ClockState *overlay = nullptr)
 
                 if (overlay)
                 {
-                    cmpVal = overlay->auxsrc;
+                    cmpVal = (uint8_t)overlay->auxsrc;
                 }
 
                 for (auto &idData : csd.sourceMapAux)
@@ -806,8 +809,8 @@ static PllConfig GetPllConfigForFreq(double mhz, bool lowPowerPriority, bool mus
 
     static const double XOSC_FREQ_MHZ = 12;
 
-    Range fbdiv_range = lowPowerPriority ? Range(16, 320) : Range(320, 16);
-    Range postdiv_range = Range(1, 7);
+    Range<uint16_t> fbdiv_range = lowPowerPriority ? Range<uint16_t>(16, 320) : Range<uint16_t>(320, 16);
+    Range<uint8_t> postdiv_range(1, 7);
 
     uint16_t ref_min = 5;
     uint16_t refdiv_min = 1;
@@ -826,7 +829,7 @@ static PllConfig GetPllConfigForFreq(double mhz, bool lowPowerPriority, bool mus
 
     double best_margin = mhz;
 
-    for (uint8_t refdiv : refdiv_range)
+    for (uint16_t refdiv : refdiv_range)
     {
         for (uint16_t fbdiv : fbdiv_range)
         {
