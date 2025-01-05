@@ -1,5 +1,3 @@
-// #include <cstdio>
-
 #include "Evm.h"
 #include "Pin.h"
 #include "PAL.h"
