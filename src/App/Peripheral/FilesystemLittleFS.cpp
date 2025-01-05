@@ -1,6 +1,9 @@
 #include "FilesystemLittleFS.h"
 #include "Format.h"
+#include "PAL.h"
+#include "Shell.h"
 #include "Timeline.h"
+#include "Utl.h"
 
 #include "lfs.h"
 
