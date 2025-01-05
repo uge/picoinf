@@ -1,9 +1,12 @@
-#include <cmath>
-
 #include "KTime.h"
 #include "Timeline.h"
 
 #include "FreeRTOS.h"
+
+#include <cmath>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 KTime::KTime(uint64_t us)
@@ -16,10 +19,10 @@ KTime::operator uint32_t()
     // the kernel is operating on ticks, and each tick is 1ms (awful rez).
     // Here we convert to ms, allowing truncation, would rather be
     // early than late.
-    uint32_t ms = us_;
+    uint32_t ms = (uint32_t)us_;
     if (ms != portMAX_DELAY)
     {
-        ms = round(us_ / 1'000 * scalingFactor_);
+        ms = (uint32_t)round((double)(us_ / 1'000) * scalingFactor_);
     }
 
     return ms;
