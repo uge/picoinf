@@ -1,8 +1,8 @@
 #include "DataStreamDistributor.h"
 
-#include "StrictMode.h"
-
 using namespace std;
+
+#include "StrictMode.h"
 
 
 DataStreamDistributor::DataStreamDistributor(UART uart)
