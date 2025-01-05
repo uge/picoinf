@@ -53,7 +53,7 @@ public:
             // Init everything else
             ADC::Init();
             Clock::Init();
-            EvmInit();
+            Evm::Init();
             I2C::Init0();
             JerryScriptIntegration::Init();
             JSONMsgRouter::Init();
@@ -65,7 +65,7 @@ public:
             Ble::SetupShell();
 #endif
             Clock::SetupShell();
-            EvmSetupShell();
+            Evm::SetupShell();
             FilesystemLittleFS::SetupShell();
             I2C::SetupShell0();
             JerryScriptIntegration::SetupShell();

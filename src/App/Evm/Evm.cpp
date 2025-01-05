@@ -654,6 +654,8 @@ TimedEventHandlerDelegate Evm::tedTest2_;
 
 void Evm::Init()
 {
+    Timeline::Global().Event("Evm::Init");
+
     // register with ktime for callbacks
     KTime::RegisterCallbackScalingFactorChange([]{
         Timeline::Global().Event("EVM_HANDLE_SCALING_FACTOR");
@@ -704,6 +706,8 @@ void Evm::Init()
 
 void Evm::SetupShell()
 {
+    Timeline::Global().Event("Evm::SetupShell");
+
     Shell::AddCommand("evm.history", [&](vector<string> argList){
         uint8_t historyCount = atoi(argList[0].c_str());
         Log("Setting history count to ", historyCount);
@@ -816,22 +820,4 @@ void Evm::SetupShell()
         if (found) { Log("ID ", id, " found and dereigistered"); }
         else       { Log("ID ", id, " not found");               }
     }, { .argCount = 1, .help = "cancel timer <id>" });
-
-    
 }
-
-
-void EvmInit()
-{
-    Timeline::Global().Event("EvmInit");
-
-    Evm::Init();
-}
-
-void EvmSetupShell()
-{
-    Timeline::Global().Event("EvmSetupShell");
-
-    Evm::SetupShell();
-}
-
