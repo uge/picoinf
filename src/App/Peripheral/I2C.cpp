@@ -1,9 +1,15 @@
 #include "I2C.h"
 #include "Log.h"
+#include "Shell.h"
 #include "Timeline.h"
 #include "Utl.h"
 
+#include "hardware/gpio.h"
 #include "hardware/i2c.h"
+
+#include <cstring>
+#include <string>
+using namespace std;
 
 #include "StrictMode.h"
 
@@ -248,7 +254,7 @@ static void ScanPretty(I2C::Instance instance)
     // Generate
     for (uint8_t row = 0x00; row <= 0x70; row += 0x10)
     {
-        LogNNL(Format::ToHex(row, false), " |");
+        LogNNL(ToHex(row, false), " |");
 
         for (uint8_t col = 0x0; col <= 0xF; ++col)
         {
@@ -259,7 +265,7 @@ static void ScanPretty(I2C::Instance instance)
             LogNNL(" ");
             if (i2c.IsAlive())
             {
-                LogNNL(Format::ToHex(addr, false));
+                LogNNL(ToHex(addr, false));
             }
             else
             {
@@ -285,63 +291,63 @@ void I2C::SetupShell0()
 
     Shell::AddCommand("i2c0.addr", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
 
         Log("Addr ", hexAddr, "(", addr, "): ", I2C::IsAlive(addr, Instance::I2C0) ? "alive" : "not alive");
     }, { .argCount = 1, .help = "I2C check hexAddr alive"});
 
     Shell::AddCommand("i2c0.read8", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
 
         I2C i2c(addr, Instance::I2C0);
         uint8_t val = i2c.ReadReg8(reg);
 
         Log("Reading ", hexAddr, "(", addr, ") ", hexReg, "(", reg, ")");
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 2, .help = "I2C read <hexAddr> <hexReg>"});
 
     Shell::AddCommand("i2c0.read16", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
 
         I2C i2c(addr, Instance::I2C0);
         uint16_t val = i2c.ReadReg16(reg);
 
         Log("Reading ", hexAddr, "(", addr, ") ", hexReg, "(", reg, ")");
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 2, .help = "I2C read <hexAddr> <hexReg>"});
 
     Shell::AddCommand("i2c0.write8", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
         string hexVal = argList[2];
-        uint8_t val = (uint8_t)Format::FromHex(hexVal);
+        uint8_t val = (uint8_t)FromHex(hexVal);
 
         I2C i2c(addr, Instance::I2C0);
         i2c.WriteReg8(reg, val);
 
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
 
     Shell::AddCommand("i2c0.write16", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
         string hexVal = argList[2];
-        uint16_t val = (uint8_t)Format::FromHex(hexVal);
+        uint16_t val = (uint8_t)FromHex(hexVal);
 
         I2C i2c(addr, Instance::I2C0);
         i2c.WriteReg16(reg, val);
 
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
 
     Shell::AddCommand("i2c0.stats", [&](vector<string> argList){
@@ -363,63 +369,63 @@ void I2C::SetupShell1()
 
     Shell::AddCommand("i2c1.addr", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
 
         Log("Addr ", hexAddr, "(", addr, "): ", I2C::IsAlive(addr, Instance::I2C1) ? "alive" : "not alive");
     }, { .argCount = 1, .help = "I2C check hexAddr alive"});
 
     Shell::AddCommand("i2c1.read8", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
 
         I2C i2c(addr, Instance::I2C1);
         uint8_t val = i2c.ReadReg8(reg);
 
         Log("Reading ", hexAddr, "(", addr, ") ", hexReg, "(", reg, ")");
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 2, .help = "I2C read <hexAddr> <hexReg>"});
 
     Shell::AddCommand("i2c1.read16", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
 
         I2C i2c(addr, Instance::I2C1);
         uint16_t val = i2c.ReadReg16(reg);
 
         Log("Reading ", hexAddr, "(", addr, ") ", hexReg, "(", reg, ")");
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 2, .help = "I2C read <hexAddr> <hexReg>"});
 
     Shell::AddCommand("i2c1.write8", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
         string hexVal = argList[2];
-        uint8_t val = (uint8_t)Format::FromHex(hexVal);
+        uint8_t val = (uint8_t)FromHex(hexVal);
 
         I2C i2c(addr, Instance::I2C1);
         i2c.WriteReg8(reg, val);
 
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
 
     Shell::AddCommand("i2c1.write16", [&](vector<string> argList){
         string hexAddr = argList[0];
-        uint8_t addr = (uint8_t)Format::FromHex(hexAddr);
+        uint8_t addr = (uint8_t)FromHex(hexAddr);
         string hexReg = argList[1];
-        uint8_t reg = (uint8_t)Format::FromHex(hexReg);
+        uint8_t reg = (uint8_t)FromHex(hexReg);
         string hexVal = argList[2];
-        uint16_t val = (uint8_t)Format::FromHex(hexVal);
+        uint16_t val = (uint8_t)FromHex(hexVal);
 
         I2C i2c(addr, Instance::I2C1);
         i2c.WriteReg16(reg, val);
 
-        Log(Format::ToHex(val), "(", val, ")(", Format::ToBin(val), ")");
+        Log(ToHex(val), "(", val, ")(", ToBin(val), ")");
     }, { .argCount = 3, .help = "I2C write <hexAddr> <hexReg> <hexVal>"});
 
     Shell::AddCommand("i2c1.stats", [&](vector<string> argList){
