@@ -6,6 +6,7 @@ target_sources(PicoInf PRIVATE
     DataStreamDistributor.cpp
     JSON.cpp
     JSONMsgRouter.cpp
+    LineStreamDistributor.cpp
     Timeline.cpp
     Utl.cpp
     VersionStr.cpp
