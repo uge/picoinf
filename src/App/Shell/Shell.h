@@ -1,14 +1,14 @@
 #pragma once
 
-#include "PAL.h"
-#include "Log.h"
-
 #include <string>
 #include <vector>
 #include <functional>
 #include <map>
 #include <unordered_set>
-using namespace std;
+
+#include "PAL.h"
+#include "Log.h"
+
 
 
 class Shell
@@ -16,15 +16,15 @@ class Shell
 public:
     struct CmdOptions
     {
-        int    argCount = 0;	// -1 means allow any
-        string help     = "";
+        int         argCount = 0;    // -1 means allow any
+        std::string help     = "";
     };
 
 private:
     struct CmdData
     {
         CmdOptions cmdOptions;
-        function<void(vector<string> argList)> cbFn_;
+        std::function<void(std::vector<std::string> argList)> cbFn_;
     };
 
 public:
@@ -32,28 +32,28 @@ public:
     static void DisplayOn();
     static void SetupJSON();
 
-    static bool Eval(string cmd);
+    static bool Eval(std::string cmd);
 
     // put implementation in .cpp because system would crash on startup 
     // no idea, moving on for now
-    static bool AddCommand(string name, function<void(vector<string> argList)> cbFn);
-    static bool AddCommand(string name, function<void(vector<string> argList)> cbFn, CmdOptions cmdOptions);
-    static bool RemoveCommand(string name);
+    static bool AddCommand(std::string name, std::function<void(std::vector<std::string> argList)> cbFn);
+    static bool AddCommand(std::string name, std::function<void(std::vector<std::string> argList)> cbFn, CmdOptions cmdOptions);
+    static bool RemoveCommand(std::string name);
 
-    static void ShowHelp(string prefix = "");
+    static void ShowHelp(std::string prefix = "");
     static bool RepeatPriorCommand();
 
 private:
 
-    static void ShellCmdExecute(const string &line);
+    static void ShellCmdExecute(const std::string &line);
 
 private:
 
-    inline static map<string, CmdData> cmdLookup_;	
-    inline static string cmdLast_;
-    inline static string prefix_;
+    inline static std::map<std::string, CmdData> cmdLookup_;	
+    inline static std::string cmdLast_;
+    inline static std::string prefix_;
 
-    inline static unordered_set<string> internalCommandSet_ = {
+    inline static std::unordered_set<std::string> internalCommandSet_ = {
         ".",
         "?",
         "clear",

@@ -4,6 +4,9 @@
 #include "UART.h"
 #include "Utl.h"
 
+#include "StrictMode.h"
+
+
 bool Shell::Eval(string cmd)
 {
     bool didEval = false;
