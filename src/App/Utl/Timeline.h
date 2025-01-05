@@ -12,9 +12,6 @@
 using namespace std;
 
 
-extern void TimelineInit();
-extern void TimelineSetupShell();
-
 class Timeline
 : private NonCopyable
 , private NonMovable
@@ -36,6 +33,9 @@ public:
     static void EnableCcGlobal();
     static void DisableCcGlobal();
     static Timeline &Global();
+
+    static void Init();
+    static void SetupShell();
 
 
 private:

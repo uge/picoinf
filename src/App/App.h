@@ -41,7 +41,7 @@ public:
         // stack
         static KTask<2000> task("Application", [&]{
             // Init in specific sequence
-            TimelineInit();
+            Timeline::Init();
             LogInit();
             UartInit();
             PALInit();
@@ -78,7 +78,7 @@ public:
             PeripheralControl::SetupShell();
             Sensor::SetupShell();
             Shell::Init();
-            TimelineSetupShell();
+            Timeline::SetupShell();
             UartSetupShell();
             USB::SetupShell();
             UtlSetupShell();

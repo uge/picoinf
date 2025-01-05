@@ -243,17 +243,17 @@ Timeline &Timeline::Global()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimelineInit()
+void Timeline::Init()
 {
     Timeline::EnableCcGlobal();
     Timeline::Global().SetMaxEvents(80);
 
-    Timeline::Global().Event("TimelineInit");
+    Timeline::Global().Event("Timeline::Init");
 }
 
-void TimelineSetupShell()
+void Timeline::SetupShell()
 {
-    Timeline::Global().Event("TimelineSetupShell");
+    Timeline::Global().Event("Timeline::SetupShell");
 
     Shell::AddCommand("t.max", [&](vector<string> argList){
         if (argList.empty())
