@@ -1321,7 +1321,7 @@ void Si5351::set_ref_freq(uint32_t ref_freq, enum si5351_pll_input ref_osc)
 // }
 uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 {
-    i2c_.WriteDirect(addr, data, bytes);
+    i2c_.WriteReg(addr, data, bytes);
     return 1;
 }
 
