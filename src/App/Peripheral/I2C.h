@@ -52,7 +52,7 @@ public:
 
 private:
 
-    static const uint32_t TIMEOUT_MS = 5;
+    static const uint32_t TIMEOUT_MS = 1;
 
     struct Stats
     {

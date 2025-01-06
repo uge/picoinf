@@ -168,6 +168,7 @@ bool I2C::IsAlive()
 
     uint8_t byte;
     int ret = i2c_read_blocking_until(i2c_, addr_, &byte, 1, false, make_timeout_time_ms(TIMEOUT_MS));
+    AnalyzeRetVal(ret);
 
     return ret >= 0;
 }
