@@ -63,6 +63,7 @@ typedef int BitOrder;
 // Do this for now and see how it goes.
 //
 #define byte uint8_t
+#define PI 3.1415926535897932384626433832795
 
 
 inline int digitalPinToPort(int8_t)
@@ -142,6 +143,32 @@ inline uint64_t millis()
 {
     return PAL.Millis();
 }
+
+inline void yield() {}
+
+template <typename T1, typename T2, typename T3>
+T1 constrain(T1 amt, T2 low, T3 high)
+{
+    T1 lowVal = (T1)low;
+    T1 highVal = (T1)high;
+
+    if (amt < lowVal)
+    {
+        return lowVal;
+    }
+    else
+    {
+        if (amt > highVal)
+        {
+            return highVal;
+        }
+        else
+        {
+            return amt;
+        }
+    }
+}
+
 
 class SerialClass
 {

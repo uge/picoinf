@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BH1750.h"
 #include "BME280.h"
 #include "BMP280.h"
 #include "SI7021.h"
@@ -14,6 +15,7 @@ public:
     {
         Timeline::Global().Event("Sensor::SetupShell");
 
+        BH1750::SetupShell();
         BME280::SetupShell();
         BMP280::SetupShell();
         SI7021::SetupShell();

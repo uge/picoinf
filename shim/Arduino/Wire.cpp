@@ -57,6 +57,11 @@ void TwoWire::beginTransmission(uint8_t addr)
     queueWrite_.push_back(addr);
 }
 
+size_t TwoWire::write(uint8_t data)
+{
+    return write(&data, 1);
+}
+
 size_t TwoWire::write(const uint8_t *buf, size_t bufSize)
 {
     // I need to queue this possibly
@@ -73,17 +78,6 @@ size_t TwoWire::write(const uint8_t *buf, size_t bufSize)
         }
         else
         {
-
-
-
-
-
-
-
-            Log("=========================================================");
-
-
-
             // I have never seen this actually invoked. Hopefully works.
             i2c_.WriteRaw((uint8_t *)buf, (uint32_t)bufSize);
         }
@@ -122,6 +116,11 @@ uint8_t TwoWire::endTransmission(uint8_t stop)
 
 
 
+size_t TwoWire::requestFrom(uint8_t addr, uint8_t len)
+{
+    return requestFrom(addr, len, true);
+}
+
 size_t TwoWire::requestFrom(uint8_t addr, uint8_t len, uint8_t stop)
 {
     // real does a transactional write to device indicating read target register
@@ -137,6 +136,11 @@ size_t TwoWire::requestFrom(uint8_t addr, uint8_t len, uint8_t stop)
 
     // returns the number of bytes actually read
     return retVal;
+}
+
+int TwoWire::available()
+{
+    return (int)queueRead_.size();
 }
 
 int TwoWire::read()

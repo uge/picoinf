@@ -75,7 +75,7 @@ add_subdirectory(shim)
 
 
 #####################################################################
-# Adafruit Library Integration
+# Arduino Library Integration
 #####################################################################
 
 set(ADAFRUIT_BME280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BME280_Library")
@@ -124,6 +124,15 @@ target_include_directories(PicoInf PUBLIC ${ADAFRUIT_SI7021_LIBRARY_PATH})
 target_sources(PicoInf PRIVATE ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp)
 set_source_files_properties(
     ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(BH1750_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/BH1750FVI_RT/")
+target_include_directories(PicoInf PUBLIC ${BH1750_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${BH1750_LIBRARY_PATH}/BH1750FVI.cpp)
+set_source_files_properties(
+    ${BH1750_LIBRARY_PATH}/BH1750FVI.cpp
     PROPERTIES
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )
