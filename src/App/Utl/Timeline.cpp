@@ -215,6 +215,14 @@ void Timeline::Reset()
     
     eventList_.Clear();
     eventsLost_ = 0;
+
+    // record a reset event, but don't CC to the global.
+    // accomplish this by pretending to be the global for
+    // a short while, even when you actually are.
+    bool iAmTheGlobalCache = iAmTheGlobal_;
+    iAmTheGlobal_ = true;
+    Event("Reset");
+    iAmTheGlobal_ = iAmTheGlobalCache;
 }
 
 void Timeline::Ready(bool ready)
@@ -253,6 +261,7 @@ void Timeline::Init()
 {
     Timeline::EnableCcGlobal();
     Timeline::Global().SetMaxEvents(80);
+    Timeline::Global().Reset();
 
     Timeline::Global().Event("Timeline::Init");
 }
