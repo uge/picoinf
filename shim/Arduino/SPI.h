@@ -15,11 +15,23 @@
 class SPISettings
 {
 public:
+    SPISettings()
+    {
+    }
+
+    SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
+    {
+    }
+
 };
 
 class SPIClass
 {
 public:
+    static void begin() {}
+    static void transfer(void *buf, size_t count) {}
+    static void beginTransaction(SPISettings) {}
+    static void endTransaction() {}
 };
 
 extern SPIClass SPI;

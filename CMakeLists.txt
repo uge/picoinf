@@ -79,16 +79,21 @@ add_subdirectory(shim)
 #####################################################################
 
 set(ADAFRUIT_BUSIO_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BusIO")
-target_include_directories(PicoInf PRIVATE ${ADAFRUIT_BUSIO_LIBRARY_PATH})
-target_sources(PicoInf PRIVATE ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp)
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BUSIO_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
+)
 set_source_files_properties(
     ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
     PROPERTIES
+        # COMPILE_DEFINITIONS "ARDUINO=1000;DEBUG_SERIAL=Serial"
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )
 
 set(ADAFRUIT_SENSOR_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_Sensor")
-target_include_directories(PicoInf PRIVATE ${ADAFRUIT_SENSOR_LIBRARY_PATH})
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_SENSOR_LIBRARY_PATH})
 target_sources(PicoInf PRIVATE ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp)
 set_source_files_properties(
     ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp
@@ -96,8 +101,17 @@ set_source_files_properties(
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )
 
+set(ADAFRUIT_BME280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BME280_Library")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BME280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
 set(ADAFRUIT_BMP280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BMP280_Library")
-target_include_directories(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH})
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BMP280_LIBRARY_PATH})
 target_sources(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp)
 set_source_files_properties(
     ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp

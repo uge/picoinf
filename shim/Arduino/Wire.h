@@ -1,69 +1,39 @@
 #pragma once
 
-#include "Arduino.h"
+#include "I2C.h"
 
-// https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.h
-// https://github.com/arduino/ArduinoCore-avr/blob/master/libraries/Wire/src/Wire.cpp
+#include <cstdint>
+#include <vector>
 
 
 class TwoWire
 {
 public:
-    void begin()
-    {
+    TwoWire(uint8_t addr, I2C::Instance instance = I2C::Instance::I2C0);
 
-    }
+    void begin();
+    void end();
 
-    void end()
-    {
+    void    beginTransmission(uint8_t addr);
+    size_t  write(const uint8_t *buf, size_t bufSize);
+    uint8_t endTransmission();
+    uint8_t endTransmission(uint8_t stop);
 
-    }
+    size_t requestFrom(uint8_t addr, uint8_t len, uint8_t stop);
+    int    read();
 
-    void beginTransmission(uint8_t addr)
-    {
+    void setClock(uint32_t);
 
-    }
 
-    uint8_t endTransmission()
-    {
-        uint8_t retVal = 0;
+private:
 
-        return retVal;
-    }
+    I2C i2c_;
 
-    uint8_t endTransmission(uint8_t stop)
-    {
-        uint8_t retVal = 0;
+    bool inTransmission_ = false;
+    uint8_t addrTransmission_ = 0x00;
+    std::vector<uint8_t> queueWrite_;
 
-        return retVal;
-    }
-
-    int read()
-    {
-        int retVal = 0;
-
-        return retVal;
-    }
-
-    size_t write(const uint8_t *prefix_buffer, size_t prefix_len)
-    {
-        size_t retVal = 0;
-
-        return retVal;
-    }
-
-    size_t requestFrom(uint8_t addr, uint8_t len, uint8_t stop)
-    {
-        size_t retVal = 0;
-
-        return retVal;
-    }
-
-    void setClock(uint32_t desiredclk)
-    {
-
-    }
-
+    std::vector<uint8_t> queueRead_;
 };
 
 extern TwoWire Wire;

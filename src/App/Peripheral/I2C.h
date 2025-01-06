@@ -18,21 +18,26 @@ public:
 
     I2C(uint8_t addr, Instance instance = Instance::I2C0);
     bool     IsAlive();
-    uint8_t  ReadReg8(uint8_t reg);
-    uint16_t ReadReg16(uint8_t reg);
-    void     WriteReg8(uint8_t reg, uint8_t val);
-    void     WriteReg16(uint8_t reg, uint16_t val);
-    void     WriteDirect(uint8_t reg, uint8_t *buf, uint8_t bufSize);
+    uint8_t  ReadReg8(uint8_t reg, bool stop = true);
+    uint16_t ReadReg16(uint8_t reg, bool stop = true);
+    uint32_t ReadReg(uint8_t reg, uint8_t *buf, uint32_t bufSize, bool stop = true);
+    uint32_t ReadRaw(uint8_t *buf, uint32_t bufSize, bool stop = true);
+    uint32_t WriteReg8(uint8_t reg, uint8_t val, bool stop = true);
+    uint32_t WriteReg16(uint8_t reg, uint16_t val, bool stop = true);
+    uint32_t WriteReg(uint8_t reg, uint8_t *buf, uint32_t bufSize, bool stop = true);
+    uint32_t WriteRaw(uint8_t *buf, uint32_t bufSize, bool stop = true);
 
 private:
 
     void AnalyzeRetVal(int retVal);
+    int  GetRetValLast();
 
 
 private:
 
-    uint8_t     addr_ = 0;
-    i2c_inst_t *i2c_  = nullptr;
+    uint8_t     addr_       = 0;
+    i2c_inst_t *i2c_        = nullptr;
+    int         retValLast_ = 0;
 
 
 public:
