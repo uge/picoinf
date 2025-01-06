@@ -78,6 +78,24 @@ add_subdirectory(shim)
 # Adafruit Library Integration
 #####################################################################
 
+set(ADAFRUIT_BME280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BME280_Library")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BME280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_BMP280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BMP280_Library")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BMP280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
 set(ADAFRUIT_BUSIO_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BusIO")
 target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BUSIO_LIBRARY_PATH})
 target_sources(PicoInf PRIVATE
@@ -101,20 +119,11 @@ set_source_files_properties(
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )
 
-set(ADAFRUIT_BME280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BME280_Library")
-target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BME280_LIBRARY_PATH})
-target_sources(PicoInf PRIVATE ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp)
+set(ADAFRUIT_SI7021_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_Si7021")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_SI7021_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp)
 set_source_files_properties(
-    ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp
-    PROPERTIES
-        COMPILE_DEFINITIONS "ARDUINO=1000"
-)
-
-set(ADAFRUIT_BMP280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BMP280_Library")
-target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BMP280_LIBRARY_PATH})
-target_sources(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp)
-set_source_files_properties(
-    ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp
+    ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp
     PROPERTIES
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )

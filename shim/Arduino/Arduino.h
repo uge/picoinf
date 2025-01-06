@@ -7,6 +7,8 @@
 #include "Log.h"
 #include "PAL.h"
 
+// https://github.com/arduino/ArduinoCore-avr/blob/master/cores/arduino/Arduino.h
+
 
 #define MSBFIRST 0
 #define LSBFIRST 1
@@ -89,6 +91,36 @@ inline uint32_t digitalPinToBitMask(int8_t)
 
 inline void pinMode(int, int) {}
 inline void digitalWrite(int, int) {}
+
+template <typename T1, typename T2>
+inline int bitRead(T1 value, T2 bit)
+{
+    return (((value) >> (bit)) & 0x01);
+}
+
+template <typename T1, typename T2>
+inline int bitSet(T1 value, T2 bit)
+{
+    return ((value) |= (1UL << (bit)));
+}
+
+template <typename T1, typename T2>
+inline int bitClear(T1 value, T2 bit)
+{
+    return ((value) &= ~(1UL << (bit)));
+}
+
+template <typename T1, typename T2>
+inline int bitToggle(T1 value, T2 bit)
+{
+    return ((value) ^= (1UL << (bit)));
+}
+
+template <typename T1, typename T2, typename T3>
+inline int bitWrite(T1 value, T2 bit, T3 bitvalue)
+{
+    return ((bitvalue) ? bitSet(value, bit) : bitClear(value, bit));
+}
 
 
 inline const char *F(const char *t)
