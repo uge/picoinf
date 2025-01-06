@@ -28,3 +28,6 @@
 [submodule "ext/Adafruit_Si7021"]
 	path = ext/Adafruit_Si7021
 	url = git@github.com:adafruit/Adafruit_Si7021.git
+[submodule "ext/BH1750FVI_RT"]
+	path = ext/BH1750FVI_RT
+	url = git@github.com:RobTillaart/BH1750FVI_RT.git
