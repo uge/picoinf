@@ -181,10 +181,13 @@ string Commas(string num)
 {
     string retVal;
 
-    reverse(num.begin(), num.end());
+    vector<string> partList = Split(num, ".");
+    string numWhole = partList[0];
+
+    reverse(numWhole.begin(), numWhole.end());
 
     int count = 0;
-    for (auto c : num)
+    for (auto c : numWhole)
     {
         ++count;
 
@@ -198,6 +201,13 @@ string Commas(string num)
     }
 
     reverse(retVal.begin(), retVal.end());
+
+    if (partList.size() > 1)
+    {
+        partList.erase(partList.begin());
+
+        retVal += "." + Join(partList, ".");
+    }
 
     return retVal;
 }
