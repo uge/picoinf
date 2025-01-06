@@ -25,3 +25,6 @@
 [submodule "ext/Adafruit_BME280_Library"]
 	path = ext/Adafruit_BME280_Library
 	url = git@github.com:adafruit/Adafruit_BME280_Library.git
+[submodule "ext/Adafruit_Si7021"]
+	path = ext/Adafruit_Si7021
+	url = git@github.com:adafruit/Adafruit_Si7021.git

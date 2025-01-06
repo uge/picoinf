@@ -84,7 +84,7 @@ void BME280::SetupShell()
     Shell::AddCommand("sensor.bme280.get.humidity", [](vector<string> argList){
         BME280 *bme280 = GetBME280();
 
-        double humPct = bme280->GetAltitudeMeters();
+        double humPct = bme280->GetHumidityPct();
 
         Log("humPct: ", Commas(humPct));
     }, { .argCount = 0, .help = "get altitude" });
@@ -98,7 +98,7 @@ void BME280::SetupShell()
         double bar    = bme280->GetPressureBar();
         double altM   = bme280->GetAltitudeMeters();
         double altFt  = bme280->GetAltitudeFeet();
-        double humPct = bme280->GetAltitudeMeters();
+        double humPct = bme280->GetHumidityPct();
 
         Log("TempC : ", tempC);
         Log("TempF : ", tempF);
