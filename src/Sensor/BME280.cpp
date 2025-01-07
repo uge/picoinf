@@ -66,8 +66,8 @@ void BME280::SetupShell()
     Shell::AddCommand("sensor.bme280.get.pressure", [](vector<string> argList){
         GetSensor();
 
-        double hPa = sensor->GetPressurehPa();
-        double bar = sensor->GetPressureBar();
+        double hPa = sensor->GetPressureHectopascals();
+        double bar = sensor->GetPressureBars();
 
         Log("hPa: ", Commas(hPa));
         Log("bar: ", Commas(bar));
@@ -99,9 +99,9 @@ void BME280::SetupShell()
             t.Event("tempC");
             double tempF  = sensor->GetTemperatureFahrenheit();
             t.Event("tempF");
-            double hPa    = sensor->GetPressurehPa();
+            double hPa    = sensor->GetPressureHectopascals();
             t.Event("hPa");
-            double bar    = sensor->GetPressureBar();
+            double bar    = sensor->GetPressureBars();
             t.Event("bar");
             double altM   = sensor->GetAltitudeMeters();
             t.Event("altM");
