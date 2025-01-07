@@ -107,10 +107,8 @@ private:
         }
         else
         {
-            static const uint8_t I2C_ADDR = 0x30;
-
             // Create a new I2C object
-            MMC56x3 *obj = new MMC56x3(I2C_ADDR, instance_);
+            MMC56x3 *obj = new MMC56x3(instance_);
 
             if (!obj)
             {

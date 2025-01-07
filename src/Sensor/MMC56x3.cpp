@@ -14,7 +14,6 @@ void MMC56x3::SetupShell()
 {
     Timeline::Global().Event("MMC56x3::SetupShell");
 
-    static uint8_t        addr     = 0x30;
     // static I2C::Instance instance = I2C::Instance::I2C0;
     static I2C::Instance  instance = I2C::Instance::I2C1;
     static MMC56x3       *sensor   = nullptr;
@@ -23,7 +22,7 @@ void MMC56x3::SetupShell()
         if (sensor == nullptr)
         {
             Timeline::Use([](Timeline &t){
-                sensor = new MMC56x3(addr, instance);
+                sensor = new MMC56x3(instance);
             }, "Constructor");
         }
 

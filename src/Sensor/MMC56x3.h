@@ -8,12 +8,12 @@ class MMC56x3
 {
 public:
 
-    // Address is either 0x30
+    // Address is 0x30
     // 24 ms
-    MMC56x3(uint8_t addr, I2C::Instance instance)
-    : tw_(addr, instance)
+    MMC56x3(I2C::Instance instance)
+    : tw_(0x30, instance)
     {
-        sensor_.begin(addr, &tw_);
+        sensor_.begin(0x30, &tw_);
     }
 
     // 11ms
