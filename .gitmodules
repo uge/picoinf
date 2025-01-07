@@ -31,3 +31,6 @@
 [submodule "ext/BH1750FVI_RT"]
 	path = ext/BH1750FVI_RT
 	url = git@github.com:RobTillaart/BH1750FVI_RT.git
+[submodule "ext/Adafruit_MMC56x3"]
+	path = ext/Adafruit_MMC56x3
+	url = git@github.com:adafruit/Adafruit_MMC56x3.git
