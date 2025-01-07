@@ -184,6 +184,13 @@ string Commas(string num)
     vector<string> partList = Split(num, ".");
     string numWhole = partList[0];
 
+    string negPart = "";
+    if (numWhole.size() >= 1 && numWhole[0] == '-')
+    {
+        negPart = "-";
+        numWhole.erase(numWhole.begin());
+    }
+
     reverse(numWhole.begin(), numWhole.end());
 
     int count = 0;
@@ -202,6 +209,8 @@ string Commas(string num)
 
     reverse(retVal.begin(), retVal.end());
 
+    // rebuild
+    retVal = negPart + retVal;
     if (partList.size() > 1)
     {
         partList.erase(partList.begin());
