@@ -10,143 +10,103 @@ using namespace std;
 #include "StrictMode.h"
 
 
-// Address is either 0x76 or 0x77
-BMP280::BMP280(uint8_t addr, I2C::Instance instance)
-: tw_(addr, instance)
-, bmp280_(&tw_)
-{
-    // startup sequence taken from example ino.
-    // "Default settings from datasheet."
-    bmp280_.begin();
-    bmp280_.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
-                        Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
-                        Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
-                        Adafruit_BMP280::FILTER_X16,      /* Filtering. */
-                        Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
-}
-
-double BMP280::GetTemperatureCelsius()
-{
-    // sensor returns celsius
-    return bmp280_.readTemperature();
-}
-
-double BMP280::GetTemperatureFahrenheit()
-{
-    return (GetTemperatureCelsius() * (9.0 / 5.0)) + 32;
-}
-
-double BMP280::GetPressurehPa()
-{
-    // sensor returns Pa
-    return bmp280_.readPressure() / 100;
-}
-
-double BMP280::GetPressureBar()
-{
-    return GetPressurehPa() * 1'000;
-}
-
-double BMP280::GetAltitudeMeters()
-{
-    // sensor returns meters
-    // calibrated to nominal pressure at sea level (hPa)
-    return bmp280_.readAltitude(1013.25);
-}
-
-double BMP280::GetAltitudeFeet()
-{
-    return GetAltitudeMeters() * 3.28084;
-}
-
-
 void BMP280::SetupShell()
 {
     Timeline::Global().Event("BMP280::SetupShell");
 
-    static uint8_t       addr     = 0x77;
+    static uint8_t        addr     = 0x77;
     // static I2C::Instance instance = I2C::Instance::I2C0;
-    static I2C::Instance instance = I2C::Instance::I2C1;
-    static BMP280        *bmp280 = nullptr;
+    static I2C::Instance  instance = I2C::Instance::I2C1;
+    static BMP280        *sensor   = nullptr;
 
-    static auto GetBMP280 = []{
-        if (bmp280 == nullptr)
+    static auto GetSensor = []{
+        if (sensor == nullptr)
         {
-            bmp280 = new BMP280(addr, instance);
+            Timeline::Use([](Timeline &t){
+                sensor = new BMP280(addr, instance);
+            }, "Constructor");
         }
 
-        return bmp280;
+        return sensor;
     };
 
-    static auto UpdateBMP280 = []{
-        if (bmp280 != nullptr)
+    static auto UpdateSensor = []{
+        if (sensor != nullptr)
         {
-            delete bmp280;
-            bmp280 = nullptr;
+            delete sensor;
+            sensor = nullptr;
         }
 
-        GetBMP280();
+        GetSensor();
     };
 
     Shell::AddCommand("sensor.bmp280.i2c.addr", [](vector<string> argList){
         addr = (uint8_t)atoi(argList[0].c_str());
         Log("Addr set to ", ToHex(addr));
-        UpdateBMP280();
+        UpdateSensor();
     }, { .argCount = 1, .help = "set i2c <hexAddr>" });
 
     Shell::AddCommand("sensor.bmp280.i2c.instance", [](vector<string> argList){
         uint8_t instNum = (uint8_t)atoi(argList[0].c_str());
         Log("Instance set to ", instNum);
         instance = instNum == 0 ? I2C::Instance::I2C0 : I2C::Instance::I2C1;
-        UpdateBMP280();
+        UpdateSensor();
     }, { .argCount = 1, .help = "set i2c instance" });
 
     Shell::AddCommand("sensor.bmp280.get.temp", [](vector<string> argList){
-        BMP280 *bmp280 = GetBMP280();
+        GetSensor();
 
-        double tempC = bmp280->GetTemperatureCelsius();
-        double tempF = bmp280->GetTemperatureFahrenheit();
+        double tempC = sensor->GetTemperatureCelsius();
+        double tempF = sensor->GetTemperatureFahrenheit();
 
         Log("TempC: ", tempC);
         Log("TempF: ", tempF);
     }, { .argCount = 0, .help = "get temperature" });
 
     Shell::AddCommand("sensor.bmp280.get.pressure", [](vector<string> argList){
-        BMP280 *bmp280 = GetBMP280();
+        GetSensor();
 
-        double hPa = bmp280->GetPressurehPa();
-        double bar = bmp280->GetPressureBar();
+        double hPa = sensor->GetPressureHectopascals();
+        double bar = sensor->GetPressureBars();
 
         Log("hPa: ", Commas(hPa));
         Log("bar: ", Commas(bar));
     }, { .argCount = 0, .help = "get pressure" });
 
     Shell::AddCommand("sensor.bmp280.get.altitude", [](vector<string> argList){
-        BMP280 *bmp280 = GetBMP280();
+        GetSensor();
 
-        double altM  = bmp280->GetAltitudeMeters();
-        double altFt = bmp280->GetAltitudeFeet();
+        double altM  = sensor->GetAltitudeMeters();
+        double altFt = sensor->GetAltitudeFeet();
 
         Log("altM : ", Commas(altM));
         Log("altFt: ", Commas(altFt));
     }, { .argCount = 0, .help = "get altitude" });
 
     Shell::AddCommand("sensor.bmp280.get.all", [](vector<string> argList){
-        BMP280 *bmp280 = GetBMP280();
+        GetSensor();
 
-        double tempC = bmp280->GetTemperatureCelsius();
-        double tempF = bmp280->GetTemperatureFahrenheit();
-        double hPa   = bmp280->GetPressurehPa();
-        double bar   = bmp280->GetPressureBar();
-        double altM  = bmp280->GetAltitudeMeters();
-        double altFt = bmp280->GetAltitudeFeet();
+        Timeline::Use([](Timeline &t){
+            double tempC = sensor->GetTemperatureCelsius();
+            t.Event("tempC");
+            double tempF = sensor->GetTemperatureFahrenheit();
+            t.Event("tempF");
+            double hPa   = sensor->GetPressureHectopascals();
+            t.Event("hPa");
+            double bar   = sensor->GetPressureBars();
+            t.Event("bar");
+            double altM  = sensor->GetAltitudeMeters();
+            t.Event("altM");
+            double altFt = sensor->GetAltitudeFeet();
+            t.Event("altFt");
 
-        Log("TempC: ", tempC);
-        Log("TempF: ", tempF);
-        Log("hPa  : ", Commas(hPa));
-        Log("bar  : ", Commas(bar));
-        Log("altM : ", Commas(altM));
-        Log("altFt: ", Commas(altFt));
+            Log("TempC: ", tempC);
+            Log("TempF: ", tempF);
+            Log("hPa  : ", Commas(hPa));
+            Log("bar  : ", Commas(bar));
+            Log("altM : ", Commas(altM));
+            Log("altFt: ", Commas(altFt));
+        });
     }, { .argCount = 0, .help = "get all" });
 
 }
