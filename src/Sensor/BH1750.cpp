@@ -22,7 +22,9 @@ void BH1750::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            sensor = new BH1750(addr, instance);
+            Timeline::Use([](Timeline &t){
+                sensor = new BH1750(addr, instance);
+            }, "Constructor");
         }
 
         return sensor;
@@ -51,10 +53,32 @@ void BH1750::SetupShell()
         UpdateSensor();
     }, { .argCount = 1, .help = "set i2c instance" });
 
+    Shell::AddCommand("sensor.bh1750.set.tempC", [](vector<string> argList){
+        GetSensor();
+        int temp = (int)atoi(argList[0].c_str());
+        sensor->SetTemperatureCelsius(temp);
+    }, { .argCount = 1, .help = "set i2c instance" });
+
+    Shell::AddCommand("sensor.bh1750.set.tempF", [](vector<string> argList){
+        GetSensor();
+        int temp = (int)atoi(argList[0].c_str());
+        sensor->SetTemperatureFahrenheit(temp);
+    }, { .argCount = 1, .help = "set i2c instance" });
+
     Shell::AddCommand("sensor.bh1750.get.lux", [](vector<string> argList){
-        auto *sensor = GetSensor();
-        Log("luxLowRes  : ", Commas(sensor->GetLuxLowRes()));
-        Log("luxHighRes : ", Commas(sensor->GetLuxHighRes()));
-        Log("luxHigh2Res: ", Commas(sensor->GetLuxHigh2Res()));
+        GetSensor();
+
+        Timeline::Use([](Timeline &t){
+            double luxLowRes = sensor->GetLuxLowRes();
+            t.Event("luxLowRes");
+            double luxHighRes = sensor->GetLuxHighRes();
+            t.Event("luxHighRes");
+            double luxHigh2Res = sensor->GetLuxHigh2Res();
+            t.Event("luxHigh2Res");
+
+            Log("luxLowRes  : ", Commas(luxLowRes));
+            Log("luxHighRes : ", Commas(luxHighRes));
+            Log("luxHigh2Res: ", Commas(luxHigh2Res));
+        });
     }, { .argCount = 0, .help = "get lux" });
 }
