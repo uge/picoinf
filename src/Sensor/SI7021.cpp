@@ -49,24 +49,18 @@ void SI7021::SetupShell()
     Shell::AddCommand("sensor.si7021.get.temp", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](auto &t){
-            double tempC = sensor->GetTemperatureCelsius();
-            t.Event("tempC");
-            double tempF = sensor->GetTemperatureFahrenheit();
-            t.Event("tempF");
+        double tempC = sensor->GetTemperatureCelsius();
+        double tempF = sensor->GetTemperatureFahrenheit();
 
-            Log("TempC: ", tempC);
-            Log("TempF: ", tempF);
-        });
+        Log("TempC: ", tempC);
+        Log("TempF: ", tempF);
     }, { .argCount = 0, .help = "get temperature" });
 
     Shell::AddCommand("sensor.si7021.get.humidity", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](auto &t){
             double humPct = sensor->GetHumidityPct();
             Log("humPct: ", Commas(humPct));
-        });
     }, { .argCount = 0, .help = "get humidity" });
 
     Shell::AddCommand("sensor.si7021.get.all", [](vector<string> argList){
@@ -74,8 +68,11 @@ void SI7021::SetupShell()
 
         Timeline::Use([](auto &t){
             double tempC  = sensor->GetTemperatureCelsius();
+            t.Event("tempC");
             double tempF  = sensor->GetTemperatureFahrenheit();
+            t.Event("tempF");
             double humPct = sensor->GetHumidityPct();
+            t.Event("humPct");
 
             Log("TempC : ", tempC);
             Log("TempF : ", tempF);
