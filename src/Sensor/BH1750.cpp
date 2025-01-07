@@ -14,7 +14,7 @@ void BH1750::SetupShell()
 {
     Timeline::Global().Event("BH1750::SetupShell");
 
-    static uint8_t        addr     = 0x30;
+    static uint8_t        addr     = 0x23;
     // static I2C::Instance instance = I2C::Instance::I2C0;
     static I2C::Instance  instance = I2C::Instance::I2C1;
     static BH1750        *sensor   = nullptr;
@@ -53,9 +53,8 @@ void BH1750::SetupShell()
 
     Shell::AddCommand("sensor.bh1750.get.lux", [](vector<string> argList){
         auto *sensor = GetSensor();
-
-        double val = sensor->GetLux();
-
-        Log("lux: ", Commas(val));
+        Log("luxLowRes  : ", Commas(sensor->GetLuxLowRes()));
+        Log("luxHighRes : ", Commas(sensor->GetLuxHighRes()));
+        Log("luxHigh2Res: ", Commas(sensor->GetLuxHigh2Res()));
     }, { .argCount = 0, .help = "get lux" });
 }

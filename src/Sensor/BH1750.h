@@ -2,11 +2,7 @@
 
 #include "ArduinoSensorCore.h"
 #include "I2C.h"
-
-
-// hmm tried a few libs and always get basically the same value from the sensor
-// even when shining a light on it. I think bad modules. buying more, will
-// update.
+#include "PAL.h"
 
 
 class BH1750
@@ -18,40 +14,31 @@ public:
     : tw_(addr, instance)
     , sensor_(addr, &tw_)
     {
+        sensor_.powerOn();
     }
 
-    double GetLux()
+    // 200ms
+    double GetLuxLowRes()
     {
-        double val = 0;
-
-        sensor_.powerOn();
-        sensor_.setContLowRes();
-
         sensor_.setOnceLowRes();
-        delay(200);
-        val = sensor_.getLux();
-        Log("LowRes  : ", val);
-        Log("Err     : ", sensor_.getError());
+        PAL.DelayBusy(200);
+        return sensor_.getLux();
+    }
 
+    // 200ms
+    double GetLuxHighRes()
+    {
         sensor_.setOnceHighRes();
-        delay(200);
-        val = sensor_.getLux();
-        Log("HighRes : ", val);
-        Log("Err     : ", sensor_.getError());
+        PAL.DelayBusy(200);
+        return sensor_.getLux();
+    }
 
+    // 200ms
+    double GetLuxHigh2Res()
+    {
         sensor_.setOnceHigh2Res();
-        delay(200);
-        val = sensor_.getLux();
-        Log("High2Res: ", val);
-        Log("Err     : ", sensor_.getError());
-
-        sensor_.setOnceHighRes();
-        delay(200);
-        val = sensor_.getRaw();
-        Log("RawRes  : ", val);
-        Log("Err     : ", sensor_.getError());
-
-        return val;
+        PAL.DelayBusy(200);
+        return sensor_.getLux();
     }
 
 
