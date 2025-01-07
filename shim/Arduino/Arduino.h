@@ -131,12 +131,12 @@ inline const char *F(const char *t)
 
 inline void delay(uint32_t ms)
 {
-    PAL.DelayBusy(ms);
+    PAL.Delay(ms);
 }
 
 inline void delayMicroseconds(uint32_t us)
 {
-    PAL.DelayBusyUs(us);
+    PAL.DelayUs(us);
 }
 
 inline uint64_t millis()
