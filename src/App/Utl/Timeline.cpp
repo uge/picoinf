@@ -203,6 +203,19 @@ void Timeline::ReportNow(const char *title)
             ++idxLast;
             ++idxThis;
         }
+
+        if (eventList_.Size() >= 2)
+        {
+            uint64_t totalUs = eventList_[eventList_.Size() - 1].timeUs - eventList_[0].timeUs;
+            uint64_t totalMs = (uint64_t)round((double)totalUs / 1'000.0);
+
+            LogNNL("[Total Duration: ");
+            LogNNL(CommasStatic(totalMs));
+            LogNNL(" ms, ");
+            LogNNL(CommasStatic(totalUs));
+            LogNNL(" us]");
+            LogNL();
+        }
     }
     LogNL();
 
@@ -225,15 +238,18 @@ void Timeline::Reset()
     iAmTheGlobal_ = iAmTheGlobalCache;
 }
 
-void Timeline::Ready(bool ready)
+uint64_t Timeline::Use(function<void(Timeline &t)> fn, const char *title)
 {
-    isReady_ = ready;
+    Timeline t;
+
+    uint64_t timeStart = t.Event("Start");
+    fn(t);
+    uint64_t timeEnd = t.Event("End");
+    t.ReportNow(title);
+
+    return timeEnd - timeStart;
 }
 
-bool Timeline::Ready()
-{
-    return isReady_;
-}
 
 void Timeline::EnableCcGlobal()
 {

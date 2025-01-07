@@ -4,6 +4,7 @@
 #include "Container.h"
 
 #include <cstdint>
+#include <functional>
 
 
 class Timeline
@@ -21,8 +22,7 @@ public:
     void ReportNow(const char *title = nullptr);
     void Reset();
 
-    void Ready(bool ready);
-    bool Ready();
+    static uint64_t Use(std::function<void(Timeline &t)> fn, const char *title = nullptr);
 
     static void EnableCcGlobal();
     static void DisableCcGlobal();
@@ -46,8 +46,6 @@ private:
     bool currentlyReporting_ = false;
 
     uint32_t firstTimeUs_ = 0;
-
-    bool isReady_ = false;
 
     bool iAmTheGlobal_ = false;
 
