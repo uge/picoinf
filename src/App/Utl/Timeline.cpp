@@ -18,6 +18,8 @@ Timeline::Timeline(const char *str)
     {
         iAmTheGlobal_ = true;
     }
+
+    Reset();
 }
 
 void Timeline::SetMaxEvents(uint32_t maxEvents)
@@ -234,7 +236,7 @@ void Timeline::Reset()
     // a short while, even when you actually are.
     bool iAmTheGlobalCache = iAmTheGlobal_;
     iAmTheGlobal_ = true;
-    Event("Reset");
+    Event("[Reset]");
     iAmTheGlobal_ = iAmTheGlobalCache;
 }
 
