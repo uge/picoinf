@@ -9,6 +9,7 @@ class MMC56x3
 public:
 
     // Address is either 0x30
+    // 24 ms
     MMC56x3(uint8_t addr, I2C::Instance instance)
     : tw_(addr, instance)
     {
@@ -16,7 +17,7 @@ public:
     }
 
     // 11ms
-    double GetMagXMicroTesla()
+    double GetMagXMicroTeslas()
     {
         sensors_event_t e;
         sensor_.getEvent(&e);
@@ -25,7 +26,7 @@ public:
     }
 
     // 11ms
-    double GetMagYMicroTesla()
+    double GetMagYMicroTeslas()
     {
         sensors_event_t e;
         sensor_.getEvent(&e);
@@ -34,7 +35,7 @@ public:
     }
 
     // 11ms
-    double GetMagZMicroTesla()
+    double GetMagZMicroTeslas()
     {
         sensors_event_t e;
         sensor_.getEvent(&e);
