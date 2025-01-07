@@ -21,7 +21,9 @@ void SI7021::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            sensor = new SI7021(instance);
+            Timeline::Use([](Timeline &t){
+                sensor = new SI7021(instance);
+            }, "Constructor");
         }
 
         return sensor;
@@ -45,32 +47,39 @@ void SI7021::SetupShell()
     }, { .argCount = 1, .help = "set i2c instance" });
 
     Shell::AddCommand("sensor.si7021.get.temp", [](vector<string> argList){
-        auto *sensor = GetSensor();
+        GetSensor();
 
-        double tempC = sensor->GetTemperatureCelsius();
-        double tempF = sensor->GetTemperatureFahrenheit();
+        Timeline::Use([](auto &t){
+            double tempC = sensor->GetTemperatureCelsius();
+            t.Event("tempC");
+            double tempF = sensor->GetTemperatureFahrenheit();
+            t.Event("tempF");
 
-        Log("TempC: ", tempC);
-        Log("TempF: ", tempF);
+            Log("TempC: ", tempC);
+            Log("TempF: ", tempF);
+        });
     }, { .argCount = 0, .help = "get temperature" });
 
     Shell::AddCommand("sensor.si7021.get.humidity", [](vector<string> argList){
-        auto *sensor = GetSensor();
+        GetSensor();
 
-        double humPct = sensor->GetHumidityPct();
-
-        Log("humPct: ", Commas(humPct));
+        Timeline::Use([](auto &t){
+            double humPct = sensor->GetHumidityPct();
+            Log("humPct: ", Commas(humPct));
+        });
     }, { .argCount = 0, .help = "get humidity" });
 
     Shell::AddCommand("sensor.si7021.get.all", [](vector<string> argList){
-        auto *sensor = GetSensor();
+        GetSensor();
 
-        double tempC  = sensor->GetTemperatureCelsius();
-        double tempF  = sensor->GetTemperatureFahrenheit();
-        double humPct = sensor->GetHumidityPct();
+        Timeline::Use([](auto &t){
+            double tempC  = sensor->GetTemperatureCelsius();
+            double tempF  = sensor->GetTemperatureFahrenheit();
+            double humPct = sensor->GetHumidityPct();
 
-        Log("TempC : ", tempC);
-        Log("TempF : ", tempF);
-        Log("humPct: ", humPct);
+            Log("TempC : ", tempC);
+            Log("TempF : ", tempF);
+            Log("humPct: ", humPct);
+        });
     }, { .argCount = 0, .help = "get all" });
 }

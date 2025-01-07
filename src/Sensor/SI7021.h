@@ -9,6 +9,7 @@ class SI7021
 public:
 
     // Address is only ever 0x40
+    // 50ms
     SI7021(I2C::Instance instance)
     : tw_(0x40, instance)
     , sensor_(&tw_)
