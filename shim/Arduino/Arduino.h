@@ -170,7 +170,7 @@ T1 constrain(T1 amt, T2 low, T3 high)
 }
 
 
-class SerialClass
+class Stream
 {
 public:
     template <typename T>
@@ -195,6 +195,12 @@ public:
     {
         LogNL();
     }
+};
+
+class SerialClass
+: public Stream
+{
+public:
 };
 
 extern SerialClass Serial;

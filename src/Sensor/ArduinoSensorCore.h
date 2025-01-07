@@ -2,6 +2,7 @@
 
 #include "Adafruit_BME280.h"
 #include "Adafruit_BMP280.h"
+#include "Adafruit_MMC56x3.h"
 #include "Adafruit_Si7021.h"
 #include "BH1750FVI.h"
 

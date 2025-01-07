@@ -99,14 +99,26 @@ set_source_files_properties(
 set(ADAFRUIT_BUSIO_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BusIO")
 target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BUSIO_LIBRARY_PATH})
 target_sources(PicoInf PRIVATE
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_BusIO_Register.cpp
     ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
     ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
 )
 set_source_files_properties(
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_BusIO_Register.cpp
     ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
     ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
     PROPERTIES
         # COMPILE_DEFINITIONS "ARDUINO=1000;DEBUG_SERIAL=Serial"
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+
+set(ADAFRUIT_MMC56X3_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_MMC56x3")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_MMC56X3_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_MMC56X3_LIBRARY_PATH}/Adafruit_MMC56x3.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_MMC56X3_LIBRARY_PATH}/Adafruit_MMC56x3.cpp
+    PROPERTIES
         COMPILE_DEFINITIONS "ARDUINO=1000"
 )
 
