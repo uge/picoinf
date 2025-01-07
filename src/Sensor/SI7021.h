@@ -16,17 +16,20 @@ public:
         sensor_.begin();
     }
 
+    // 20ms
     double GetTemperatureCelsius()
     {
         // sensor returns celsius
         return sensor_.readTemperature();
     }
 
+    // 20ms
     double GetTemperatureFahrenheit()
     {
         return (GetTemperatureCelsius() * (9.0 / 5.0)) + 32;
     }
 
+    // 20ms
     double GetHumidityPct()
     {
         return sensor_.readHumidity();
