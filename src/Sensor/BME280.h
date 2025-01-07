@@ -9,6 +9,7 @@ class BME280
 public:
 
     // Address is either 0x76 or 0x77
+    // 120ms
     BME280(uint8_t addr, I2C::Instance instance)
     : tw_(addr, instance)
     {
@@ -16,28 +17,33 @@ public:
         bme280_.begin(addr, &tw_);
     }
 
+    // 1ms
     double GetTemperatureCelsius()
     {
         // sensor returns celsius
         return bme280_.readTemperature();
     }
 
+    // 1ms
     double GetTemperatureFahrenheit()
     {
         return (GetTemperatureCelsius() * (9.0 / 5.0)) + 32;
     }
 
+    // 1ms
     double GetPressurehPa()
     {
         // sensor returns Pa
         return bme280_.readPressure() / 100;
     }
 
+    // 1ms
     double GetPressureBar()
     {
         return GetPressurehPa() * 1'000;
     }
 
+    // 1ms
     double GetAltitudeMeters()
     {
         // sensor returns meters
@@ -45,11 +51,13 @@ public:
         return bme280_.readAltitude(1013.25);
     }
 
+    // 1ms
     double GetAltitudeFeet()
     {
         return GetAltitudeMeters() * 3.28084;
     }
 
+    // 1ms
     double GetHumidityPct()
     {
         return bme280_.readHumidity();
