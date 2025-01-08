@@ -1,8 +1,10 @@
 #pragma once
 
+#include "ClassTypes.h"
 #include "JerryFunction.pre.h"
 #include "JerryScriptPORT.h"
 #include "Log.h"
+#include "Utl.h"
 
 #include "jerryscript.h"
 #include "jerryscript-port.h"
@@ -164,14 +166,10 @@ public:
                 vmHeapSizeMax_  = stats.peak_allocated_bytes;
 
                 // debug report
-                printf("Heap Stats:\n");
-                printf("Size                : %li\n", vmHeapCapacity_);
-                printf("Allocated Bytes     : %i\n", stats.allocated_bytes);
-                printf("Peak Allocated Bytes: %li\n", vmHeapSizeMax_);
-            }
-            else
-            {
-                printf("ERR --------- could not get heap stats!!\n");
+                Log("Heap Stats:\n");
+                Log("Size                : ", Commas(vmHeapCapacity_));
+                Log("Allocated Bytes     : ", Commas(stats.allocated_bytes));
+                Log("Peak Allocated Bytes: ", Commas(vmHeapSizeMax_));
             }
 
             jerry_log_set_level(JERRY_LOG_LEVEL_DEBUG);
@@ -488,16 +486,32 @@ public:
     // the function.
 
 
-    // Give native functions a way to access "extra" property since they won't have
+    // Give native functions a way to access state since they won't have
     // access to the function object to look it up themselves
-    static inline double bareFunctionExtra_ = 0;
-    static double GetNativeFunctionExtra()
+
+private:
+    struct NativeFunctionState
+    : public NonCopyable
+    , public NonMovable
     {
-        return bareFunctionExtra_;
+        jerry_value_t retVal;
+
+        double extra;
+    };
+    static inline NativeFunctionState nativeFunctionState_;
+
+    static NativeFunctionState &SetupNativeFunctionState(const jerry_call_info_t *callInfo)
+    {
+        nativeFunctionState_.retVal = jerry_undefined();
+        nativeFunctionState_.extra  = GetInternalPropertyAsNumber(callInfo->function, "extra");
+
+        return nativeFunctionState_;
     }
-    static void SetNativeFunctionExtra(double val)
+public:
+
+    static NativeFunctionState &GetNativeFunctionState()
     {
-        bareFunctionExtra_ = val;
+        return nativeFunctionState_;
     }
 
 
@@ -523,9 +537,13 @@ public:
 
             if (fn)
             {
-                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
+                auto &state = SetupNativeFunctionState(callInfo);
                 fn();
-                SetNativeFunctionExtra(0);
+                retVal = state.retVal;
+            }
+            else
+            {
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Native pointer not set");
             }
         }
 
@@ -544,7 +562,7 @@ public:
     {
         jerry_value_t retVal = jerry_undefined();
 
-        if (argc != 1)
+        if (argc != 1 || !jerry_value_is_number(argv[0]))
         {
             retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
         }
@@ -556,9 +574,50 @@ public:
 
             if (fn)
             {
-                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
+                auto &state = SetupNativeFunctionState(callInfo);
                 fn(arg);
-                SetNativeFunctionExtra(0);
+                retVal = state.retVal;
+            }
+            else
+            {
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Native pointer not set");
+            }
+        }
+
+        return retVal;
+    }
+
+    // void(uint64_t)
+    static void SetPropertyToNativeFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint64_t), void *extra = nullptr)
+    {
+        SetPropertyToJerryNativeFunction(objTarget, name, FnVoidU64Handler, (void *)fn, extra);
+    }
+
+    static jerry_value_t FnVoidU64Handler(const jerry_call_info_t *callInfo,
+                                          const jerry_value_t      argv[],
+                                          const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        if (argc != 1 || !jerry_value_is_number(argv[0]))
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else
+        {
+            uint64_t arg = (uint64_t)jerry_value_as_number(argv[0]);
+
+            void (*fn)(uint64_t) = (void (*)(uint64_t))JerryScript::GetNativePointer(callInfo->function);
+
+            if (fn)
+            {
+                auto &state = SetupNativeFunctionState(callInfo);
+                fn(arg);
+                retVal = state.retVal;
+            }
+            else
+            {
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Native pointer not set");
             }
         }
 
@@ -587,9 +646,12 @@ public:
 
             if (fn)
             {
-                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
-                retVal = jerry_number(fn());
-                SetNativeFunctionExtra(0);
+                auto &state = SetupNativeFunctionState(callInfo);
+                retVal = UseFirstDefinedFreeRemaining(state.retVal, jerry_number(fn()));
+            }
+            else
+            {
+                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Native pointer not set");
             }
         }
 
@@ -697,6 +759,7 @@ public:
     
     static void PrintPropertyDescriptor(const string &propertyName, jerry_property_descriptor_t desc)
     {
+        #if 0
         printf("Property: %s\n", propertyName.c_str());
         printf("value: %f\n", jerry_value_as_number(desc.value));
         printf("flags: %02X\n", desc.flags);
@@ -718,6 +781,7 @@ public:
         printf("JERRY_PROP_IS_SET_DEFINED         : %i\n", desc.flags & JERRY_PROP_IS_SET_DEFINED          ? 1 : 0);
 
         printf("JERRY_PROP_SHOULD_THROW           : %i\n", desc.flags & JERRY_PROP_SHOULD_THROW            ? 1 : 0);
+        #endif
     }
 
     // safe if used on a property which doesn't exist yet
@@ -982,9 +1046,9 @@ public:
             else
             {
                 // eg "ErrorType: ReferenceError"
-                printf("ErrorType: %s\n", GetExceptionErrorType(exception));
+                Log("ErrorType: ", GetExceptionErrorType(exception));
                 // eg "one is not defined"
-                printf("e.message: %s\n", GetExceptionPropertyAsString(exception, "message").c_str());
+                Log("e.message: ", GetExceptionPropertyAsString(exception, "message").c_str());
             }
 
             // eg "<anonymous>:5:5,<anonymous>:10:1"
@@ -1012,6 +1076,42 @@ public:
     static uint64_t TimeNow()
     {
         return (uint64_t)jerry_port_current_time();
+    }
+
+    // return the first value which isn't undefined.
+    // return undefined if both undefined.
+    // if the not-returned value has a value, free it.
+    static jerry_value_t UseFirstDefinedFreeRemaining(jerry_value_t val1, jerry_value_t val2)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        bool freeVal1 = true;
+        bool freeVal2 = true;
+
+        if (jerry_value_is_undefined(val1) == false)
+        {
+            retVal = val1;
+
+            freeVal1 = false;
+        }
+        else if (jerry_value_is_undefined(val2) == false)
+        {
+            retVal = val2;
+
+            freeVal2 = false;
+        }
+
+        if (freeVal1 && jerry_value_is_undefined(val1) == false)
+        {
+            jerry_value_free(val1);
+        }
+
+        if (freeVal2 && jerry_value_is_undefined(val2) == false)
+        {
+            jerry_value_free(val2);
+        }
+
+        return retVal;
     }
 
 

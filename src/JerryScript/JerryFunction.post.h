@@ -5,7 +5,7 @@ template <typename R, typename... Args>
 R JerryFunction<R(Args...)>::Handler(Args... args)
 {
     // get the "extra" internal property
-    double ptrVal = JerryScript::GetNativeFunctionExtra();
+    double ptrVal = JerryScript::GetNativeFunctionState().extra;
 
     // convert to 'this' object
     JerryFunction<R(Args...)> *obj = (JerryFunction<R(Args...)> *)(uint32_t)ptrVal;
