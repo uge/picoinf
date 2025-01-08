@@ -35,12 +35,12 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "GetTemperatureCelsius",    JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetTemperatureFahrenheit", JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetPressureHectopascals",  JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetPressureBars",          JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetAltitudeMeters",        JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetAltitudeFeet",          JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureCelsius",    JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureFahrenheit", JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureHectopascals",  JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureBars",          JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetAltitudeMeters",        JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetAltitudeFeet",          JsFnGetHandler);
             });
         });
     }

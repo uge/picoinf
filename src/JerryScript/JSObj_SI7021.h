@@ -35,9 +35,9 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "GetTemperatureCelsius",    JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetTemperatureFahrenheit", JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetHumidityPct",           JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureCelsius",    JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureFahrenheit", JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetHumidityPct",           JsFnGetHandler);
             });
         });
     }

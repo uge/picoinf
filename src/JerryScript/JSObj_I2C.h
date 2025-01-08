@@ -33,11 +33,11 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "IsAlive",     IsAliveHandler);
-                JerryScript::SetPropertyToFunction(prototype, "ReadReg8",    ReadHandler);
-                JerryScript::SetPropertyToFunction(prototype, "ReadReg16",   ReadHandler);
-                JerryScript::SetPropertyToFunction(prototype, "WriteReg8",   WriteHandler);
-                JerryScript::SetPropertyToFunction(prototype, "WriteReg16",  WriteHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "IsAlive",     IsAliveHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "ReadReg8",    ReadHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "ReadReg16",   ReadHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "WriteReg8",   WriteHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "WriteReg16",  WriteHandler);
             });
         });
     }

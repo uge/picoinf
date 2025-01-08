@@ -35,9 +35,9 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "GetMagXMicroTeslas", JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetMagYMicroTeslas", JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetMagZMicroTeslas", JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetMagXMicroTeslas", JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetMagYMicroTeslas", JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetMagZMicroTeslas", JsFnGetHandler);
             });
         });
     }

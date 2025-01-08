@@ -20,10 +20,10 @@ public:
             const auto &fieldDef = fieldDefList[i];
 
             string getFnName = string{"Get"} + fieldDef.name;
-            JerryScript::SetPropertyToFunction(obj, getFnName, Getter, msg);
+            JerryScript::SetPropertyToJerryNativeFunction(obj, getFnName, Getter, msg);
 
             string setFnName = string{"Set"} + fieldDef.name;
-            JerryScript::SetPropertyToFunction(obj, setFnName, Setter, msg);
+            JerryScript::SetPropertyToJerryNativeFunction(obj, setFnName, Setter, msg);
         }
     }
 

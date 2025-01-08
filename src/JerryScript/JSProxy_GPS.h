@@ -39,7 +39,7 @@ public:
         for (const auto &fieldName : fieldNameList)
         {
             string getFnName = string{"Get"} + fieldName;
-            JerryScript::SetPropertyToFunction(obj, getFnName, Getter, gpsFix);
+            JerryScript::SetPropertyToJerryNativeFunction(obj, getFnName, Getter, gpsFix);
         }
     }
 

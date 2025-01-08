@@ -38,8 +38,8 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "ReadVolts", JsFnHandler);
-                JerryScript::SetPropertyToFunction(prototype, "ReadRaw",   JsFnHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "ReadVolts", JsFnHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "ReadRaw",   JsFnHandler);
             });
         });
     }

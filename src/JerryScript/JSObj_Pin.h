@@ -38,8 +38,8 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "On",  JsFnHandler);
-                JerryScript::SetPropertyToFunction(prototype, "Off", JsFnHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "On",  JsFnHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "Off", JsFnHandler);
             });
         });
     }

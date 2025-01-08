@@ -35,11 +35,11 @@ public:
             JerryScript::UseThenFreeNewObj([&](auto prototype){
                 JerryScript::SetPropertyNoFree(jsFnObj, "prototype", prototype);
 
-                JerryScript::SetPropertyToFunction(prototype, "SetTemperatureCelsius",    JsFnSetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "SetTemperatureFahrenheit", JsFnSetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetLuxLowRes",             JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetLuxHighRes",            JsFnGetHandler);
-                JerryScript::SetPropertyToFunction(prototype, "GetLuxHigh2Res",           JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "SetTemperatureCelsius",    JsFnSetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "SetTemperatureFahrenheit", JsFnSetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetLuxLowRes",             JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetLuxHighRes",            JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetLuxHigh2Res",           JsFnGetHandler);
             });
         });
     }
