@@ -1,16 +1,19 @@
 #pragma once
 
-#include <functional>
-#include <string>
-#include <utility>
-using namespace std;
+#include "JerryFunction.pre.h"
+#include "JerryScriptPORT.h"
+#include "Log.h"
 
 #include "jerryscript.h"
 #include "jerryscript-port.h"
 #include "jerryscript-ext/handlers.h"
 #include "jerryscript-ext/properties.h"
 
-#include "JerryScriptPORT.h"
+#include <functional>
+#include <string>
+#include <utility>
+using namespace std;
+
 
 
 // Notes on how this all works.
@@ -366,16 +369,31 @@ public:
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Global Properties as Functions
+    // Global Properties as Native Functions
     ///////////////////////////////////////////////////////////////////////////
 
     // No particular implementation, simply forwards to the non-global function
     // using the global object as target
     template <typename T>
-    static void SetGlobalPropertyToBareFunction(const string &name, T fn)
+    static void SetGlobalPropertyToNativeFunction(const string &name, T fn, void *extra = nullptr)
     {
         UseThenFree(jerry_current_realm(), [&](auto globalObj){
-            SetPropertyToBareFunction(globalObj, name, fn);
+            SetPropertyToNativeFunction(globalObj, name, fn, extra);
+        });
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Global Properties as Jerry Functions
+    ///////////////////////////////////////////////////////////////////////////
+
+    template <typename R, typename... Args>
+    static void SetGlobalPropertyToJerryFunction(const string &name, JerryFunction<R(Args...)> &jerryFn)
+    {
+        R (*handlerFn)(Args...) = &JerryFunction<R(Args...)>::Handler;
+
+        UseThenFree(jerry_current_realm(), [&](auto globalObj){
+            SetPropertyToNativeFunction(globalObj, name, handlerFn, &jerryFn);
         });
     }
 
@@ -415,7 +433,7 @@ public:
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Properties as Functions
+    // Properties as Jerry Native Functions
     ///////////////////////////////////////////////////////////////////////////
 
     // set an object's property to be a function object.
@@ -423,10 +441,11 @@ public:
     // - tag the function object with its own name as an internal property
     // - associate native pointer data with nullptr type
     //   - same as property getter/setter
-    static void SetPropertyToFunction(jerry_value_t             objTarget,
-                                      const string             &propertyName,
-                                      jerry_external_handler_t  handler,
-                                      void                     *data = nullptr)
+    static void SetPropertyToJerryNativeFunction(jerry_value_t             objTarget,
+                                                 const string             &propertyName,
+                                                 jerry_external_handler_t  handler,
+                                                 void                     *data = nullptr,
+                                                 void                     *extra = nullptr)
     {
         // get handler function object
         jerry_value_t handlerFn = jerry_function_external(handler);
@@ -442,6 +461,11 @@ public:
         if (data)
         {
             SetNativePointer(handlerFn, nullptr, data);
+        }
+
+        if (extra)
+        {
+            SetInternalPropertyToNumber(handlerFn, "extra", (double)(uint32_t)extra);
         }
 
         // release function object
@@ -463,10 +487,55 @@ public:
     // This allows more instances where a non-capturing lambda can be used as
     // the function.
 
-    // void(uint32_t)
-    static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint32_t))
+
+    // Give native functions a way to access "extra" property since they won't have
+    // access to the function object to look it up themselves
+    static inline double bareFunctionExtra_ = 0;
+    static double GetNativeFunctionExtra()
     {
-        SetPropertyToFunction(objTarget, name, FnVoidU32Handler, (void *)fn);
+        return bareFunctionExtra_;
+    }
+    static void SetNativeFunctionExtra(double val)
+    {
+        bareFunctionExtra_ = val;
+    }
+
+
+    // void()
+    static void SetPropertyToNativeFunction(jerry_value_t objTarget, const string &name, void (*fn)(), void *extra = nullptr)
+    {
+        SetPropertyToJerryNativeFunction(objTarget, name, FnVoidVoidHandler, (void *)fn, extra);
+    }
+
+    static jerry_value_t FnVoidVoidHandler(const jerry_call_info_t *callInfo,
+                                           const jerry_value_t      argv[],
+                                           const jerry_length_t     argc)
+    {
+        jerry_value_t retVal = jerry_undefined();
+
+        if (argc != 0)
+        {
+            retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Invalid function arguments");
+        }
+        else
+        {
+            void (*fn)() = (void (*)())JerryScript::GetNativePointer(callInfo->function);
+
+            if (fn)
+            {
+                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
+                fn();
+                SetNativeFunctionExtra(0);
+            }
+        }
+
+        return retVal;
+    }
+
+    // void(uint32_t)
+    static void SetPropertyToNativeFunction(jerry_value_t objTarget, const string &name, void (*fn)(uint32_t), void *extra = nullptr)
+    {
+        SetPropertyToJerryNativeFunction(objTarget, name, FnVoidU32Handler, (void *)fn, extra);
     }
 
     static jerry_value_t FnVoidU32Handler(const jerry_call_info_t *callInfo,
@@ -487,7 +556,9 @@ public:
 
             if (fn)
             {
+                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
                 fn(arg);
+                SetNativeFunctionExtra(0);
             }
         }
 
@@ -495,9 +566,9 @@ public:
     }
 
     // double(void)
-    static void SetPropertyToBareFunction(jerry_value_t objTarget, const string &name, double (*fn)())
+    static void SetPropertyToNativeFunction(jerry_value_t objTarget, const string &name, double (*fn)(), void *extra = nullptr)
     {
-        SetPropertyToFunction(objTarget, name, FnDoubleVoidHandler, (void *)fn);
+        SetPropertyToJerryNativeFunction(objTarget, name, FnDoubleVoidHandler, (void *)fn, extra);
     }
 
     static jerry_value_t FnDoubleVoidHandler(const jerry_call_info_t *callInfo,
@@ -516,11 +587,25 @@ public:
 
             if (fn)
             {
+                SetNativeFunctionExtra(GetInternalPropertyAsNumber(callInfo->function, "extra"));
                 retVal = jerry_number(fn());
+                SetNativeFunctionExtra(0);
             }
         }
 
         return retVal;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Properties as Jerry Functions
+    ///////////////////////////////////////////////////////////////////////////
+
+    template <typename R, typename... Args>
+    static void SetPropertyToJerryFunction(jerry_value_t objTarget, const string &name, JerryFunction<R(Args...)> &jerryFn)
+    {
+        R (*handlerFn)(Args...) = &JerryFunction<R(Args...)>::Handler;
+
+        SetPropertyToNativeFunction(objTarget, name, handlerFn, &jerryFn);
     }
 
 
@@ -541,6 +626,11 @@ public:
     static void SetInternalPropertyToString(jerry_value_t objTarget, const string &propertyName, string propertyValue)
     {
         SetInternalProperty(objTarget, propertyName, jerry_string_sz(propertyValue.c_str()));
+    }
+
+    static void SetInternalPropertyToNumber(jerry_value_t objTarget, const string &propertyName, double propertyValue)
+    {
+        SetInternalProperty(objTarget, propertyName, jerry_number(propertyValue));
     }
 
     static bool GetInternalProperty(jerry_value_t obj, const string &propertyName, function<void(jerry_value_t val)> fn)
@@ -569,6 +659,17 @@ public:
 
         GetInternalProperty(obj, propertyName, [&](jerry_value_t val){
             retVal = GetValueAsString(val);
+        });
+
+        return retVal;
+    }
+
+    static double GetInternalPropertyAsNumber(jerry_value_t obj, const string &propertyName)
+    {
+        double retVal = 0;
+
+        GetInternalProperty(obj, propertyName, [&](jerry_value_t val){
+            retVal = jerry_value_as_number(val);
         });
 
         return retVal;
@@ -929,3 +1030,4 @@ private:
 };
 
 
+#include "JerryFunction.post.h"
