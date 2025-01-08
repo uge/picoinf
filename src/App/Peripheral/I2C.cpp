@@ -1,4 +1,5 @@
 #include "I2C.h"
+#include "KTime.h"
 #include "Log.h"
 #include "Shell.h"
 #include "Timeline.h"
@@ -374,6 +375,18 @@ void I2C::Init0()
     gpio_set_function(5, GPIO_FUNC_I2C);
     gpio_pull_up(4);
     gpio_pull_up(5);
+
+    // make sure we re-init if the clock speed changes
+    static bool didOnce = false;
+    if (didOnce == false)
+    {
+        didOnce = true;
+
+        KTime::RegisterCallbackScalingFactorChange([]{
+            Log("I2C::Init0 re-init due to clock change");
+            Init0();
+        });
+    }
 }
 
 void I2C::Init1()
@@ -385,6 +398,19 @@ void I2C::Init1()
     gpio_set_function(15, GPIO_FUNC_I2C);
     gpio_pull_up(14);
     gpio_pull_up(15);
+
+
+    // make sure we re-init if the clock speed changes
+    static bool didOnce = false;
+    if (didOnce == false)
+    {
+        didOnce = true;
+
+        KTime::RegisterCallbackScalingFactorChange([]{
+            Log("I2C::Init0 re-init due to clock change");
+            Init0();
+        });
+    }
 }
 
 static void ScanPretty(I2C::Instance instance)
@@ -422,6 +448,10 @@ static void ScanPretty(I2C::Instance instance)
 void I2C::SetupShell0()
 {
     Timeline::Global().Event("I2C::SetupShell0");
+
+    Shell::AddCommand("i2c0.init", [&](vector<string> argList){
+        Init0();
+    }, { .argCount = 0, .help = "I2C init"});
 
     Shell::AddCommand("i2c0.scan", [&](vector<string> argList){
         LogNL();
@@ -500,6 +530,10 @@ void I2C::SetupShell0()
 void I2C::SetupShell1()
 {
     Timeline::Global().Event("I2C::SetupShell1");
+
+    Shell::AddCommand("i2c1.init", [&](vector<string> argList){
+        Init1();
+    }, { .argCount = 0, .help = "I2C init"});
 
     Shell::AddCommand("i2c1.scan", [&](vector<string> argList){
         LogNL();
