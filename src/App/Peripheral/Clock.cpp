@@ -1440,21 +1440,24 @@ void Clock::SetupShell()
     }, { .argCount = 0, .help = "" });
 
     Shell::AddCommand("clk.freq", [](vector<string> argList) {
-        double mhz              = atof(argList[0].c_str());
-        bool   lowPowerPriority = false;
-        bool   mustBeExact      = false;
-
-        if (argList.size() >= 2)
+        if (argList.size() >= 1)
         {
-            lowPowerPriority = atoi(argList[1].c_str());
-        }
+            double mhz              = atof(argList[0].c_str());
+            bool   lowPowerPriority = false;
+            bool   mustBeExact      = false;
 
-        if (argList.size() >= 3)
-        {
-            mustBeExact = atoi(argList[2].c_str());
-        }
+            if (argList.size() >= 2)
+            {
+                lowPowerPriority = atoi(argList[1].c_str());
+            }
 
-        SetClockMHz(mhz, lowPowerPriority, mustBeExact);
+            if (argList.size() >= 3)
+            {
+                mustBeExact = atoi(argList[2].c_str());
+            }
+
+            SetClockMHz(mhz, lowPowerPriority, mustBeExact);
+        }
 
         PrintAll();
     }, { .argCount = -1, .help = "Set <x> MHz, <y> lowPowerPriority, <z> mustBeExact" });
