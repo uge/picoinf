@@ -1422,10 +1422,6 @@ void Clock::SetupShell()
 {
     Timeline::Global().Event("Clock::SetupShell");
 
-    Shell::AddCommand("clk.show", [](vector<string> argList) {
-        PrintAll();
-    }, { .argCount = 0, .help = "" });
-
     Shell::AddCommand("clk.verbose", [](vector<string> argList) {
         SetVerbose(argList[0] == "true");
     }, { .argCount = 1, .help = "set verbose <true|false>" });
