@@ -399,7 +399,6 @@ void I2C::Init1()
     gpio_pull_up(14);
     gpio_pull_up(15);
 
-
     // make sure we re-init if the clock speed changes
     static bool didOnce = false;
     if (didOnce == false)
@@ -407,8 +406,8 @@ void I2C::Init1()
         didOnce = true;
 
         KTime::RegisterCallbackScalingFactorChange([]{
-            Log("I2C::Init0 re-init due to clock change");
-            Init0();
+            Log("I2C::Init1 re-init due to clock change");
+            Init1();
         });
     }
 }
