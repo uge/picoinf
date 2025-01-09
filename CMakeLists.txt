@@ -294,12 +294,9 @@ set(JERRY_VM_THROW ON)
 set(JERRY_GLOBAL_HEAP_SIZE 16)   # in KB
 set(JERRY_STACK_LIMIT 8)        # in KB
 
-# Memory limiting -- maybe.
-# Need to experiment and see effects (initially went up).
-set(JERRY_LCACHE OFF)
-set(JERRY_PROPERTY_HASHMAP OFF)
-
 # Investigating memory usage
+# (actually seeing a script execute 14% slower when OFF, no idea why)
+# (leave this ON)
 set(JERRY_MEM_STATS ON)
 
 
