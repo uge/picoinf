@@ -172,7 +172,26 @@ public:
                 Log("Peak Allocated Bytes: ", Commas(vmHeapSizeMax_));
             }
 
-            jerry_log_set_level(JERRY_LOG_LEVEL_DEBUG);
+
+
+            // When you enable the following, and have set(JERRY_MEM_STATS ON),
+            // then you get output like this:
+            //
+            // Heap stats:
+            // Heap size = 16376 bytes
+            // Allocated = 0 bytes
+            // Peak allocated = 10792 bytes
+            // Waste = 0 bytes
+            // Peak waste = 569 bytes
+            // Allocated byte code data = 0 bytes
+            // Peak allocated byte code data = 80 bytes
+            // Allocated string data = 0 bytes
+            // Peak allocated string data = 3341 bytes
+            // Allocated object data = 0 bytes
+            // Peak allocated object data = 3340 bytes
+            // Allocated property data = 0 bytes
+            // Peak allocated property data = 3104 bytes
+            // jerry_log_set_level(JERRY_LOG_LEVEL_DEBUG);
         }
 
         // cleanup
