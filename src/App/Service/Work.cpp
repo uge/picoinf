@@ -14,7 +14,7 @@ using namespace std;
 #include "StrictMode.h"
 
 
-static const uint32_t COUNT_LIMIT = 5;
+static const uint32_t COUNT_LIMIT = 20;
 
 static KSemaphore sem_(0, COUNT_LIMIT);
 
