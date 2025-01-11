@@ -1060,7 +1060,8 @@ public:
             if (true)
             {
                 // eg "ReferenceError: one is not defined"
-                retVal += GetExceptionAsString(exception);
+                string exceptionStr = GetExceptionAsString(exception);
+                retVal += exceptionStr;
             }
             else
             {
@@ -1071,11 +1072,11 @@ public:
             }
 
             // eg "<anonymous>:5:5,<anonymous>:10:1"
-            string exceptionStr = GetExceptionPropertyAsString(exception, "stack");
-            if (exceptionStr != "")
+            string stackStr = GetExceptionPropertyAsString(exception, "stack");
+            if (stackStr != "")
             {
                 retVal += "\n";
-                retVal += exceptionStr;
+                retVal += stackStr;
             }
 
 
