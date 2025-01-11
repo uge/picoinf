@@ -291,7 +291,7 @@ set(JERRY_VM_HALT ON)
 set(JERRY_VM_THROW ON)
 
 # Memory limiting
-set(JERRY_GLOBAL_HEAP_SIZE 16)   # in KB
+set(JERRY_GLOBAL_HEAP_SIZE 24)   # in KB
 set(JERRY_STACK_LIMIT 8)        # in KB
 
 # Investigating memory usage
