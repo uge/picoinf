@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BME280.h"
+#include "BMP280.h"
 #include "I2C.h"
 #include "JerryScriptUtl.h"
 
