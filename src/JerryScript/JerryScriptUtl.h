@@ -166,7 +166,7 @@ public:
                 vmHeapSizeMax_  = stats.peak_allocated_bytes;
 
                 // debug report
-                Log("Heap Stats:\n");
+                Log("Heap Stats:");
                 Log("Size                : ", Commas(vmHeapCapacity_));
                 Log("Allocated Bytes     : ", Commas(stats.allocated_bytes));
                 Log("Peak Allocated Bytes: ", Commas(vmHeapSizeMax_));
