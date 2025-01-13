@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Evm.h"
 #include "Log.h"
 #include "NMEAStringMaker.h"
 #include "NMEAStringParser.h"
