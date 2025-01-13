@@ -59,7 +59,8 @@ public:
     static bool Write(const std::string &path, const std::string &data);
     static void Touch(std::string fileName);
     static void Trunc(const std::string &fileName, uint32_t size);
-
+    static bool Copy(const std::string &fromPath, const std::string &toPath);
+    static bool Move(const std::string &fromPath, const std::string &toPath);
 
     /////////////////////////////////////////////////////////////////
     // Directory Commands

@@ -442,6 +442,54 @@ void FilesystemLittleFS::Trunc(const string &fileName, uint32_t size)
     f.Close();
 }
 
+bool FilesystemLittleFS::Copy(const string &fromPath, const string &toPath)
+{
+    bool retVal = false;
+
+    if (FileExists(fromPath))
+    {
+        bool dstOk = true;
+
+        // if destination exists
+        DirEnt dirEnt;
+        if (Stat(toPath, dirEnt))
+        {
+            if (dirEnt.type == DirEnt::Type::FILE)
+            {
+                // delete
+                dstOk = Remove(toPath);
+            }
+            else
+            {
+                // error - can't copy a file to a directory
+                dstOk = false;
+            }
+        }
+
+        if (dstOk)
+        {
+            // copy
+            string data = Read(fromPath);
+
+            retVal = Write(toPath, data);
+        }
+    }
+
+    return retVal;
+}
+
+bool FilesystemLittleFS::Move(const string &fromPath, const string &toPath)
+{
+    bool retVal = false;
+
+    if (Copy(fromPath, toPath))
+    {
+        retVal = Remove(fromPath);
+    }
+
+    return retVal;
+}
+
 
 /////////////////////////////////////////////////////////////////
 // Public Interface - Directory Commands
@@ -684,7 +732,7 @@ void FilesystemLittleFS::SetupShell()
         if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 2, .help = "trunc <x> file to <y> bytes" });
 
-    Shell::AddCommand("lfs.cat", [](vector<string> argList){
+    Shell::AddCommand("lfs.hexcat", [](vector<string> argList){
         string fileName = argList[0];
 
         Log("Cat file ", fileName);
@@ -719,16 +767,16 @@ void FilesystemLittleFS::SetupShell()
             }
             else
             {
-                Log("Cat ERR: cannot cat a directory");
+                Log("Cat ERR: cannot hexcat a directory");
             }
         }
         else
         {
             Log("Cat ERR: file does not exist");
         }
-    }, { .argCount = 1, .help = "cat file <x>" });
+    }, { .argCount = 1, .help = "hexcat file <x>" });
 
-    Shell::AddCommand("lfs.read", [](vector<string> argList){
+    Shell::AddCommand("lfs.cat", [](vector<string> argList){
         string &fileName = argList[0];
 
         Timeline t;
@@ -740,7 +788,7 @@ void FilesystemLittleFS::SetupShell()
 
         t.Event("end");
         if (showTimeline_) { t.ReportNow(); }
-    }, { .argCount = 1, .help = "read file <x>" });
+    }, { .argCount = 1, .help = "cat file <x>" });
 
     Shell::AddCommand("lfs.write", [](vector<string> argList){
         string &fileName = argList[0];
@@ -754,6 +802,32 @@ void FilesystemLittleFS::SetupShell()
         t.Event("end");
         if (showTimeline_) { t.ReportNow(); }
     }, { .argCount = 2, .help = "write to file <x> string <y>" });
+
+    Shell::AddCommand("lfs.cp", [](vector<string> argList){
+        string &fromPath = argList[0];
+        string &toPath   = argList[1];
+
+        Timeline t;
+        t.Event("start");
+
+        Log("Copy ", Copy(fromPath, toPath) ? "Success" : "Failure");
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
+    }, { .argCount = 2, .help = "copy file <x> to <y>" });
+
+    Shell::AddCommand("lfs.mv", [](vector<string> argList){
+        string &fromPath = argList[0];
+        string &toPath   = argList[1];
+
+        Timeline t;
+        t.Event("start");
+
+        Log("Move ", Move(fromPath, toPath) ? "Success" : "Failure");
+
+        t.Event("end");
+        if (showTimeline_) { t.ReportNow(); }
+    }, { .argCount = 2, .help = "move file <x> to <y>" });
 
 
     /////////////////////////////////////////
