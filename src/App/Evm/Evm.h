@@ -74,7 +74,7 @@ private:
     //////////////////////////////////////////////////////////////////////
 
 public:
-    static bool RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeout, uint64_t timeNow = PAL.Micros());
+    static bool RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeoutAbs);
     static void DeRegisterTimedEventHandler(TimedEventHandler *teh);
     static bool IsRegisteredTimedEventHandler(TimedEventHandler *teh);
     static void DebugTimedEventHandler(const char *str, TimedEventHandler *obj = nullptr);
@@ -91,7 +91,7 @@ private:
         // never let different objects compare equivalent.
         // meaning, if both set to expire at the same time, then
         // fine, but decide one is "less" than the other by looking
-        // at the pointer value.  otherwise the insert/delete api
+        // at seqno value.  otherwise the insert/delete api
         // for multiset winds up operating on groups at a time
         // when all I want is individual object access.
         bool operator()(TimedEventHandler * const &teh1,
@@ -105,58 +105,27 @@ private:
             }
             else
             {
-                // get time in 64-bit signed.  we subtract the time queued from this
-                // value, which will give the time passed since then, as a positive
-                // number.
-                uint64_t timeNow = PAL.Micros();
-
-                uint64_t timeSinceSchedule1 = timeNow - teh1->timeQueued_;
-                uint64_t timeSinceSchedule2 = timeNow - teh2->timeQueued_;
-
-                // do time remaining calculations in 64-bit signed space to allow
-                // for overdue timers to be a negative value.  This allows for
-                // very large timeout periods, and ensures the possible difference
-                // to fit fully within the negative and positive space in the signed
-                // int.
-                int64_t timeRemaining1 = (int64_t)teh1->timeout_ - timeSinceSchedule1;
-                int64_t timeRemaining2 = (int64_t)teh2->timeout_ - timeSinceSchedule2;
-
-                if (timeRemaining1 < timeRemaining2)
+                if (teh1->timeoutAbs_ < teh2->timeoutAbs_)
                 {
                     retVal = true;
                 }
-                else if (timeRemaining1 == timeRemaining2)
+                else if (teh1->timeoutAbs_ == teh2->timeoutAbs_)
                 {
                     // in a scenario where two timers are both set to go off at the
                     // same time, we want the one which was scheduled first to be
                     // fired first.
                     // This is helpful in a scenario where there are zero-length
                     // timers, we don't want one to starve out another.
-                    if (timeSinceSchedule1 < timeSinceSchedule2)
-                    {
-                        retVal = false;
-                    }
-                    else if (timeSinceSchedule1 == timeSinceSchedule2)
-                    {
-                        // ok, so they were scheduled at the same time, and have
-                        // the same duration remaining.
-                        // we know they're not the same object, so let pointer
-                        // value decide
-                        if (teh1 < teh2)
-                        {
-                            retVal = true;
-                        }
-                        else
-                        {
-                            retVal = false;
-                        }
-                    }
-                    else    // timeSinceSchedule1 > timeSinceSchedule2
+                    if (teh1->seqNo_ < teh2->seqNo_)
                     {
                         retVal = true;
                     }
+                    else
+                    {
+                        retVal = false;
+                    }
                 }
-                else    // expiryOne > expiryTwo
+                else    // teh1->timeoutAbs_ > teh2->timeoutAbs_
                 {
                     retVal = false;
                 }

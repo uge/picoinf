@@ -22,16 +22,15 @@ uint64_t Evm::GetTimeToNextTimedEvent()
     {
         TimedEventHandler *teh = *timedEventHandlerList_.begin();
 
-        uint64_t timePassedSinceQueuing = PAL.Micros() - teh->timeQueued_;
-        
-        // check if event is in the future
-        if (timePassedSinceQueuing < teh->timeout_)
+        uint64_t timeNow = PAL.Micros();
+
+        if (teh->timeoutAbs_ <= timeNow)
         {
-            sleepUs = teh->timeout_ - timePassedSinceQueuing;
+            sleepUs = 0;
         }
         else
         {
-            sleepUs = 0;
+            sleepUs = teh->timeoutAbs_ - timeNow;
         }
     }
     else
@@ -323,7 +322,7 @@ uint32_t Evm::ServiceLowPriorityWork()
 // Timed Events
 //////////////////////////////////////////////////////////////////////
 
-bool Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeout, uint64_t timeNow)
+bool Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeoutAbs)
 {
     // Keeping track of these states here, and not in the
     // TimedEventHandler code, is necessary because for interval timers, the
@@ -331,8 +330,8 @@ bool Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeout, ui
     // TimedEventHandler code to do so.
     
     // Keep track of some useful state
-    teh->timeQueued_ = timeNow;
-    teh->timeout_    = timeout;
+    teh->timeQueued_ = PAL.Micros();
+    teh->timeoutAbs_ = timeoutAbs;
 
     // Queue it
     timedEventHandlerList_.insert(teh);
@@ -363,12 +362,10 @@ uint32_t Evm::ServiceTimedEventHandlers()
         do {
             teh = *timedEventHandlerList_.begin();
             
-            uint64_t timeNow = PAL.Micros();
+            uint64_t timePreExecution = PAL.Micros();
             
-            // Check if the time since accepting event is gte than
-            // the timeout the event was supposed to wait for.
-            // Handles wraparound this way.
-            if ((timeNow - teh->timeQueued_) >= teh->timeout_)
+            // check if the timer expiry is in the past
+            if (teh->timeoutAbs_ <= timePreExecution)
             {
                 // drop this element from the list
                 timedEventHandlerList_.erase(teh);
@@ -390,47 +387,11 @@ uint32_t Evm::ServiceTimedEventHandlers()
                     // provided intervals aren't completely missed).
                     if (teh->isRigid_)
                     {
-                        // Calculate the wall clock time when next event should
-                        // actually fire.
-                        uint64_t timeNextEventShouldFire = 
-                            (teh->timeQueued_ + teh->timeout_) + // wall time when scheduled
-                            teh->intervalTimeout_;               // plus the interval
-                        
-                        // Determine actaul current wall clock time
-                        timeNow = PAL.Micros();
-                        
-                        // Cope with the fact that the calculated
-                        // next time may be in the past, complicating comparing
-                        // the two numbers.
-                        //
-                        // In the scenario where the calculated time is in the
-                        // future, the duration into the future should be
-                        // less-than or equal-to the interval duration, but
-                        // still a positive number.
-                        //
-                        // In the scenario where the calculated next time is in
-                        // the past, the subtraction will lead to a larger
-                        // number than the interval, which is what happens with
-                        // negative numbers in unsigned ints, so we know it's
-                        // the past.
-                        //
-                        uint64_t timeDiff = timeNextEventShouldFire - timeNow;
-                        
-                        uint64_t delay;
-                        if (timeDiff <= teh->intervalTimeout_)
-                        {
-                            delay = timeDiff;
-                        }
-                        else
-                        {
-                            delay = 0;
-                        }
-                        
-                        RegisterTimedEventHandler(teh, delay, timeNow);
+                        RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->intervalTimeout_);
                     }
                     else
                     {
-                        RegisterTimedEventHandler(teh, teh->intervalTimeout_);
+                        RegisterTimedEventHandler(teh, timePreExecution + teh->intervalTimeout_);
                     }
                 }
                 
@@ -576,16 +537,16 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
     LogNL();
     for (auto &teh : timedEventHandlerList_)
     {
-        int64_t timeRemaining = teh->timeout_ - (timeNow - teh->timeQueued_);
-        uint64_t timeoutTime = teh->timeQueued_ + teh->timeout_;
+        int64_t timeRemaining = teh->timeoutAbs_ - timeNow;
 
         Log(teh->origin_);
         Log("ptr           ", Commas((uint32_t)teh));
         Log("id_           ", teh->id_);
         Log("timeQueued_   ", StrUtl::PadLeft(Commas(teh->timeQueued_), ' ', 13));
-        Log("timeout_      ", StrUtl::PadLeft(Commas(teh->timeout_), ' ', 13));
-        Log("timeoutTime   ", StrUtl::PadLeft(Commas(timeoutTime), ' ', 13));
+        Log("timeoutAbs_   ", StrUtl::PadLeft(Commas(teh->timeoutAbs_), ' ', 13));
+        Log("timeoutDelta_ ", StrUtl::PadLeft(Commas(teh->timeoutDelta_), ' ', 13));
         Log("timeRemaining ", StrUtl::PadLeft(Commas(timeRemaining), ' ', 13));
+        Log("seqNo_        ", StrUtl::PadLeft(Commas(teh->seqNo_), ' ', 13));
         Log("calledCount   ", StrUtl::PadLeft(Commas(teh->calledCount_), ' ', 13));
 
         LogNL();
@@ -598,6 +559,8 @@ void Evm::TestTimedEventHandler()
     TimedEventHandlerDelegate t2;
     TimedEventHandlerDelegate t3;
     TimedEventHandlerDelegate t4;
+    TimedEventHandlerDelegate t5;
+    TimedEventHandlerDelegate t6;
 
     t1.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t1");
@@ -619,6 +582,21 @@ void Evm::TestTimedEventHandler()
         Log('[', PAL.Millis(), "] ", "t4");
     });
     t4.RegisterForTimedEvent(25);
+
+
+    // see two timers compete for the same time
+    uint64_t timeNow = PAL.Millis();
+    uint64_t timeThen = timeNow + 20;
+    t5.SetCallback([&](){
+        Log('[', PAL.Millis(), "] ", "t5");
+    });
+    t5.RegisterForTimedEventAt(timeThen);
+    
+    t6.SetCallback([&](){
+        Log('[', PAL.Millis(), "] ", "t6");
+    });
+    t6.RegisterForTimedEventAt(timeThen);
+
 
     DebugTimedEventHandler("After t4");
 

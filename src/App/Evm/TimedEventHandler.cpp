@@ -13,9 +13,16 @@ static void LogIfTooLarge(uint64_t ms)
     }
 }
 
+bool TimedEventHandler::RegisterForTimedEventAt(uint64_t absTimeMs)
+{
+    LogIfTooLarge(absTimeMs);
+    return RegisterForTimedEventAt(Micros{absTimeMs * 1000});
+}
+
 bool TimedEventHandler::RegisterForTimedEvent(uint64_t timeout)
 {
     LogIfTooLarge(timeout);
+
     return RegisterForTimedEvent(Micros{timeout * 1000});
 }
 
@@ -46,7 +53,7 @@ bool TimedEventHandler::RegisterForTimedEventIntervalRigid(uint64_t timeout, uin
 }
 
 
-bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
+bool TimedEventHandler::RegisterForTimedEventAt(Micros absTime)
 {
     // Don't allow yourself to be scheduled more than once.
     // Cache whether this is an interval callback since that
@@ -56,8 +63,21 @@ bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
     DeRegisterForTimedEvent();
     isInterval_ = isIntervalCache;
     isRigid_    = isRigidCache;
-    
-    return Evm::RegisterTimedEventHandler(this, timeout.timeout_);
+
+    // give this registration a unique incrementing number, so tie-breaks
+    // between this and another time set for the same expiry can be
+    // broken when sorting (earliest setter wins).
+    seqNo_ = seqNoNext_;
+    ++seqNoNext_;
+
+    return Evm::RegisterTimedEventHandler(this, absTime.value_);
+}
+
+bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
+{
+    timeoutDelta_ = timeout.value_;
+
+    return RegisterForTimedEventAt(Micros{PAL.Micros() + timeoutDelta_});
 }
 
 bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
@@ -65,7 +85,7 @@ bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
     isInterval_ = 1;
     isRigid_    = 0;
     
-    intervalTimeout_ = timeout.timeout_;
+    intervalTimeout_ = timeout.value_;
     
     return RegisterForTimedEvent(timeout);
 }
@@ -75,7 +95,7 @@ bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout, Micros fir
     isInterval_ = 1;
     isRigid_    = 0;
     
-    intervalTimeout_ = timeout.timeout_;
+    intervalTimeout_ = timeout.value_;
     
     return RegisterForTimedEvent(firstTimeout);
 }
