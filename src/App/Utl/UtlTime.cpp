@@ -43,6 +43,11 @@ char *TimestampFromUs(uint64_t usTime)
     return buf;
 }
 
+char *TimestampFromMs(uint64_t msTime)
+{
+    return TimestampFromUs(msTime * 1000);
+}
+
 string TS()
 {
     string retVal;

@@ -7,6 +7,7 @@
 // purposefully does not do operations which may allocate memory,
 // thus this function is safe to call from ISRs
 extern char *TimestampFromUs(uint64_t usTime);
+extern char *TimestampFromMs(uint64_t msTime);
 
 extern std::string TS();
 
