@@ -416,6 +416,7 @@ bool FilesystemLittleFS::Write(const string &path, const string &data)
 {
     bool retVal = false;
 
+    Remove(path);
     auto f = GetFile(path);
     if (f.Open())
     {
@@ -454,12 +455,7 @@ bool FilesystemLittleFS::Copy(const string &fromPath, const string &toPath)
         DirEnt dirEnt;
         if (Stat(toPath, dirEnt))
         {
-            if (dirEnt.type == DirEnt::Type::FILE)
-            {
-                // delete
-                dstOk = Remove(toPath);
-            }
-            else
+            if (dirEnt.type != DirEnt::Type::FILE)
             {
                 // error - can't copy a file to a directory
                 dstOk = false;
