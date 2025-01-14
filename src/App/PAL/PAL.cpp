@@ -658,7 +658,7 @@ void PlatformAbstractionLayer::SetupShell()
         string sysTime = Time::GetDateTimeFromSystemEpochTimeUs(timeUs);
 
         Log("System Time: ", sysTime);
-        Log("Uptime     : ", StrUtl::PadLeft(Time::GetTimeFromUs(timeUs), ' ', sysTime.size()), " (", Commas(timeUs), ")");
+        Log("Uptime     : ", StrUtl::PadLeft(Time::GetTimeFromUs(timeUs), ' ', (uint8_t)sysTime.size()), " (", Commas(timeUs), ")");
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){
