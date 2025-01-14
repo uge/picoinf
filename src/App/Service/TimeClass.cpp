@@ -34,6 +34,24 @@ void Time::SetDateTime(string dt)
     timeDeltaUs_ = MakeEpochTimeUsFromDateTime(dt) - PAL.Micros();
 }
 
+void Time::SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
+{
+    // take the string that represents the current time and modify it
+    char *dateTimeBuffer = (char *)GetDateTime();
+
+    // 2206-11-01 18:30:30.000002
+    // 00000000001111111111222222
+    // 01234567890123456789012345
+
+    // have to restore the null-overwritten characters after each operation
+    FormatStrC(&dateTimeBuffer[11], 3, "%02u", hour);   dateTimeBuffer[11 + 2] = ':';
+    FormatStrC(&dateTimeBuffer[14], 3, "%02u", minute); dateTimeBuffer[14 + 2] = ':';
+    FormatStrC(&dateTimeBuffer[17], 3, "%02u", second); dateTimeBuffer[17 + 2] = '.';
+    FormatStrC(&dateTimeBuffer[20], 7, "%06u", us);
+
+    SetDateTime(dateTimeBuffer);
+}
+
 const char *Time::GetDateTime()
 {
     return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
@@ -259,9 +277,20 @@ uint64_t Time::MakeEpochTimeUsFromDateTime(string dt)
 
 void Time::SetupShell()
 {
-    Shell::AddCommand("time.set", [](vector<string> argList){
+    Shell::AddCommand("time.set.dt", [](vector<string> argList){
         SetDateTime(argList[0]);
     }, { .argCount = 1, .help = "wall clock set datetime"});
+
+    Shell::AddCommand("time.set.t", [](vector<string> argList){
+        uint8_t  hour = (uint8_t)atoi(argList[0].c_str());
+        uint8_t  min  = (uint8_t)atoi(argList[1].c_str());
+        uint8_t  sec  = (uint8_t)atoi(argList[2].c_str());
+        uint32_t us   = (uint32_t)atoi(argList[3].c_str());
+
+        Log("Time Before: ", GetDateTime());
+        SetTime(hour, min, sec, us);
+        Log("Time After : ", GetDateTime());
+    }, { .argCount = 4, .help = "wall clock set time <hour> <min> <sec> <us>"});
 
     Shell::AddCommand("time.set.delta", [](vector<string> argList){
         timeDeltaUs_ = stoull(argList[0].c_str());

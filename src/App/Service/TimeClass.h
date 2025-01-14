@@ -16,6 +16,7 @@ public:
 
     // set and access the nominal time
     static void SetDateTime(std::string dt);
+    static void SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
     static const char *GetDateTime();
 
     // see system epoch in terms of the nominal time
