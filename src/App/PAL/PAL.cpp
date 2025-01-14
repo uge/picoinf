@@ -655,10 +655,10 @@ void PlatformAbstractionLayer::SetupShell()
     Shell::AddCommand("sys.time", [](vector<string>){
         uint64_t timeUs = PAL.Micros();
 
-        string sysTime = Time::GetDateTimeFromSystemEpochTimeUs(timeUs);
+        string sysTime = Time::GetDateTimeFromUs(timeUs);
 
         Log("System Time: ", sysTime);
-        Log("Uptime     : ", StrUtl::PadLeft(Time::GetTimeFromUs(timeUs), ' ', (uint8_t)sysTime.size()), " (", Commas(timeUs), ")");
+        Log("Uptime     : ", StrUtl::PadLeft(Time::MakeTimeFromUs(timeUs), ' ', (uint8_t)sysTime.size()), " (", Commas(timeUs), ")");
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){

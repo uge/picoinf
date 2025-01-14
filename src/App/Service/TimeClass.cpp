@@ -31,23 +31,50 @@ static void CompareClocks()
 
 void Time::SetDateTime(string dt)
 {
-    timeDeltaUs_ = GetEpochTimeUsFromDateTime(dt) - PAL.Micros();
+    timeDeltaUs_ = MakeEpochTimeUsFromDateTime(dt) - PAL.Micros();
 }
 
 const char *Time::GetDateTime()
 {
-    return GetDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
+    return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
 }
-
-const char *Time::GetDateTimeFromSystemEpochTimeUs(uint64_t timeUs)
-{
-    return GetDateTimeFromUs(timeUs + timeDeltaUs_);
-}
-
-
-
 
 const char *Time::GetDateTimeFromUs(uint64_t timeUs)
+{
+    return MakeDateTimeFromUs(timeUs + timeDeltaUs_);
+}
+
+const char *Time::GetDateTimeFromMs(uint64_t timeMs)
+{
+    return GetDateTimeFromUs(timeMs * 1'000);
+}
+
+
+const char *Time::GetTimeShortFromUs(uint64_t timeUs)
+{
+    // starts as full datetime including microseconds
+    // 2025-01-14 16:43:24.259829
+    char *timeAt = (char *)GetDateTimeFromUs(timeUs);
+
+    // trim to just time and milliseconds
+    timeAt = &timeAt[11];
+
+    return timeAt;
+}
+
+const char *Time::GetTimeShortFromMs(uint64_t timeMs)
+{
+    char *timeAt = (char *)GetTimeShortFromUs(timeMs * 1'000);
+
+    // trim off microseconds
+    timeAt[12] = '\0';
+
+    return timeAt;
+}
+
+
+
+const char *Time::MakeDateTimeFromUs(uint64_t timeUs)
 {
     // Static buffer to hold the datetime string (enough space for full datetime and microseconds)
     // 2206-11-01 18:30:30.000002   (26 char)
@@ -83,15 +110,15 @@ const char *Time::GetDateTimeFromUs(uint64_t timeUs)
 }
 
 
-const char *Time::GetDateTimeFromMs(uint64_t timeMs)
+const char *Time::MakeDateTimeFromMs(uint64_t timeMs)
 {
-    return GetDateTimeFromUs(timeMs * 1'000);
+    return MakeDateTimeFromUs(timeMs * 1'000);
 }
 
 
 // purposefully does not do operations which may allocate memory,
 // thus this function is safe to call from ISRs
-const char *Time::GetTimeFromUs(uint64_t timeUs)
+const char *Time::MakeTimeFromUs(uint64_t timeUs)
 {
     uint64_t time = timeUs;
 
@@ -127,16 +154,16 @@ const char *Time::GetTimeFromUs(uint64_t timeUs)
 }
 
 
-const char *Time::GetTimeFromMs(uint64_t timeMs)
+const char *Time::MakeTimeFromMs(uint64_t timeMs)
 {
-    return GetTimeFromUs(timeMs * 1000);
+    return MakeTimeFromUs(timeMs * 1000);
 }
 
 
 // return the time without hours, with ms-resolution
-string Time::GetTimeShortFromMs(uint64_t timeMs)
+string Time::MakeTimeShortFromMs(uint64_t timeMs)
 {
-    string ts = string{GetTimeFromUs(timeMs  * 1'000)};
+    string ts = string{MakeTimeFromUs(timeMs  * 1'000)};
 
     auto pos = ts.find(':');
 
@@ -149,7 +176,7 @@ string Time::GetTimeShortFromMs(uint64_t timeMs)
 }
 
 
-uint64_t Time::GetEpochTimeUsFromDateTime(string dt)
+uint64_t Time::MakeEpochTimeUsFromDateTime(string dt)
 {
     // Date parsing: "yyyy-mm-dd"
     int year = 0;
