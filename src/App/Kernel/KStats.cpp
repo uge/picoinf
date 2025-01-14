@@ -3,6 +3,7 @@
 #include "KStats.h"
 #include "Log.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "Utl.h"
 
@@ -41,7 +42,7 @@ static string ToString(eTaskState state)
 // CPU Time Stats
 //
 // Each captured frame consists of the CPU time for all tasks in that
-// period, for that periodd.
+// period, for that period.
 /////////////////////////////////////////////////////////////////////
 
 struct KTaskCpuTime
@@ -59,8 +60,8 @@ struct KTaskCpuTimeFrame
 
     void Print() const
     {
-        Log("Time at capture: ", TimestampFromUs(timeAtCapture));
-        Log("Duration       : ", TimestampFromUs(duration));
+        Log("Time at capture: ", Time::GetTimeFromUs(timeAtCapture));
+        Log("Duration       : ", Time::GetTimeFromUs(duration));
 
         for (const auto &[name, taskCpuTime]: taskCpuTimeList)
         {

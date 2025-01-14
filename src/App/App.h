@@ -21,6 +21,7 @@
 #include "PeripheralControl.h"
 #include "Sensor.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "USB.h"
 #include "Utl.h"
@@ -79,6 +80,7 @@ public:
             PeripheralControl::SetupShell();
             Sensor::SetupShell();
             Shell::Init();
+            Time::SetupShell();
             Timeline::SetupShell();
             UartSetupShell();
             USB::SetupShell();

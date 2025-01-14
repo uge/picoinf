@@ -1,5 +1,6 @@
 #include "PAL.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "Utl.h"
 #include "Work.h"
@@ -200,7 +201,7 @@ void Timeline::ReportNow(const char *title)
             fnPrint("%%%us: ",     len,   evtThis.name);
             fnPrint("%%%us ms, ",  lenMs, CommasStatic(diffMs).c_str());
             fnPrint("%%%us us - ", lenUs, CommasStatic(diffUs).c_str());
-            fnPrint("%%12s\n",     12,    TimestampFromUs(evtThis.timeUs));
+            fnPrint("%%12s\n",     12,    Time::GetTimeFromUs(evtThis.timeUs));
 
             ++idxLast;
             ++idxThis;

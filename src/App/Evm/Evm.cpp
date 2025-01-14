@@ -2,6 +2,7 @@
 #include "PAL.h"
 #include "Utl.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 
 #include <vector>
@@ -428,7 +429,7 @@ void Evm::DumpStats()
     {
         StatsSnapshot &ss = statsHistory_[i];
 
-        Log("Stats from ", TimestampFromUs(ss.snapshotTime));
+        Log("Stats from ", Time::GetTimeFromUs(ss.snapshotTime));
         DumpStats(ss.stats, STATS_INTERVAL_MS * 1'000);
         LogNL();
     }
@@ -441,7 +442,7 @@ void Evm::DumpStats()
     }
     uint64_t durationCurrentStats = timeNow - currentStatsStartedAt;
 
-    Log("Current Stats: ", TimestampFromUs(timeNow));
+    Log("Current Stats: ", Time::GetTimeFromUs(timeNow));
     DumpStats(stats_, durationCurrentStats);
     LogNL();
 }
@@ -531,7 +532,7 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
 
     // log current time
     uint64_t timeNow = PAL.Micros();
-    Log("Current time - ", Commas(timeNow), " - ", TimestampFromUs(timeNow));
+    Log("Current time - ", Commas(timeNow), " - ", Time::GetTimeFromUs(timeNow));
 
     Log(timedEventHandlerList_.size(), " objects");
     LogNL();

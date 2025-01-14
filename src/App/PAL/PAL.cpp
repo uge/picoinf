@@ -3,6 +3,7 @@
 #include "JSONMsgRouter.h"
 #include "Log.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "VersionStr.h"
 #include "WDT.h"
@@ -652,8 +653,12 @@ void PlatformAbstractionLayer::SetupShell()
     }, { .help = "crash board" });
 
     Shell::AddCommand("sys.time", [](vector<string>){
-        uint64_t time = PAL.Micros();
-        Log(Commas(time), " - ", TimestampFromUs(time));
+        uint64_t timeUs = PAL.Micros();
+
+        string sysTime = Time::GetDateTimeFromSystemEpochTimeUs(timeUs);
+
+        Log("System Time: ", sysTime);
+        Log("Uptime     : ", StrUtl::PadLeft(Time::GetTimeFromUs(timeUs), ' ', sysTime.size()), " (", Commas(timeUs), ")");
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){

@@ -12,6 +12,5 @@ target_sources(PicoInf PRIVATE
     UtlBits.cpp
     UtlFormat.cpp
     UtlString.cpp
-    UtlTime.cpp
     VersionStr.cpp
 )
