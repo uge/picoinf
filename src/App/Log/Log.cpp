@@ -1,13 +1,13 @@
 #include "Log.h"
-
-#include <stdio.h>
-
 #include "PAL.h"
 #include "Shell.h"
 #include "Timeline.h"
 #include "UART.h"
 #include "Utl.h"
 
+#include <stdio.h>
+
+#include <cinttypes>
 #include <cstring>
 using namespace std;
 
@@ -186,7 +186,7 @@ void LogX(char val, uint8_t count)
 
 void LogNNL(uint64_t val)
 {
-    FormatAndUartSend("%lld", val);
+    FormatAndUartSend("%" PRIu64, val);
 }
 
 void Log(uint64_t val)
