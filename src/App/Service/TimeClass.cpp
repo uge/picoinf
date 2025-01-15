@@ -29,60 +29,95 @@ static void CompareClocks()
 
 
 
-int64_t Time::SetDateTime(string dt)
+
+
+static void Overlay(char *dtBuf, uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
 {
-    uint64_t timeDeltaUsBefore = timeDeltaUs_;
-
-    timeDeltaUs_ = MakeEpochTimeUsFromDateTime(dt) - PAL.Micros();
-
-    return (int64_t)(timeDeltaUs_ - timeDeltaUsBefore);
-}
-
-int64_t Time::SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
-{
-    // take the string that represents the current time and modify it
-    char *dateTimeBuffer = (char *)GetDateTime();
-
     // 2206-11-01 18:30:30.000002
     // 00000000001111111111222222
     // 01234567890123456789012345
 
     // have to restore the null-overwritten characters after each operation
-    FormatStrC(&dateTimeBuffer[11], 3, "%02u", hour);   dateTimeBuffer[11 + 2] = ':';
-    FormatStrC(&dateTimeBuffer[14], 3, "%02u", minute); dateTimeBuffer[14 + 2] = ':';
-    FormatStrC(&dateTimeBuffer[17], 3, "%02u", second); dateTimeBuffer[17 + 2] = '.';
-    FormatStrC(&dateTimeBuffer[20], 7, "%06u", us);
-
-    return SetDateTime(dateTimeBuffer);
+    FormatStrC(&dtBuf[11], 3, "%02u", hour);   dtBuf[11 + 2] = ':';
+    FormatStrC(&dtBuf[14], 3, "%02u", minute); dtBuf[14 + 2] = ':';
+    FormatStrC(&dtBuf[17], 3, "%02u", second); dtBuf[17 + 2] = '.';
+    FormatStrC(&dtBuf[20], 7, "%06u", us);
 }
 
-const char *Time::GetDateTime()
+
+
+
+
+
+/////////////////////////////////////////////////////////////////
+// Notional time
+/////////////////////////////////////////////////////////////////
+
+
+int64_t Time::SetNotionalDateTimeUs(uint64_t us)
+{
+    systemTimeAtChange_ = PAL.Micros();
+
+    uint64_t timeDeltaUsBefore = timeDeltaUs_;
+
+    timeDeltaUs_ = us - systemTimeAtChange_;
+
+    return (int64_t)(timeDeltaUs_ - timeDeltaUsBefore);
+}
+
+int64_t Time::SetNotionalDateTime(string dt)
+{
+    return SetNotionalDateTimeUs(MakeUsFromDateTime(dt));
+}
+
+int64_t Time::SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
+{
+    // take the string that represents the current time and modify it
+    char *dateTimeBuffer = (char *)GetNotionalDateTime();
+
+    Overlay(dateTimeBuffer, hour, minute, second, us);
+
+    return SetNotionalDateTime(dateTimeBuffer);
+}
+
+const char *Time::GetNotionalDateTime()
 {
     return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
 }
 
-uint64_t Time::GetTimeDeltaUs()
+uint64_t Time::GetNotionalTimeDeltaUs()
 {
     return timeDeltaUs_;
 }
 
 
-const char *Time::GetDateTimeFromUs(uint64_t timeUs)
+
+/////////////////////////////////////////////////////////////////
+// Relationship between Notional time and System time
+/////////////////////////////////////////////////////////////////
+
+uint64_t Time::GetSystemUsAtLastTimeChange()
+{
+    return systemTimeAtChange_;
+}
+
+
+const char *Time::GetNotionalDateTimeFromSystemUs(uint64_t timeUs)
 {
     return MakeDateTimeFromUs(timeUs + timeDeltaUs_);
 }
 
-const char *Time::GetDateTimeFromMs(uint64_t timeMs)
+const char *Time::GetNotionalDateTimeFromSystemMs(uint64_t timeMs)
 {
-    return GetDateTimeFromUs(timeMs * 1'000);
+    return GetNotionalDateTimeFromSystemUs(timeMs * 1'000);
 }
 
 
-const char *Time::GetTimeShortFromUs(uint64_t timeUs)
+const char *Time::GetNotionalTimeShortFromSystemUs(uint64_t timeUs)
 {
     // starts as full datetime including microseconds
     // 2025-01-14 16:43:24.259829
-    char *timeAt = (char *)GetDateTimeFromUs(timeUs);
+    char *timeAt = (char *)GetNotionalDateTimeFromSystemUs(timeUs);
 
     // trim to just time and milliseconds
     timeAt = &timeAt[11];
@@ -90,9 +125,10 @@ const char *Time::GetTimeShortFromUs(uint64_t timeUs)
     return timeAt;
 }
 
-const char *Time::GetTimeShortFromMs(uint64_t timeMs)
+
+const char *Time::GetNotionalTimeShortFromSystemMs(uint64_t timeMs)
 {
-    char *timeAt = (char *)GetTimeShortFromUs(timeMs * 1'000);
+    char *timeAt = (char *)GetNotionalTimeShortFromSystemUs(timeMs * 1'000);
 
     // trim off microseconds
     timeAt[12] = '\0';
@@ -100,6 +136,11 @@ const char *Time::GetTimeShortFromMs(uint64_t timeMs)
     return timeAt;
 }
 
+
+
+/////////////////////////////////////////////////////////////////
+// Utilities
+/////////////////////////////////////////////////////////////////
 
 
 const char *Time::MakeDateTimeFromUs(uint64_t timeUs)
@@ -142,6 +183,16 @@ const char *Time::MakeDateTimeFromMs(uint64_t timeMs)
 {
     return MakeDateTimeFromUs(timeMs * 1'000);
 }
+
+const char *Time::MakeDateTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
+{
+    static char retVal[] = "1970-01-01 00:00:00.000000";
+
+    Overlay(retVal, hour, minute, second, us);
+
+    return retVal;
+}
+
 
 
 // purposefully does not do operations which may allocate memory,
@@ -204,7 +255,7 @@ string Time::MakeTimeShortFromMs(uint64_t timeMs)
 }
 
 
-uint64_t Time::MakeEpochTimeUsFromDateTime(string dt)
+uint64_t Time::MakeUsFromDateTime(string dt)
 {
     // Date parsing: "yyyy-mm-dd"
     int year = 0;
@@ -288,9 +339,9 @@ uint64_t Time::MakeEpochTimeUsFromDateTime(string dt)
 void Time::SetupShell()
 {
     Shell::AddCommand("time.set.dt", [](vector<string> argList){
-        Log("Time Before: ", GetDateTime());
-        int64_t offsetUs = SetDateTime(argList[0]);
-        Log("Time After : ", GetDateTime());
+        Log("Time Before: ", GetNotionalDateTime());
+        int64_t offsetUs = SetNotionalDateTime(argList[0]);
+        Log("Time After : ", GetNotionalDateTime());
         if (offsetUs < 0)
         {
             Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
@@ -307,9 +358,9 @@ void Time::SetupShell()
         uint8_t  sec  = (uint8_t)atoi(argList[2].c_str());
         uint32_t us   = (uint32_t)atoi(argList[3].c_str());
 
-        Log("Time Before: ", GetDateTime());
-        int64_t offsetUs = SetTime(hour, min, sec, us);
-        Log("Time After : ", GetDateTime());
+        Log("Time Before: ", GetNotionalDateTime());
+        int64_t offsetUs = SetNotionalTime(hour, min, sec, us);
+        Log("Time After : ", GetNotionalDateTime());
         if (offsetUs < 0)
         {
             Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
@@ -325,10 +376,14 @@ void Time::SetupShell()
     }, { .argCount = 1, .help = "wall clock set time delta us"});
 
     Shell::AddCommand("time.get", [](vector<string> argList){
-        Log(GetDateTime());
+        Log(GetNotionalDateTime());
     }, { .argCount = 0, .help = "wall clock get datetime"});
 
     Shell::AddCommand("time.get.delta", [](vector<string> argList){
-        Log(Commas(GetTimeDeltaUs()));
+        Log(Commas(GetNotionalTimeDeltaUs()));
     }, { .argCount = 0, .help = "wall clock get time delta us"});
+
+    Shell::AddCommand("time.make.from.us", [](vector<string> argList){
+        Log(MakeDateTimeFromUs((uint64_t)stoull(argList[0].c_str())));
+    }, { .argCount = 1, .help = ""});
 }

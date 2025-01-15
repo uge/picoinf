@@ -201,7 +201,7 @@ void Timeline::ReportNow(const char *title)
             fnPrint("%%%us: ",     len,   evtThis.name);
             fnPrint("%%%us ms, ",  lenMs, CommasStatic(diffMs).c_str());
             fnPrint("%%%us us - ", lenUs, CommasStatic(diffUs).c_str());
-            fnPrint("%%12s\n",     12,    Time::GetTimeShortFromUs(evtThis.timeUs));
+            fnPrint("%%12s\n",     12,    Time::GetNotionalTimeShortFromSystemUs(evtThis.timeUs));
 
             ++idxLast;
             ++idxThis;
