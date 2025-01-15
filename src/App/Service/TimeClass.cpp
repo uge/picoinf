@@ -107,13 +107,9 @@ const char *Time::GetNotionalDateTimeFromSystemUs(uint64_t timeUs)
     return MakeDateTimeFromUs(timeUs + timeDeltaUs_);
 }
 
-const char *Time::GetNotionalDateTimeFromSystemMs(uint64_t timeMs)
-{
-    return GetNotionalDateTimeFromSystemUs(timeMs * 1'000);
-}
 
 
-const char *Time::GetNotionalTimeShortFromSystemUs(uint64_t timeUs)
+const char *Time::GetNotionalTimeFromSystemUs(uint64_t timeUs)
 {
     // starts as full datetime including microseconds
     // 2025-01-14 16:43:24.259829
@@ -121,17 +117,6 @@ const char *Time::GetNotionalTimeShortFromSystemUs(uint64_t timeUs)
 
     // trim to just time and milliseconds
     timeAt = &timeAt[11];
-
-    return timeAt;
-}
-
-
-const char *Time::GetNotionalTimeShortFromSystemMs(uint64_t timeMs)
-{
-    char *timeAt = (char *)GetNotionalTimeShortFromSystemUs(timeMs * 1'000);
-
-    // trim off microseconds
-    timeAt[12] = '\0';
 
     return timeAt;
 }
@@ -195,9 +180,109 @@ const char *Time::MakeDateTime(uint8_t hour, uint8_t minute, uint8_t second, uin
 
 
 
+const char *Time::MakeTimeFromUs(uint64_t timeUs)
+{
+    char *timeAt = (char *)MakeDateTimeFromUs(timeUs);
+
+    // start from hour
+    timeAt = &timeAt[11];
+
+    return timeAt;
+}
+
+// return the time without hours, with ms-resolution
+const char *Time::MakeTimeMMSSmmmFromUs(uint64_t timeMs)
+{
+    char *timeAt = (char *)MakeTimeFromUs(timeMs);
+
+    // start from minute
+    timeAt = &timeAt[3];
+
+    // trim off microseconds
+    timeAt[9] = '\0';
+
+    return timeAt;
+}
+
+
+Time::TimePoint Time::ParseDateTime(const string &dt)
+{
+    TimePoint retVal;
+
+    if (sscanf(dt.c_str(),
+               "%4" SCNu16 "-%2" SCNu8 "-%2" SCNu8 " %2" SCNu8 ":%2" SCNu8 ":%2" SCNu8 "",
+               &retVal.year,
+               &retVal.month,
+               &retVal.day,
+               &retVal.hour,
+               &retVal.minute,
+               &retVal.second) != 6)
+    {
+        return {};
+    }
+
+    // sub-second portion optional
+    size_t pos = dt.find('.');
+    if (pos != string::npos) {
+        string subSecPart = dt.substr(pos);
+
+        if (subSecPart.size() == 1 + 3) // account for the dot
+        {
+            // assume milliseconds
+            uint16_t ms = 0;
+            if (sscanf(subSecPart.c_str(), ".%3" SCNu16 "", &ms) != 1)
+            {
+                return {};
+            }
+            retVal.us = ms * 1'000;
+        }
+        else
+        {
+            // assume microseconds
+            if (sscanf(subSecPart.c_str(), ".%6" SCNu32 "", &retVal.us) != 1)
+            {
+                return {};
+            }
+        }
+    }
+
+    return retVal;
+}
+
+
+uint64_t Time::MakeUsFromDateTime(const string &dt)
+{
+    TimePoint tp = ParseDateTime(dt);
+
+    std::tm tm = {};
+    tm.tm_year = tp.year - 1900;  // tm_year is years since 1900
+    tm.tm_mon  = tp.month - 1;    // tm_mon is 0-based (0 = January)
+    tm.tm_mday = tp.day;
+    tm.tm_hour = tp.hour;
+    tm.tm_min  = tp.minute;
+    tm.tm_sec  = tp.second;
+
+    // Convert tm struct to time_t (seconds since epoch)
+    std::time_t secsSinceEpoch = std::mktime(&tm);
+    if (secsSinceEpoch == -1)
+    {
+        return 0;
+    }
+
+    // Convert seconds since epoch to microseconds
+    uint64_t usSinceEpoch = ((uint64_t)secsSinceEpoch * 1'000'000) + (uint64_t)tp.us;
+
+    return usSinceEpoch;
+}
+
+
+
+
+
+
 // purposefully does not do operations which may allocate memory,
 // thus this function is safe to call from ISRs
-const char *Time::MakeTimeFromUs(uint64_t timeUs)
+const char *Time::MakeDurationFromUs(uint64_t timeUs)
 {
     uint64_t time = timeUs;
 
@@ -233,91 +318,10 @@ const char *Time::MakeTimeFromUs(uint64_t timeUs)
 }
 
 
-const char *Time::MakeTimeFromMs(uint64_t timeMs)
+const char *Time::MakeDurationFromMs(uint64_t timeMs)
 {
-    return MakeTimeFromUs(timeMs * 1000);
+    return MakeDurationFromUs(timeMs * 1000);
 }
-
-
-// return the time without hours, with ms-resolution
-string Time::MakeTimeShortFromMs(uint64_t timeMs)
-{
-    string ts = string{MakeTimeFromUs(timeMs  * 1'000)};
-
-    auto pos = ts.find(':');
-
-    if (pos != string::npos)
-    {
-        ts = ts.substr((uint8_t)pos + 1, 9);
-    }
-
-    return ts;
-}
-
-
-uint64_t Time::MakeUsFromDateTime(string dt)
-{
-    // Date parsing: "yyyy-mm-dd"
-    int year = 0;
-    int month = 0;
-    int day = 0;
-    int hour = 0;
-    int minute = 0;
-    int second = 0;
-    int us = 0;
-
-    if (sscanf(dt.c_str(), "%4d-%2d-%2d %2d:%2d:%2d", &year, &month, &day, &hour, &minute, &second) != 6)
-    {
-        return 0;
-    }
-
-    // sub-second portion optional
-    size_t pos = dt.find('.');
-    if (pos != string::npos) {
-        string subSecPart = dt.substr(pos);
-
-        if (subSecPart.size() == 1 + 3) // account for the dot
-        {
-            // assume milliseconds
-            int ms = 0;
-            if (sscanf(subSecPart.c_str(), ".%3d", &ms) != 1)
-            {
-                return 0;
-            }
-            us = ms * 1'000;
-        }
-        else
-        {
-            // assume microseconds
-            if (sscanf(subSecPart.c_str(), ".%6d", &us) != 1)
-            {
-                return 0;
-            }
-        }
-    }
-
-    std::tm tm = {};
-    tm.tm_year = year - 1900;  // tm_year is years since 1900
-    tm.tm_mon = month - 1;     // tm_mon is 0-based (0 = January)
-    tm.tm_mday = day;
-    tm.tm_hour = hour;
-    tm.tm_min = minute;
-    tm.tm_sec = second;
-
-    // Convert tm struct to time_t (seconds since epoch)
-    std::time_t secsSinceEpoch = std::mktime(&tm);
-    if (secsSinceEpoch == -1)
-    {
-        return 0;
-    }
-
-    // Convert seconds since epoch to microseconds
-    uint64_t usSinceEpoch = ((uint64_t)secsSinceEpoch * 1'000'000) + (uint64_t)us;
-
-    return usSinceEpoch;
-}
-
-
 
 
 
@@ -344,11 +348,11 @@ void Time::SetupShell()
         Log("Time After : ", GetNotionalDateTime());
         if (offsetUs < 0)
         {
-            Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
+            Log("DateTime moved backward by ", MakeDurationFromUs((uint64_t)-offsetUs));
         }
         else
         {
-            Log("DateTime moved forward by ", MakeTimeFromUs((uint64_t)offsetUs));
+            Log("DateTime moved forward by ", MakeDurationFromUs((uint64_t)offsetUs));
         }
     }, { .argCount = 1, .help = "wall clock set datetime"});
 
@@ -363,11 +367,11 @@ void Time::SetupShell()
         Log("Time After : ", GetNotionalDateTime());
         if (offsetUs < 0)
         {
-            Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
+            Log("DateTime moved backward by ", MakeDurationFromUs((uint64_t)-offsetUs));
         }
         else
         {
-            Log("DateTime moved forward by ", MakeTimeFromUs((uint64_t)offsetUs));
+            Log("DateTime moved forward by ", MakeDurationFromUs((uint64_t)offsetUs));
         }
     }, { .argCount = 4, .help = "wall clock set time <hour> <min> <sec> <us>"});
 

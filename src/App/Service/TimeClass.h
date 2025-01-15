@@ -36,9 +36,7 @@ public:
 
     // see system epoch in terms of the notional time
     static const char *GetNotionalDateTimeFromSystemUs(uint64_t timeUs);
-    static const char *GetNotionalDateTimeFromSystemMs(uint64_t timeMs);
-    static const char *GetNotionalTimeShortFromSystemUs(uint64_t timeUs); // just time and microseconds
-    static const char *GetNotionalTimeShortFromSystemMs(uint64_t timeMs); // just time and milliseconds
+    static const char *GetNotionalTimeFromSystemUs(uint64_t timeUs);
 
 
     /////////////////////////////////////////////////////////////////
@@ -51,13 +49,32 @@ public:
     static const char *MakeDateTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
 
     static const char *MakeTimeFromUs(uint64_t timeUs);
-    static const char *MakeTimeFromMs(uint64_t timeMs);
+    static const char *MakeTimeMMSSmmmFromUs(uint64_t timeUs);
 
-    static std::string MakeTimeShortFromMs(uint64_t timeMs);
+
+    // string parsing
+    struct TimePoint
+    {
+        uint16_t year   = 0;
+        uint8_t  month  = 0;
+        uint8_t  day    = 0;
+        uint8_t  hour   = 0;
+        uint8_t  minute = 0;
+        uint8_t  second = 0;
+        uint32_t us     = 0;
+    };
+    static TimePoint ParseDateTime(const std::string &dt);
 
 
     // string to epoch time conversion
-    static uint64_t MakeUsFromDateTime(std::string dt);
+    static uint64_t MakeUsFromDateTime(const std::string &dt);
+
+
+    // duration
+    static const char *MakeDurationFromUs(uint64_t timeUs);
+    static const char *MakeDurationFromMs(uint64_t timeMs);
+
+
 
 
 public:
