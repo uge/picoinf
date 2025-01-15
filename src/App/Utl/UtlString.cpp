@@ -19,7 +19,7 @@ string StrUtl::PadLeft(uint64_t val, char padChar, uint8_t fieldWidthTotal)
 
 string StrUtl::PadLeft(string valStr, char padChar, uint8_t fieldWidthTotal)
 {
-    size_t lenDiff = fieldWidthTotal - valStr.length();
+    int lenDiff = (int)fieldWidthTotal - (int)valStr.length();
     if (lenDiff > 0)
     {
         string valStrTmp;
