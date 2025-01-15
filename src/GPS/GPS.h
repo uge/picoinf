@@ -33,8 +33,9 @@ struct FixTime
     uint8_t  minute = 0;
     uint8_t  second = 0;
     uint16_t millisecond = 0;
+    string   dateTime;
 
-    void Print()
+    void Print() const
     {
         Log("FixTime");
         Log("year        = ", year);
@@ -44,6 +45,7 @@ struct FixTime
         Log("minute      = ", minute);
         Log("second      = ", second);
         Log("millisecond = ", millisecond);
+        Log("dateTime    = ", dateTime);
     }
 };
 
@@ -63,7 +65,7 @@ struct Fix2D
     static const uint8_t MAIDENHEAD_GRID_LEN = 6;
     string maidenheadGrid;
 
-    void Print()
+    void Print() const
     {
         FixTime::Print();
         Log("Fix2D");
@@ -85,7 +87,7 @@ struct Fix3D
     int32_t altitudeM = 0;
     int32_t altitudeFt = 0;
 
-    void Print()
+    void Print() const
     {
         Fix2D::Print();
         Log("Fix3D");
@@ -102,7 +104,7 @@ struct Fix3DPlus
     uint32_t speedMph = 0;
     uint32_t speedKph = 0;
 
-    void Print()
+    void Print() const
     {
         Fix3D::Print();
         Log("Fix3DPlus");
@@ -444,6 +446,8 @@ public:
             return val;
         };
 
+        string dateTime;
+
         // UTC DDMMYY
         uint16_t year = 0;
         uint8_t month = 0;
@@ -454,6 +458,10 @@ public:
             month = TwoCharToInt(&data_.dateStr.c_str()[2]);
             day   = TwoCharToInt(&data_.dateStr.c_str()[0]);
         }
+        dateTime += FormatStr("%04u", year)  + "-" +
+                    FormatStr("%02u", month) + "-" +
+                    FormatStr("%02u", day);
+        dateTime += " ";
 
         uint8_t hour = 0;
         uint8_t minute = 0;
@@ -475,6 +483,10 @@ public:
 
             millisecond = round(timeFloat * 1000);
         }
+        dateTime += FormatStr("%02u", hour)   + ":" +
+                    FormatStr("%02u", minute) + ":" +
+                    FormatStr("%02u", day)    + "." +
+                    FormatStr("%06u", millisecond);
 
         FixTime retVal = {
             .year = year,
@@ -484,6 +496,7 @@ public:
             .minute = minute,
             .second = second,
             .millisecond = millisecond,
+            .dateTime = dateTime,
         };
 
         return retVal;
