@@ -29,12 +29,16 @@ static void CompareClocks()
 
 
 
-void Time::SetDateTime(string dt)
+int64_t Time::SetDateTime(string dt)
 {
+    uint64_t timeDeltaUsBefore = timeDeltaUs_;
+
     timeDeltaUs_ = MakeEpochTimeUsFromDateTime(dt) - PAL.Micros();
+
+    return (int64_t)(timeDeltaUs_ - timeDeltaUsBefore);
 }
 
-void Time::SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
+int64_t Time::SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
 {
     // take the string that represents the current time and modify it
     char *dateTimeBuffer = (char *)GetDateTime();
@@ -49,13 +53,19 @@ void Time::SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
     FormatStrC(&dateTimeBuffer[17], 3, "%02u", second); dateTimeBuffer[17 + 2] = '.';
     FormatStrC(&dateTimeBuffer[20], 7, "%06u", us);
 
-    SetDateTime(dateTimeBuffer);
+    return SetDateTime(dateTimeBuffer);
 }
 
 const char *Time::GetDateTime()
 {
     return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
 }
+
+uint64_t Time::GetTimeDeltaUs()
+{
+    return timeDeltaUs_;
+}
+
 
 const char *Time::GetDateTimeFromUs(uint64_t timeUs)
 {
@@ -278,7 +288,17 @@ uint64_t Time::MakeEpochTimeUsFromDateTime(string dt)
 void Time::SetupShell()
 {
     Shell::AddCommand("time.set.dt", [](vector<string> argList){
-        SetDateTime(argList[0]);
+        Log("Time Before: ", GetDateTime());
+        int64_t offsetUs = SetDateTime(argList[0]);
+        Log("Time After : ", GetDateTime());
+        if (offsetUs < 0)
+        {
+            Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
+        }
+        else
+        {
+            Log("DateTime moved forward by ", MakeTimeFromUs((uint64_t)offsetUs));
+        }
     }, { .argCount = 1, .help = "wall clock set datetime"});
 
     Shell::AddCommand("time.set.t", [](vector<string> argList){
@@ -288,8 +308,16 @@ void Time::SetupShell()
         uint32_t us   = (uint32_t)atoi(argList[3].c_str());
 
         Log("Time Before: ", GetDateTime());
-        SetTime(hour, min, sec, us);
+        int64_t offsetUs = SetTime(hour, min, sec, us);
         Log("Time After : ", GetDateTime());
+        if (offsetUs < 0)
+        {
+            Log("DateTime moved backward by ", MakeTimeFromUs((uint64_t)-offsetUs));
+        }
+        else
+        {
+            Log("DateTime moved forward by ", MakeTimeFromUs((uint64_t)offsetUs));
+        }
     }, { .argCount = 4, .help = "wall clock set time <hour> <min> <sec> <us>"});
 
     Shell::AddCommand("time.set.delta", [](vector<string> argList){
@@ -299,4 +327,8 @@ void Time::SetupShell()
     Shell::AddCommand("time.get", [](vector<string> argList){
         Log(GetDateTime());
     }, { .argCount = 0, .help = "wall clock get datetime"});
+
+    Shell::AddCommand("time.get.delta", [](vector<string> argList){
+        Log(Commas(GetTimeDeltaUs()));
+    }, { .argCount = 0, .help = "wall clock get time delta us"});
 }

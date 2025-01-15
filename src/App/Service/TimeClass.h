@@ -14,20 +14,23 @@ public:
     // Nominal time
     /////////////////////////////////////////////////////////////////
 
-    // set and access the nominal time
-    static void SetDateTime(std::string dt);
-    static void SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
+    // set and access the nominal time.
+    // setters return offsetUs = (new delta - old delta).
+    // this means:
+    // - if old time < new time, you get a positive number.
+    // - if old time > new time, you get a negative number.
+    // this can be handy for knowing if your locally-running clock
+    // is falling behind (positive) or running fast (negative).
+    static int64_t SetDateTime(std::string dt);
+    static int64_t SetTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
     static const char *GetDateTime();
+    static uint64_t GetTimeDeltaUs();
 
     // see system epoch in terms of the nominal time
     static const char *GetDateTimeFromUs(uint64_t timeUs);
     static const char *GetDateTimeFromMs(uint64_t timeMs);
-
-    // trim to just time and microseconds
-    static const char *GetTimeShortFromUs(uint64_t timeUs);
-
-    // trim to just time and milliseconds
-    static const char *GetTimeShortFromMs(uint64_t timeMs);
+    static const char *GetTimeShortFromUs(uint64_t timeUs); // just time and microseconds
+    static const char *GetTimeShortFromMs(uint64_t timeMs); // just time and milliseconds
 
 
     /////////////////////////////////////////////////////////////////
