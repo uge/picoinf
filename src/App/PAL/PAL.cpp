@@ -655,10 +655,12 @@ void PlatformAbstractionLayer::SetupShell()
     Shell::AddCommand("sys.time", [](vector<string>){
         uint64_t timeUs = PAL.Micros();
 
-        string sysTime = Time::GetDateTimeFromUs(timeUs);
+        string notionalTime = Time::GetDateTimeFromUs(timeUs);
+        string systemTime   = Time::MakeDateTimeFromUs(timeUs);
 
-        Log("System Time: ", sysTime);
-        Log("Uptime     : ", StrUtl::PadLeft(Time::MakeTimeFromUs(timeUs), ' ', (uint8_t)sysTime.size()), " (", Commas(timeUs), ")");
+        Log("Notional Time: ", notionalTime);
+        Log("System   Time: ", systemTime);
+        Log("Uptime       : ", StrUtl::PadLeft(Time::MakeTimeFromUs(timeUs), ' ', (uint8_t)systemTime.size()), " (", Commas(timeUs), ")");
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){
