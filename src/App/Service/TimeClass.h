@@ -21,7 +21,7 @@ public:
     // - if old time > new time, you get a negative number.
     // this can be handy for knowing if your locally-running clock
     // is falling behind (positive) or running fast (negative).
-    static int64_t     SetNotionalDateTimeUs(uint64_t us);
+    static int64_t     SetNotionalDateTimeUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs = PAL.Micros());
     static int64_t     SetNotionalDateTime(std::string dt);
     static int64_t     SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
     static const char *GetNotionalDateTime();
@@ -85,6 +85,6 @@ public:
 private:
 
     static inline uint64_t timeDeltaUs_ = 0;
-    static inline uint64_t systemTimeAtChange_ = 0;
+    static inline uint64_t systemTimeUsAtChange_ = 0;
 };
 

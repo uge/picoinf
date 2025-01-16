@@ -54,13 +54,13 @@ static void Overlay(char *dtBuf, uint8_t hour, uint8_t minute, uint8_t second, u
 /////////////////////////////////////////////////////////////////
 
 
-int64_t Time::SetNotionalDateTimeUs(uint64_t us)
+int64_t Time::SetNotionalDateTimeUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs)
 {
-    systemTimeAtChange_ = PAL.Micros();
+    systemTimeUsAtChange_ = systemTimeUs;
 
     uint64_t timeDeltaUsBefore = timeDeltaUs_;
 
-    timeDeltaUs_ = us - systemTimeAtChange_;
+    timeDeltaUs_ = notionalDateTimeUs - systemTimeUsAtChange_;
 
     return (int64_t)(timeDeltaUs_ - timeDeltaUsBefore);
 }
@@ -98,7 +98,7 @@ uint64_t Time::GetNotionalTimeDeltaUs()
 
 uint64_t Time::GetSystemUsAtLastTimeChange()
 {
-    return systemTimeAtChange_;
+    return systemTimeUsAtChange_;
 }
 
 
