@@ -56,6 +56,7 @@ public:
     void DeRegisterForTimedEvent();
     bool IsRegistered();
     bool GetTimeQueued();
+    uint64_t GetTimeoutTimeUs();
     virtual void OnTimedEvent() = 0;
 
 
@@ -68,7 +69,7 @@ protected:
 private:
     // Evm uses these for state keeping
     uint64_t timeQueued_;
-    uint64_t timeoutAbs_;
+    uint64_t timeoutAbs_ = 0;
     uint64_t timeoutDelta_ = 0;
     bool     isInterval_;
     bool     isRigid_;

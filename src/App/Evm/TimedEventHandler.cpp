@@ -141,6 +141,10 @@ bool TimedEventHandler::GetTimeQueued()
     return timeQueued_;
 }
 
+uint64_t TimedEventHandler::GetTimeoutTimeUs()
+{
+    return timeoutAbs_;
+}
 
 
 void TimedEventHandlerDelegate::OnTimedEvent()
