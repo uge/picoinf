@@ -316,7 +316,7 @@ public:
         Reset();
 
         processData_ = false;
-        static TimedEventHandlerDelegate ted;
+        static Timer ted;
         ted.SetCallback([this]{
             processData_ = true;
         }, "GPS_READER_RE-ENABLE");

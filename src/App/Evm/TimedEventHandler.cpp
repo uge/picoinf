@@ -13,10 +13,10 @@ static void LogIfTooLarge(uint64_t ms)
     }
 }
 
-bool TimedEventHandler::RegisterForTimedEventAt(uint64_t absTimeMs)
+bool TimedEventHandler::TimeoutAtMs(uint64_t absTimeMs)
 {
     LogIfTooLarge(absTimeMs);
-    return RegisterForTimedEventAt(Micros{absTimeMs * 1000});
+    return TimeoutAtUs(Micros{absTimeMs * 1000});
 }
 
 bool TimedEventHandler::RegisterForTimedEvent(uint64_t timeout)
@@ -53,14 +53,14 @@ bool TimedEventHandler::RegisterForTimedEventIntervalRigid(uint64_t timeout, uin
 }
 
 
-bool TimedEventHandler::RegisterForTimedEventAt(Micros absTime)
+bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
 {
     // Don't allow yourself to be scheduled more than once.
     // Cache whether this is an interval callback since that
     // gets reset during cancel.
     bool isIntervalCache = isInterval_;
     bool isRigidCache    = isRigid_;
-    DeRegisterForTimedEvent();
+    Cancel();
     isInterval_ = isIntervalCache;
     isRigid_    = isRigidCache;
 
@@ -70,14 +70,14 @@ bool TimedEventHandler::RegisterForTimedEventAt(Micros absTime)
     seqNo_ = seqNoNext_;
     ++seqNoNext_;
 
-    return Evm::RegisterTimedEventHandler(this, absTime.value_);
+    return Evm::RegisterTimedEventHandler(this, absTimeUs.value_);
 }
 
 bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
 {
     timeoutDelta_ = timeout.value_;
 
-    return RegisterForTimedEventAt(Micros{PAL.Micros() + timeoutDelta_});
+    return TimeoutAtUs(Micros{PAL.Micros() + timeoutDelta_});
 }
 
 bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
@@ -119,7 +119,7 @@ bool TimedEventHandler::RegisterForTimedEventIntervalRigid(Micros timeout, Micro
 }
 
 
-void TimedEventHandler::DeRegisterForTimedEvent()
+void TimedEventHandler::Cancel()
 {
     Evm::DeRegisterTimedEventHandler(this);
     
@@ -129,7 +129,7 @@ void TimedEventHandler::DeRegisterForTimedEvent()
     isRigid_    = 0;
 }
 
-bool TimedEventHandler::IsRegistered()
+bool TimedEventHandler::IsPending()
 {
     uint8_t retVal = Evm::IsRegisteredTimedEventHandler(this);
     
@@ -147,7 +147,7 @@ uint64_t TimedEventHandler::GetTimeoutTimeUs()
 }
 
 
-void TimedEventHandlerDelegate::OnTimedEvent()
+void Timer::OnTimedEvent()
 {
     Timeline::Global().Event(origin_);
 

@@ -46,5 +46,5 @@ private:
 
     bool on_ = false;
 
-    TimedEventHandlerDelegate ted_;
+    Timer ted_;
 };

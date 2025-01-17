@@ -165,7 +165,7 @@ void Evm::MainLoop()
 // if this ever gets too wild, use some kind of stack-based system?
 void Evm::MainLoopRunFor(uint64_t durationMs)
 {
-    static TimedEventHandlerDelegate tedBreakout;
+    static Timer tedBreakout;
 
     tedBreakout.SetCallback([]{
         mainLoopKeepRunning_ = false;
@@ -556,16 +556,16 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
 
 void Evm::TestTimedEventHandler()
 {
-    TimedEventHandlerDelegate t1;
-    TimedEventHandlerDelegate t2;
-    TimedEventHandlerDelegate t3;
-    TimedEventHandlerDelegate t4;
-    TimedEventHandlerDelegate t5;
-    TimedEventHandlerDelegate t6;
+    Timer t1;
+    Timer t2;
+    Timer t3;
+    Timer t4;
+    Timer t5;
+    Timer t6;
 
     t1.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t1");
-        t1.DeRegisterForTimedEvent();
+        t1.Cancel();
     });
     t1.RegisterForTimedEventIntervalRigid(1000);
 
@@ -591,12 +591,12 @@ void Evm::TestTimedEventHandler()
     t5.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t5");
     });
-    t5.RegisterForTimedEventAt(timeThen);
+    t5.TimeoutAtMs(timeThen);
     
     t6.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t6");
     });
-    t6.RegisterForTimedEventAt(timeThen);
+    t6.TimeoutAtMs(timeThen);
 
 
     DebugTimedEventHandler("After t4");
@@ -619,11 +619,11 @@ multiset<TimedEventHandler *, Evm::CmpTimedEventHandler> Evm::timedEventHandlerL
 
 Evm::Stats Evm::stats_;
 CircularBuffer<Evm::StatsSnapshot> Evm::statsHistory_;
-TimedEventHandlerDelegate Evm::tedStats_;
-TimedEventHandlerDelegate Evm::tedWatchdog_;
+Timer Evm::tedStats_;
+Timer Evm::tedWatchdog_;
 
-TimedEventHandlerDelegate Evm::tedTest_;
-TimedEventHandlerDelegate Evm::tedTest2_;
+Timer Evm::tedTest_;
+Timer Evm::tedTest2_;
 
 
 
@@ -791,7 +791,7 @@ void Evm::SetupShell()
         {
             if (teh->id_ == id)
             {
-                teh->DeRegisterForTimedEvent();
+                teh->Cancel();
                 found = true;
 
                 break;

@@ -146,7 +146,7 @@ public:
 
     static void Stop()
     {
-        ted_.DeRegisterForTimedEvent();
+        ted_.Cancel();
         reportLast_ = {};
 
         if (!started_) return;
@@ -554,7 +554,7 @@ private:
     inline static AdReport reportLast_;
     inline static bool deDup_ = false;
 
-    inline static TimedEventHandlerDelegate ted_;
+    inline static Timer ted_;
 
     inline static bool started_ = false;
 };

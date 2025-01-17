@@ -209,7 +209,7 @@ void USB::Init()
     // Start the thread after the event manager has begun, this allows
     // main code to register for callbacks for events that this
     // thread would otherwise process before main code had that chance
-    static TimedEventHandlerDelegate ted;
+    static Timer ted;
     ted.SetCallback([]{
         static KTask<256> t("TinyUSB", []{
             tusb_init();

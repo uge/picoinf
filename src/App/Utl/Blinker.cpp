@@ -64,7 +64,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
 void Blinker::DisableAsyncBlink()
 {
     Off();
-    ted_.DeRegisterForTimedEvent();
+    ted_.Cancel();
 
     asyncCountRemaining_ = -1;
 }

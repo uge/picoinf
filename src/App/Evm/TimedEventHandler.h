@@ -37,24 +37,37 @@ public:
     {
         ++idNext_;
     }
-    virtual ~TimedEventHandler() { DeRegisterForTimedEvent(); }
+    virtual ~TimedEventHandler() { Cancel(); }
 
-    bool RegisterForTimedEventAt(uint64_t absTime);
+    bool TimeoutAtMs(uint64_t absTimeMs);
     bool RegisterForTimedEvent(uint64_t timeout);
     bool RegisterForTimedEventInterval(uint64_t timeout);
     bool RegisterForTimedEventInterval(uint64_t timeout, uint64_t firstTimeout);
     bool RegisterForTimedEventIntervalRigid(uint64_t timeout);
     bool RegisterForTimedEventIntervalRigid(uint64_t timeout, uint64_t firstTimeout);
 
-    bool RegisterForTimedEventAt(Micros absTime);
+    bool TimeoutAtUs(Micros absTimeUs);
     bool RegisterForTimedEvent(Micros timeout);
     bool RegisterForTimedEventInterval(Micros timeout);
     bool RegisterForTimedEventInterval(Micros timeout, Micros firstTimeout);
     bool RegisterForTimedEventIntervalRigid(Micros timeout);
     bool RegisterForTimedEventIntervalRigid(Micros timeout, Micros firstTimeout);
 
-    void DeRegisterForTimedEvent();
-    bool IsRegistered();
+
+    // trash interval rigid concept, all intervals are rigid(?)
+    // bool TimeoutInMs(uint64_t durationMs);
+    // bool TimeoutInUs(uint64_t durationUs);
+    // bool TimeoutAtMs(uint64_t absTimeMs);
+    // bool TimeoutAtUs(uint64_t absTimeUs);
+    // trash Micros concept, name everything explicitly
+    // move implementation inside Timer, clean up Evm
+    // rename all timer instances to not be tedX but tX or whatever
+
+
+
+
+    void Cancel();
+    bool IsPending();
     bool GetTimeQueued();
     uint64_t GetTimeoutTimeUs();
     virtual void OnTimedEvent() = 0;
@@ -88,11 +101,11 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
-class TimedEventHandlerDelegate
+class Timer
 : public TimedEventHandler
 {
 public:
-    TimedEventHandlerDelegate()
+    Timer()
     {
         // Nothing to do
     }

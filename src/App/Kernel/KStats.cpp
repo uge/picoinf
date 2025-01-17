@@ -73,7 +73,7 @@ struct KTaskCpuTimeFrame
 };
 
 static CircularBuffer<KTaskCpuTimeFrame> frameList_;
-static TimedEventHandlerDelegate ted_;
+static Timer ted_;
 
 
 static void CaptureStats()
