@@ -1,6 +1,7 @@
 #include "Log.h"
 #include "Shell.h"
 #include "TimeClass.h"
+#include "Timeline.h"
 #include "Utl.h"
 
 #include <cinttypes>
@@ -12,21 +13,6 @@
 using namespace std;
 
 #include "StrictMode.h"
-
-
-[[maybe_unused]]
-static void CompareClocks()
-{
-    // these all return the same thing
-
-    uint64_t timeNowUs = PAL.Micros();
-    uint64_t timeSystemClock = (uint64_t)chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now().time_since_epoch()).count();
-    uint64_t timeSteadyClock = (uint64_t)chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
-
-    Log("palTimeUs : ", timeNowUs);
-    Log("systemTime: ", timeSystemClock);
-    Log("steadyTime: ", timeSteadyClock);
-}
 
 
 
@@ -343,11 +329,58 @@ const char *Time::MakeDurationFromMs(uint64_t timeMs)
 
 
 
+/////////////////////////////////////////////////////////////////////
+// Testing
+/////////////////////////////////////////////////////////////////////
+
+[[maybe_unused]]
+static void CompareClocks()
+{
+    // these all return the same thing
+
+    uint64_t timeNowUs = PAL.Micros();
+    uint64_t timeSystemClock = (uint64_t)chrono::duration_cast<chrono::microseconds>(chrono::system_clock::now().time_since_epoch()).count();
+    uint64_t timeSteadyClock = (uint64_t)chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now().time_since_epoch()).count();
+
+    Log("palTimeUs : ", timeNowUs);
+    Log("systemTime: ", timeSystemClock);
+    Log("steadyTime: ", timeSteadyClock);
+}
+
+
+static void TestSpeed(uint8_t count)
+{
+    Log("Testing GetNotionalDateTime() ", count, " times");
+
+    uint64_t durationTotalUs = Timeline::Measure([count](auto &t){
+        for (uint8_t i = 0; i < count; ++i)
+        {
+            Time::GetNotionalDateTime();
+        }
+    });
+
+    uint64_t durationPerUs = durationTotalUs / count;
+
+    Log("Each takes avg of ", Commas(durationPerUs), " us");
+}
+
+static void Test()
+{
+    TestSpeed(1);
+    LogNL();
+    TestSpeed(2);
+    LogNL();
+    TestSpeed(3);
+    LogNL();
+    TestSpeed(100);
+    LogNL();
+}
 
 
 
-
-
+/////////////////////////////////////////////////////////////////////
+// Init
+/////////////////////////////////////////////////////////////////////
 
 void Time::SetupShell()
 {
@@ -399,4 +432,8 @@ void Time::SetupShell()
     Shell::AddCommand("time.make.from.us", [](vector<string> argList){
         Log(MakeDateTimeFromUs((uint64_t)stoull(argList[0].c_str())));
     }, { .argCount = 1, .help = ""});
+
+    Shell::AddCommand("time.test", [](vector<string> argList){
+        Test();
+    }, { .argCount = 0, .help = "run tests"});
 }
