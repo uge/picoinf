@@ -387,7 +387,7 @@ uint32_t Evm::ServiceTimedEventHandlers()
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
                 {
-                    RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->intervalTimeout_);
+                    RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->durationIntervalUs_);
                 }
                 
                 // only keep going if remaining quota of events remains
@@ -566,17 +566,17 @@ void Evm::TestTimedEventHandler()
         Log('[', PAL.Millis(), "] ", "t1");
         t1.Cancel();
     });
-    t1.RegisterForTimedEventInterval(1000);
+    t1.TimeoutIntervalMs(1000);
 
     t2.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t2");
     });
-    t2.RegisterForTimedEventInterval(1000);
+    t2.TimeoutIntervalMs(1000);
 
     t3.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t3");
     });
-    t3.RegisterForTimedEventInterval(500);
+    t3.TimeoutIntervalMs(500);
 
     t4.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t4");
@@ -656,7 +656,7 @@ void Evm::Init()
         // reset current stats
         stats_ = Stats{};
     }, "TIMER_EVM_STATS_HISTORY");
-    tedStats_.RegisterForTimedEventInterval(STATS_INTERVAL_MS);
+    tedStats_.TimeoutIntervalMs(STATS_INTERVAL_MS);
 
     static const uint64_t WATCHDOG_TIMEOUT_MS = 5'000;
     tedWatchdog_.SetCallback([]{
@@ -674,7 +674,7 @@ void Evm::Init()
             Watchdog::Feed();
         }
     }, "TIMER_EVM_WATCHDOG");
-    // tedWatchdog_.RegisterForTimedEventInterval(WATCHDOG_TIMEOUT_MS - 2'000, 0);
+    // tedWatchdog_.TimeoutIntervalMs(WATCHDOG_TIMEOUT_MS - 2'000, 0);
 
     PAL.RegisterOnFatalHandler("Evm Fatal Handler", []{
         LogModeSync();

@@ -19,24 +19,24 @@ bool TimedEventHandler::TimeoutAtMs(uint64_t absTimeMs)
     return TimeoutAtUs(Micros{absTimeMs * 1000});
 }
 
-bool TimedEventHandler::RegisterForTimedEvent(uint64_t timeout)
+bool TimedEventHandler::RegisterForTimedEvent(uint64_t durationIntervalMs)
 {
-    LogIfTooLarge(timeout);
+    LogIfTooLarge(durationIntervalMs);
 
-    return RegisterForTimedEvent(Micros{timeout * 1000});
+    return RegisterForTimedEvent(Micros{durationIntervalMs * 1000});
 }
 
-bool TimedEventHandler::RegisterForTimedEventInterval(uint64_t timeout)
+bool TimedEventHandler::TimeoutIntervalMs(uint64_t timeout)
 {
     LogIfTooLarge(timeout);
-    return RegisterForTimedEventInterval(Micros{timeout * 1000});
+    return TimeoutIntervalUs(Micros{timeout * 1000});
 }
 
-bool TimedEventHandler::RegisterForTimedEventInterval(uint64_t timeout, uint64_t firstTimeout)
+bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs)
 {
-    LogIfTooLarge(timeout);
-    LogIfTooLarge(firstTimeout);
-    return RegisterForTimedEventInterval(Micros{timeout * 1000}, Micros{firstTimeout * 1000});
+    LogIfTooLarge(durationIntervalMs);
+    LogIfTooLarge(durationFirstInMs);
+    return TimeoutIntervalUs(Micros{durationIntervalMs * 1000}, Micros{durationFirstInMs * 1000});
 }
 
 
@@ -65,22 +65,22 @@ bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
     return TimeoutAtUs(Micros{PAL.Micros() + timeoutDelta_});
 }
 
-bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
+bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs)
 {
     isInterval_ = 1;
     
-    intervalTimeout_ = timeout.value_;
+    durationIntervalUs_ = durationIntervalUs.value_;
     
-    return RegisterForTimedEvent(timeout);
+    return RegisterForTimedEvent(durationIntervalUs);
 }
 
-bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout, Micros firstTimeout)
+bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs)
 {
     isInterval_ = 1;
     
-    intervalTimeout_ = timeout.value_;
+    durationIntervalUs_ = durationIntervalUs.value_;
     
-    return RegisterForTimedEvent(firstTimeout);
+    return RegisterForTimedEvent(durationFirstInUs);
 }
 
 

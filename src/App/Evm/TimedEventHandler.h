@@ -40,13 +40,13 @@ public:
 
     bool TimeoutAtMs(uint64_t absTimeMs);
     bool RegisterForTimedEvent(uint64_t timeout);
-    bool RegisterForTimedEventInterval(uint64_t timeout);
-    bool RegisterForTimedEventInterval(uint64_t timeout, uint64_t firstTimeout);
+    bool TimeoutIntervalMs(uint64_t durationIntervalMs);
+    bool TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs);
 
     bool TimeoutAtUs(Micros absTimeUs);
     bool RegisterForTimedEvent(Micros timeout);
-    bool RegisterForTimedEventInterval(Micros timeout);
-    bool RegisterForTimedEventInterval(Micros timeout, Micros firstTimeout);
+    bool TimeoutIntervalUs(Micros durationIntervalUs);
+    bool TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs);
 
 
     // bool TimeoutInMs(uint64_t durationMs);
@@ -79,7 +79,7 @@ private:
     uint64_t timeoutAbs_ = 0;
     uint64_t timeoutDelta_ = 0;
     bool     isInterval_;
-    uint64_t intervalTimeout_;
+    uint64_t durationIntervalUs_;
     uint64_t calledCount_ = 0;
     uint64_t seqNo_ = 0;
 
