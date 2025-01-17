@@ -8,7 +8,16 @@
 #include <vector>
 using namespace std;
 
-Timeline timeline_;
+static bool verboseTimeline_ = false;
+static Timeline timeline_;
+
+static void MaybeEvent(const char *str)
+{
+    if (verboseTimeline_)
+    {
+        timeline_.Event(str);
+    }
+}
 
 
 //////////////////////////////////////////////////////////////////////
@@ -304,10 +313,10 @@ uint32_t Evm::ServiceLowPriorityWork()
         FnWork &fnWork = workData.fnWork;
         
         // Execute
-        timeline_.Event("EVM_LOW_PRIO_WORK_START");
+        MaybeEvent("EVM_LOW_PRIO_WORK_START");
         timeline_.Event(workData.label);
         fnWork();
-        timeline_.Event("EVM_LOW_PRIO_WORK_END");
+        MaybeEvent("EVM_LOW_PRIO_WORK_END");
  
         // Keep track of remaining events willing to handle
         --remainingEvents;
@@ -370,9 +379,9 @@ uint32_t Evm::ServiceTimedEventHandlers()
                 timedEventHandlerList_.erase(teh);
                 
                 // invoke the IdleTimeEventHandler
-                timeline_.Event("EVM_TIMED_START");
+                MaybeEvent("EVM_TIMED_START");
                 teh->OnTimedEvent();
-                timeline_.Event("EVM_TIMED_END");
+                MaybeEvent("EVM_TIMED_END");
                 ++teh->calledCount_;
                 
                 // re-schedule if it is an interval timer
@@ -400,6 +409,11 @@ uint32_t Evm::ServiceTimedEventHandlers()
 //////////////////////////////////////////////////////////////////////
 // Observability
 //////////////////////////////////////////////////////////////////////
+
+void Evm::SetTimelineVerbose(bool tf)
+{
+    verboseTimeline_ = tf;
+}
 
 void Evm::DumpStats()
 {
@@ -679,6 +693,11 @@ void Evm::SetupShell()
         Log("Setting history count to ", historyCount);
         statsHistory_.SetCapacity(historyCount);
     }, { .argCount = 1, .help = "" });
+
+    Shell::AddCommand("evm.t.verbose", [&](vector<string> argList){
+        bool verbose = (bool)atoi(argList[0].c_str());
+        SetTimelineVerbose(verbose);
+    }, { .argCount = 1, .help = "set whether timeline includes detailed events" });
 
     Shell::AddCommand("evm.stats", [&](vector<string> argList){
         DumpStats();

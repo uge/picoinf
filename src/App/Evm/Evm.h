@@ -140,6 +140,9 @@ private:
     //////////////////////////////////////////////////////////////////////
     // Observability
     //////////////////////////////////////////////////////////////////////
+
+    static void SetTimelineVerbose(bool tf);
+    
     
     static const uint32_t STATS_INTERVAL_MS = 5'000;
     static const uint32_t STATS_HISTORY_COUNT = 2;
