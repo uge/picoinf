@@ -179,7 +179,7 @@ void Evm::MainLoopRunFor(uint64_t durationMs)
     tedBreakout.SetCallback([]{
         mainLoopKeepRunning_ = false;
     }, "TIMER_EVM_MAIN_LOOP_TIMEOUT");
-    tedBreakout.RegisterForTimedEvent(durationMs);
+    tedBreakout.TimeoutInMs(durationMs);
 
     MainLoop();
 
@@ -544,7 +544,7 @@ void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
         Log("id_           ", teh->id_);
         Log("timeQueued_   ", StrUtl::PadLeft(Commas(teh->timeQueued_), ' ', 13));
         Log("timeoutAbs_   ", StrUtl::PadLeft(Commas(teh->timeoutAbs_), ' ', 13));
-        Log("timeoutDelta_ ", StrUtl::PadLeft(Commas(teh->timeoutDelta_), ' ', 13));
+        Log("durationUs_   ", StrUtl::PadLeft(Commas(teh->durationUs_), ' ', 13));
         Log("timeRemaining ", StrUtl::PadLeft(Commas(timeRemaining), ' ', 13));
         Log("seqNo_        ", StrUtl::PadLeft(Commas(teh->seqNo_), ' ', 13));
         Log("calledCount   ", StrUtl::PadLeft(Commas(teh->calledCount_), ' ', 13));
@@ -581,7 +581,7 @@ void Evm::TestTimedEventHandler()
     t4.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t4");
     });
-    t4.RegisterForTimedEvent(25);
+    t4.TimeoutInMs(25);
 
 
     // see two timers compete for the same time
@@ -764,9 +764,9 @@ void Evm::SetupShell()
             }, "TIMER_EVM_TEST_TIMER_MS");
 
             timeStart = PAL.Micros();
-            tedTest_.RegisterForTimedEvent(ms);
+            tedTest_.TimeoutInMs(ms);
         }, "TIMER_EVM_TEST_TIMER_MS_CALLER");
-        tedTest2_.RegisterForTimedEvent(0);
+        tedTest2_.TimeoutInMs(0);
     }, { .argCount = 1, .help = "test submitting an <x> ms timer to get serviced" });
 
     Shell::AddCommand("evm.test.timer.us", [&](vector<string> argList){
@@ -782,9 +782,9 @@ void Evm::SetupShell()
             }, "TIMER_EVM_TEST_TIMER_US");
 
             timeStart = PAL.Micros();
-            tedTest_.RegisterForTimedEvent(Micros{us});
+            tedTest_.TimeoutInUs(Micros{us});
         }, "TIMER_EVM_TEST_TIMER_US_CALLER");
-        tedTest2_.RegisterForTimedEvent(0);
+        tedTest2_.TimeoutInMs(0);
     }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
 
     Shell::AddCommand("evm.timer.cancel", [&](vector<string> argList){

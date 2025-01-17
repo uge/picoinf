@@ -224,7 +224,7 @@ void USB::Init()
             }
         }, 5);
     });
-    ted.RegisterForTimedEvent(0);
+    ted.TimeoutInMs(0);
 
     initHasRun_ = true;
 }

@@ -2,40 +2,23 @@
 #include "Timeline.h"
 
 
-static const uint64_t MAX_DURATION_MS = UINT64_MAX / 1'000; 
-
-static void LogIfTooLarge(uint64_t ms)
-{
-    if (ms > MAX_DURATION_MS)
-    {
-        Log("ERR: TimedEventHandler ms delay (", ms, ") not <= max (", MAX_DURATION_MS, ")");
-        PAL.Fatal("PAL::LogIfTooLarge");
-    }
-}
-
 bool TimedEventHandler::TimeoutAtMs(uint64_t absTimeMs)
 {
-    LogIfTooLarge(absTimeMs);
     return TimeoutAtUs(Micros{absTimeMs * 1000});
 }
 
-bool TimedEventHandler::RegisterForTimedEvent(uint64_t durationIntervalMs)
+bool TimedEventHandler::TimeoutInMs(uint64_t durationMs)
 {
-    LogIfTooLarge(durationIntervalMs);
-
-    return RegisterForTimedEvent(Micros{durationIntervalMs * 1000});
+    return TimeoutInUs(Micros{durationMs * 1000});
 }
 
 bool TimedEventHandler::TimeoutIntervalMs(uint64_t timeout)
 {
-    LogIfTooLarge(timeout);
     return TimeoutIntervalUs(Micros{timeout * 1000});
 }
 
 bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs)
 {
-    LogIfTooLarge(durationIntervalMs);
-    LogIfTooLarge(durationFirstInMs);
     return TimeoutIntervalUs(Micros{durationIntervalMs * 1000}, Micros{durationFirstInMs * 1000});
 }
 
@@ -58,11 +41,11 @@ bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
     return Evm::RegisterTimedEventHandler(this, absTimeUs.value_);
 }
 
-bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
+bool TimedEventHandler::TimeoutInUs(Micros durationUs)
 {
-    timeoutDelta_ = timeout.value_;
+    durationUs_ = durationUs.value_;
 
-    return TimeoutAtUs(Micros{PAL.Micros() + timeoutDelta_});
+    return TimeoutAtUs(Micros{PAL.Micros() + durationUs_});
 }
 
 bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs)
@@ -71,7 +54,7 @@ bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs)
     
     durationIntervalUs_ = durationIntervalUs.value_;
     
-    return RegisterForTimedEvent(durationIntervalUs);
+    return TimeoutInUs(durationIntervalUs);
 }
 
 bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs)
@@ -80,7 +63,7 @@ bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs, Micros dura
     
     durationIntervalUs_ = durationIntervalUs.value_;
     
-    return RegisterForTimedEvent(durationFirstInUs);
+    return TimeoutInUs(durationFirstInUs);
 }
 
 

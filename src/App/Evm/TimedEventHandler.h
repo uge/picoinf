@@ -39,12 +39,12 @@ public:
     virtual ~TimedEventHandler() { Cancel(); }
 
     bool TimeoutAtMs(uint64_t absTimeMs);
-    bool RegisterForTimedEvent(uint64_t timeout);
+    bool TimeoutInMs(uint64_t durationMs);
     bool TimeoutIntervalMs(uint64_t durationIntervalMs);
     bool TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs);
 
     bool TimeoutAtUs(Micros absTimeUs);
-    bool RegisterForTimedEvent(Micros timeout);
+    bool TimeoutInUs(Micros durationUs);
     bool TimeoutIntervalUs(Micros durationIntervalUs);
     bool TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs);
 
@@ -77,7 +77,7 @@ private:
     // Evm uses these for state keeping
     uint64_t timeQueued_;
     uint64_t timeoutAbs_ = 0;
-    uint64_t timeoutDelta_ = 0;
+    uint64_t durationUs_ = 0;
     bool     isInterval_;
     uint64_t durationIntervalUs_;
     uint64_t calledCount_ = 0;

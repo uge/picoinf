@@ -320,7 +320,7 @@ public:
         ted.SetCallback([this]{
             processData_ = true;
         }, "GPS_READER_RE-ENABLE");
-        ted.RegisterForTimedEvent(msDelay);
+        ted.TimeoutInMs(msDelay);
     }
 
     void DumpState()

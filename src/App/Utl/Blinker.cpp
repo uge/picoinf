@@ -49,7 +49,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
     // - start
 
     Off();
-    ted_.RegisterForTimedEvent(0);
+    ted_.TimeoutInMs(0);
 
     if (count == 0)
     {
@@ -128,14 +128,14 @@ void Blinker::OnTimeout()
         {
             On();
 
-            ted_.RegisterForTimedEvent(onMs_);
+            ted_.TimeoutInMs(onMs_);
         }
     }
     else
     {
         Off();
 
-        ted_.RegisterForTimedEvent(offMs_);
+        ted_.TimeoutInMs(offMs_);
     }
 }
 

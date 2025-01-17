@@ -108,7 +108,7 @@ public:
             ted_.SetCallback([=]{
                 Start(cbFn, filterList);
             }, "BleObserver::Start Timer");
-            ted_.RegisterForTimedEvent(0);
+            ted_.TimeoutInUs(0);
         }
         else
         {
