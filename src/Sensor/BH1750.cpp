@@ -22,7 +22,7 @@ void BH1750::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            Timeline::Use([](Timeline &t){
+            Timeline::Measure([](Timeline &t){
                 sensor = new BH1750(addr, instance);
             }, "Constructor");
         }
@@ -68,7 +68,7 @@ void BH1750::SetupShell()
     Shell::AddCommand("sensor.bh1750.get.lux", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](Timeline &t){
+        Timeline::Measure([](Timeline &t){
             double luxLowRes = sensor->GetLuxLowRes();
             t.Event("luxLowRes");
             double luxHighRes = sensor->GetLuxHighRes();

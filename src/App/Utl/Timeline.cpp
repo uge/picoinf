@@ -241,7 +241,7 @@ void Timeline::Reset()
     iAmTheGlobal_ = iAmTheGlobalCache;
 }
 
-uint64_t Timeline::Use(function<void(Timeline &t)> fn, const char *title)
+uint64_t Timeline::Measure(function<void(Timeline &t)> fn, const char *title)
 {
     Timeline t;
 

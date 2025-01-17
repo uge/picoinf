@@ -1438,7 +1438,7 @@ void Clock::SetupShell()
     Shell::AddCommand("clk.freq", [](vector<string> argList) {
         if (argList.size() >= 1)
         {
-            Timeline::Use([&](auto &t){
+            Timeline::Measure([&](auto &t){
                 double mhz              = atof(argList[0].c_str());
                 bool   lowPowerPriority = false;
                 bool   mustBeExact      = false;

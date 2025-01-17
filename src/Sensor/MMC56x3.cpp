@@ -21,7 +21,7 @@ void MMC56x3::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            Timeline::Use([](Timeline &t){
+            Timeline::Measure([](Timeline &t){
                 sensor = new MMC56x3(instance);
             }, "Constructor");
         }
@@ -67,7 +67,7 @@ void MMC56x3::SetupShell()
     Shell::AddCommand("sensor.mmc56x3.get.all", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](Timeline &t){
+        Timeline::Measure([](Timeline &t){
             double x = sensor->GetMagXMicroTeslas();
             t.Event("x");
             double y = sensor->GetMagYMicroTeslas();

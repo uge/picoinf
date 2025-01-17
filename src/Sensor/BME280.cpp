@@ -22,7 +22,7 @@ void BME280::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            Timeline::Use([](Timeline &t){
+            Timeline::Measure([](Timeline &t){
                 sensor = new BME280(addr, instance);
             }, "Constructor");
         }
@@ -94,7 +94,7 @@ void BME280::SetupShell()
     Shell::AddCommand("sensor.bme280.get.all", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](auto &t){
+        Timeline::Measure([](auto &t){
             double tempC  = sensor->GetTemperatureCelsius();
             t.Event("tempC");
             double tempF  = sensor->GetTemperatureFahrenheit();

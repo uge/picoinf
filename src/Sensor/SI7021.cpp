@@ -21,7 +21,7 @@ void SI7021::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            Timeline::Use([](Timeline &t){
+            Timeline::Measure([](Timeline &t){
                 sensor = new SI7021(instance);
             }, "Constructor");
         }
@@ -66,7 +66,7 @@ void SI7021::SetupShell()
     Shell::AddCommand("sensor.si7021.get.all", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](auto &t){
+        Timeline::Measure([](auto &t){
             double tempC  = sensor->GetTemperatureCelsius();
             t.Event("tempC");
             double tempF  = sensor->GetTemperatureFahrenheit();

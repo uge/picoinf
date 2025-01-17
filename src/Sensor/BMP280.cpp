@@ -22,7 +22,7 @@ void BMP280::SetupShell()
     static auto GetSensor = []{
         if (sensor == nullptr)
         {
-            Timeline::Use([](Timeline &t){
+            Timeline::Measure([](Timeline &t){
                 sensor = new BMP280(addr, instance);
             }, "Constructor");
         }
@@ -86,7 +86,7 @@ void BMP280::SetupShell()
     Shell::AddCommand("sensor.bmp280.get.all", [](vector<string> argList){
         GetSensor();
 
-        Timeline::Use([](Timeline &t){
+        Timeline::Measure([](Timeline &t){
             double tempC = sensor->GetTemperatureCelsius();
             t.Event("tempC");
             double tempF = sensor->GetTemperatureFahrenheit();

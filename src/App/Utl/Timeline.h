@@ -22,7 +22,7 @@ public:
     void ReportNow(const char *title = nullptr);
     void Reset();
 
-    static uint64_t Use(std::function<void(Timeline &t)> fn, const char *title = nullptr);
+    static uint64_t Measure(std::function<void(Timeline &t)> fn, const char *title = nullptr);
 
     static void EnableCcGlobal();
     static void DisableCcGlobal();
