@@ -4,26 +4,26 @@
 
 bool TimedEventHandler::TimeoutAtMs(uint64_t absTimeMs)
 {
-    return TimeoutAtUs(Micros{absTimeMs * 1000});
+    return TimeoutAtUs(absTimeMs * 1'000);
 }
 
 bool TimedEventHandler::TimeoutInMs(uint64_t durationMs)
 {
-    return TimeoutInUs(Micros{durationMs * 1000});
+    return TimeoutInUs(durationMs * 1'000);
 }
 
-bool TimedEventHandler::TimeoutIntervalMs(uint64_t timeout)
+bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs)
 {
-    return TimeoutIntervalUs(Micros{timeout * 1000});
+    return TimeoutIntervalUs(durationIntervalMs * 1'000);
 }
 
 bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs)
 {
-    return TimeoutIntervalUs(Micros{durationIntervalMs * 1000}, Micros{durationFirstInMs * 1000});
+    return TimeoutIntervalUs(durationIntervalMs * 1'000, durationFirstInMs * 1'000);
 }
 
 
-bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
+bool TimedEventHandler::TimeoutAtUs(uint64_t absTimeUs)
 {
     // Don't allow yourself to be scheduled more than once.
     // Cache whether this is an interval callback since that
@@ -38,30 +38,30 @@ bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
     seqNo_ = seqNoNext_;
     ++seqNoNext_;
 
-    return Evm::RegisterTimedEventHandler(this, absTimeUs.value_);
+    return Evm::RegisterTimedEventHandler(this, absTimeUs);
 }
 
-bool TimedEventHandler::TimeoutInUs(Micros durationUs)
+bool TimedEventHandler::TimeoutInUs(uint64_t durationUs)
 {
-    durationUs_ = durationUs.value_;
+    durationUs_ = durationUs;
 
-    return TimeoutAtUs(Micros{PAL.Micros() + durationUs_});
+    return TimeoutAtUs(PAL.Micros() + durationUs_);
 }
 
-bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs)
+bool TimedEventHandler::TimeoutIntervalUs(uint64_t durationIntervalUs)
 {
     isInterval_ = 1;
     
-    durationIntervalUs_ = durationIntervalUs.value_;
+    durationIntervalUs_ = durationIntervalUs;
     
     return TimeoutInUs(durationIntervalUs);
 }
 
-bool TimedEventHandler::TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs)
+bool TimedEventHandler::TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs)
 {
     isInterval_ = 1;
     
-    durationIntervalUs_ = durationIntervalUs.value_;
+    durationIntervalUs_ = durationIntervalUs;
     
     return TimeoutInUs(durationFirstInUs);
 }

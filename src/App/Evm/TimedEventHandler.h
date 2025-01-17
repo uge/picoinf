@@ -11,18 +11,6 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-class Micros
-{
-public:
-    Micros(uint64_t value)
-    : value_(value)
-    {
-        // nothing to do
-    }
-
-    uint64_t value_;
-};
-
 class TimedEventHandler
 {
     friend class Evm;
@@ -43,17 +31,12 @@ public:
     bool TimeoutIntervalMs(uint64_t durationIntervalMs);
     bool TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs);
 
-    bool TimeoutAtUs(Micros absTimeUs);
-    bool TimeoutInUs(Micros durationUs);
-    bool TimeoutIntervalUs(Micros durationIntervalUs);
-    bool TimeoutIntervalUs(Micros durationIntervalUs, Micros durationFirstInUs);
+    bool TimeoutAtUs(uint64_t absTimeUs);
+    bool TimeoutInUs(uint64_t durationUs);
+    bool TimeoutIntervalUs(uint64_t durationIntervalUs);
+    bool TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs);
 
 
-    // bool TimeoutInMs(uint64_t durationMs);
-    // bool TimeoutInUs(uint64_t durationUs);
-    // bool TimeoutAtMs(uint64_t absTimeMs);
-    // bool TimeoutAtUs(uint64_t absTimeUs);
-    // trash Micros concept, name everything explicitly
     // move implementation inside Timer, clean up Evm
     // rename all timer instances to not be tedX but tX or whatever
 

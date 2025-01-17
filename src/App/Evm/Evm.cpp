@@ -782,7 +782,7 @@ void Evm::SetupShell()
             }, "TIMER_EVM_TEST_TIMER_US");
 
             timeStart = PAL.Micros();
-            tedTest_.TimeoutInUs(Micros{us});
+            tedTest_.TimeoutInUs(us);
         }, "TIMER_EVM_TEST_TIMER_US_CALLER");
         tedTest2_.TimeoutInMs(0);
     }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
