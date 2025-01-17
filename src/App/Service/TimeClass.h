@@ -48,7 +48,7 @@ public:
     static const char *MakeDateTimeFromMs(uint64_t timeMs);
     static const char *MakeDateTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
 
-    static const char *MakeTimeFromUs(uint64_t timeUs);
+    static const char *MakeTimeFromUs(uint64_t timeUs, bool replaceDateWithSpaces = false);
     static const char *MakeTimeMMSSmmmFromUs(uint64_t timeUs);
 
 

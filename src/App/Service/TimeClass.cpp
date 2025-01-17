@@ -5,6 +5,7 @@
 
 #include <cinttypes>
 #include <chrono>
+#include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <string>
@@ -180,12 +181,20 @@ const char *Time::MakeDateTime(uint8_t hour, uint8_t minute, uint8_t second, uin
 
 
 
-const char *Time::MakeTimeFromUs(uint64_t timeUs)
+const char *Time::MakeTimeFromUs(uint64_t timeUs, bool replaceDateWithSpaces)
 {
     char *timeAt = (char *)MakeDateTimeFromUs(timeUs);
 
-    // start from hour
-    timeAt = &timeAt[11];
+    if (replaceDateWithSpaces == false)
+    {
+        // start from hour
+        timeAt = &timeAt[11];
+    }
+    else
+    {
+        // blank out
+        memset(timeAt, ' ', 11);
+    }
 
     return timeAt;
 }
