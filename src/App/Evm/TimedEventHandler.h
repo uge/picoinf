@@ -33,7 +33,6 @@ public:
     TimedEventHandler()
     : id_(idNext_)
     , isInterval_(0)
-    , isRigid_(0)
     {
         ++idNext_;
     }
@@ -43,18 +42,13 @@ public:
     bool RegisterForTimedEvent(uint64_t timeout);
     bool RegisterForTimedEventInterval(uint64_t timeout);
     bool RegisterForTimedEventInterval(uint64_t timeout, uint64_t firstTimeout);
-    bool RegisterForTimedEventIntervalRigid(uint64_t timeout);
-    bool RegisterForTimedEventIntervalRigid(uint64_t timeout, uint64_t firstTimeout);
 
     bool TimeoutAtUs(Micros absTimeUs);
     bool RegisterForTimedEvent(Micros timeout);
     bool RegisterForTimedEventInterval(Micros timeout);
     bool RegisterForTimedEventInterval(Micros timeout, Micros firstTimeout);
-    bool RegisterForTimedEventIntervalRigid(Micros timeout);
-    bool RegisterForTimedEventIntervalRigid(Micros timeout, Micros firstTimeout);
 
 
-    // trash interval rigid concept, all intervals are rigid(?)
     // bool TimeoutInMs(uint64_t durationMs);
     // bool TimeoutInUs(uint64_t durationUs);
     // bool TimeoutAtMs(uint64_t absTimeMs);
@@ -85,7 +79,6 @@ private:
     uint64_t timeoutAbs_ = 0;
     uint64_t timeoutDelta_ = 0;
     bool     isInterval_;
-    bool     isRigid_;
     uint64_t intervalTimeout_;
     uint64_t calledCount_ = 0;
     uint64_t seqNo_ = 0;

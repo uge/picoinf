@@ -363,10 +363,8 @@ uint32_t Evm::ServiceTimedEventHandlers()
         do {
             teh = *timedEventHandlerList_.begin();
             
-            uint64_t timePreExecution = PAL.Micros();
-            
             // check if the timer expiry is in the past
-            if (teh->timeoutAbs_ <= timePreExecution)
+            if (teh->timeoutAbs_ <= PAL.Micros())
             {
                 // drop this element from the list
                 timedEventHandlerList_.erase(teh);
@@ -380,20 +378,7 @@ uint32_t Evm::ServiceTimedEventHandlers()
                 // re-schedule if it is an interval timer
                 if (teh->isInterval_)
                 {
-                    // Rigid calculations basically say to aim to have the event
-                    // actually fire on the interval, taking into consideration
-                    // execution time.
-                    // It does not attempt to make up for missed intervals, nor
-                    // keep sync'd to a timeline (though that will happen
-                    // provided intervals aren't completely missed).
-                    if (teh->isRigid_)
-                    {
-                        RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->intervalTimeout_);
-                    }
-                    else
-                    {
-                        RegisterTimedEventHandler(teh, timePreExecution + teh->intervalTimeout_);
-                    }
+                    RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->intervalTimeout_);
                 }
                 
                 // only keep going if remaining quota of events remains
@@ -567,17 +552,17 @@ void Evm::TestTimedEventHandler()
         Log('[', PAL.Millis(), "] ", "t1");
         t1.Cancel();
     });
-    t1.RegisterForTimedEventIntervalRigid(1000);
+    t1.RegisterForTimedEventInterval(1000);
 
     t2.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t2");
     });
-    t2.RegisterForTimedEventIntervalRigid(1000);
+    t2.RegisterForTimedEventInterval(1000);
 
     t3.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t3");
     });
-    t3.RegisterForTimedEventIntervalRigid(500);
+    t3.RegisterForTimedEventInterval(500);
 
     t4.SetCallback([&](){
         Log('[', PAL.Millis(), "] ", "t4");
@@ -657,7 +642,7 @@ void Evm::Init()
         // reset current stats
         stats_ = Stats{};
     }, "TIMER_EVM_STATS_HISTORY");
-    tedStats_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
+    tedStats_.RegisterForTimedEventInterval(STATS_INTERVAL_MS);
 
     static const uint64_t WATCHDOG_TIMEOUT_MS = 5'000;
     tedWatchdog_.SetCallback([]{
@@ -675,7 +660,7 @@ void Evm::Init()
             Watchdog::Feed();
         }
     }, "TIMER_EVM_WATCHDOG");
-    // tedWatchdog_.RegisterForTimedEventIntervalRigid(WATCHDOG_TIMEOUT_MS - 2'000, 0);
+    // tedWatchdog_.RegisterForTimedEventInterval(WATCHDOG_TIMEOUT_MS - 2'000, 0);
 
     PAL.RegisterOnFatalHandler("Evm Fatal Handler", []{
         LogModeSync();

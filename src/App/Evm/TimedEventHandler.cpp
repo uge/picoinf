@@ -39,19 +39,6 @@ bool TimedEventHandler::RegisterForTimedEventInterval(uint64_t timeout, uint64_t
     return RegisterForTimedEventInterval(Micros{timeout * 1000}, Micros{firstTimeout * 1000});
 }
 
-bool TimedEventHandler::RegisterForTimedEventIntervalRigid(uint64_t timeout)
-{
-    LogIfTooLarge(timeout);
-    return RegisterForTimedEventIntervalRigid(Micros{timeout * 1000});
-}
-
-bool TimedEventHandler::RegisterForTimedEventIntervalRigid(uint64_t timeout, uint64_t firstTimeout)
-{
-    LogIfTooLarge(timeout);
-    LogIfTooLarge(firstTimeout);
-    return RegisterForTimedEventIntervalRigid(Micros{timeout * 1000}, Micros{firstTimeout * 1000});
-}
-
 
 bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
 {
@@ -59,10 +46,8 @@ bool TimedEventHandler::TimeoutAtUs(Micros absTimeUs)
     // Cache whether this is an interval callback since that
     // gets reset during cancel.
     bool isIntervalCache = isInterval_;
-    bool isRigidCache    = isRigid_;
     Cancel();
     isInterval_ = isIntervalCache;
-    isRigid_    = isRigidCache;
 
     // give this registration a unique incrementing number, so tie-breaks
     // between this and another time set for the same expiry can be
@@ -83,7 +68,6 @@ bool TimedEventHandler::RegisterForTimedEvent(Micros timeout)
 bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
 {
     isInterval_ = 1;
-    isRigid_    = 0;
     
     intervalTimeout_ = timeout.value_;
     
@@ -93,29 +77,10 @@ bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout)
 bool TimedEventHandler::RegisterForTimedEventInterval(Micros timeout, Micros firstTimeout)
 {
     isInterval_ = 1;
-    isRigid_    = 0;
     
     intervalTimeout_ = timeout.value_;
     
     return RegisterForTimedEvent(firstTimeout);
-}
-
-bool TimedEventHandler::RegisterForTimedEventIntervalRigid(Micros timeout)
-{
-    uint8_t retVal = RegisterForTimedEventInterval(timeout);
-    
-    isRigid_ = 1;
-    
-    return retVal;
-}
-
-bool TimedEventHandler::RegisterForTimedEventIntervalRigid(Micros timeout, Micros firstTimeout)
-{
-    uint8_t retVal = RegisterForTimedEventInterval(timeout, firstTimeout);
-    
-    isRigid_ = 1;
-    
-    return retVal;
 }
 
 
@@ -126,7 +91,6 @@ void TimedEventHandler::Cancel()
     // make sure this isn't re-scheduled if interval and you attempt to
     // deregister yourself from within your own callback.
     isInterval_ = 0;
-    isRigid_    = 0;
 }
 
 bool TimedEventHandler::IsPending()
