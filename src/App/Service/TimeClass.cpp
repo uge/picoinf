@@ -89,18 +89,18 @@ uint64_t Time::GetSystemUsAtLastTimeChange()
 }
 
 
-const char *Time::GetNotionalDateTimeFromSystemUs(uint64_t timeUs)
+const char *Time::GetNotionalDateTimeAtSystemUs(uint64_t timeUs)
 {
     return MakeDateTimeFromUs(timeUs + timeDeltaUs_);
 }
 
 
 
-const char *Time::GetNotionalTimeFromSystemUs(uint64_t timeUs)
+const char *Time::GetNotionalTimeAtSystemUs(uint64_t timeUs)
 {
     // starts as full datetime including microseconds
     // 2025-01-14 16:43:24.259829
-    char *timeAt = (char *)GetNotionalDateTimeFromSystemUs(timeUs);
+    char *timeAt = (char *)GetNotionalDateTimeAtSystemUs(timeUs);
 
     // trim to just time and milliseconds
     timeAt = &timeAt[11];

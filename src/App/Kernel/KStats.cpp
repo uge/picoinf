@@ -60,7 +60,7 @@ struct KTaskCpuTimeFrame
 
     void Print() const
     {
-        Log("Time at capture: ", Time::GetNotionalTimeFromSystemUs(timeAtCapture));
+        Log("Time at capture: ", Time::GetNotionalTimeAtSystemUs(timeAtCapture));
         Log("Duration       : ", Time::MakeDurationFromUs(duration));
 
         for (const auto &[name, taskCpuTime]: taskCpuTimeList)

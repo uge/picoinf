@@ -35,8 +35,8 @@ public:
     static uint64_t GetSystemUsAtLastTimeChange();
 
     // see system epoch in terms of the notional time
-    static const char *GetNotionalDateTimeFromSystemUs(uint64_t timeUs);
-    static const char *GetNotionalTimeFromSystemUs(uint64_t timeUs);
+    static const char *GetNotionalDateTimeAtSystemUs(uint64_t timeUs);
+    static const char *GetNotionalTimeAtSystemUs(uint64_t timeUs);
 
 
     /////////////////////////////////////////////////////////////////

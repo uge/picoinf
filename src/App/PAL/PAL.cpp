@@ -655,7 +655,7 @@ void PlatformAbstractionLayer::SetupShell()
     Shell::AddCommand("sys.time", [](vector<string>){
         uint64_t timeUs = PAL.Micros();
 
-        string notionalTime = Time::GetNotionalDateTimeFromSystemUs(timeUs);
+        string notionalTime = Time::GetNotionalDateTimeAtSystemUs(timeUs);
         string systemTime   = Time::MakeDateTimeFromUs(timeUs);
 
         Log("Notional Time: ", notionalTime);
