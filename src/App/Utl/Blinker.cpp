@@ -15,7 +15,7 @@ void Blinker::SetName(string name)
 {
     name_ = name;
 
-    ted_.SetCallback([this]{
+    tTimeout_.SetCallback([this]{
         OnTimeout();
     }, name_.c_str());
 }
@@ -49,7 +49,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
     // - start
 
     Off();
-    ted_.TimeoutInMs(0);
+    tTimeout_.TimeoutInMs(0);
 
     if (count == 0)
     {
@@ -64,7 +64,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
 void Blinker::DisableAsyncBlink()
 {
     Off();
-    ted_.Cancel();
+    tTimeout_.Cancel();
 
     asyncCountRemaining_ = -1;
 }
@@ -128,14 +128,14 @@ void Blinker::OnTimeout()
         {
             On();
 
-            ted_.TimeoutInMs(onMs_);
+            tTimeout_.TimeoutInMs(onMs_);
         }
     }
     else
     {
         Off();
 
-        ted_.TimeoutInMs(offMs_);
+        tTimeout_.TimeoutInMs(offMs_);
     }
 }
 

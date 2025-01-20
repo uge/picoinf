@@ -46,5 +46,5 @@ private:
 
     bool on_ = false;
 
-    Timer ted_;
+    Timer tTimeout_;
 };

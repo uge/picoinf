@@ -105,10 +105,10 @@ public:
             // knowing that detail.
 
             // We know that by the time Evm comes around, BLE is available
-            ted_.SetCallback([=]{
+            tTimeout_.SetCallback([=]{
                 Start(cbFn, filterList);
             }, "BleObserver::Start Timer");
-            ted_.TimeoutInUs(0);
+            tTimeout_.TimeoutInUs(0);
         }
         else
         {
@@ -146,7 +146,7 @@ public:
 
     static void Stop()
     {
-        ted_.Cancel();
+        tTimeout_.Cancel();
         reportLast_ = {};
 
         if (!started_) return;
@@ -554,7 +554,7 @@ private:
     inline static AdReport reportLast_;
     inline static bool deDup_ = false;
 
-    inline static Timer ted_;
+    inline static Timer tTimeout_;
 
     inline static bool started_ = false;
 };

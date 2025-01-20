@@ -174,12 +174,12 @@ void Evm::MainLoop()
 // if this ever gets too wild, use some kind of stack-based system?
 void Evm::MainLoopRunFor(uint64_t durationMs)
 {
-    static Timer tedBreakout;
+    static Timer tBreakout;
 
-    tedBreakout.SetCallback([]{
+    tBreakout.SetCallback([]{
         mainLoopKeepRunning_ = false;
     }, "TIMER_EVM_MAIN_LOOP_TIMEOUT");
-    tedBreakout.TimeoutInMs(durationMs);
+    tBreakout.TimeoutInMs(durationMs);
 
     MainLoop();
 
@@ -696,11 +696,11 @@ multiset<Timer *, Evm::CmpTimer> Evm::timerList_;
 
 Evm::Stats Evm::stats_;
 CircularBuffer<Evm::StatsSnapshot> Evm::statsHistory_;
-Timer Evm::tedStats_;
-Timer Evm::tedWatchdog_;
+Timer Evm::tStats_;
+Timer Evm::tWatchdog_;
 
-Timer Evm::tedTest_;
-Timer Evm::tedTest2_;
+Timer Evm::tTest_;
+Timer Evm::tTest2_;
 
 
 
@@ -724,7 +724,7 @@ void Evm::Init()
     // Keep track of the stats on a rolling basis
     statsHistory_.SetCapacity(STATS_HISTORY_COUNT);
 
-    tedStats_.SetCallback([]{
+    tStats_.SetCallback([]{
         // capture existing stats
         statsHistory_.PushBack({
             .snapshotTime = PAL.Micros(),
@@ -734,10 +734,10 @@ void Evm::Init()
         // reset current stats
         stats_ = Stats{};
     }, "TIMER_EVM_STATS_HISTORY");
-    tedStats_.TimeoutIntervalMs(STATS_INTERVAL_MS);
+    tStats_.TimeoutIntervalMs(STATS_INTERVAL_MS);
 
     static const uint64_t WATCHDOG_TIMEOUT_MS = 5'000;
-    tedWatchdog_.SetCallback([]{
+    tWatchdog_.SetCallback([]{
         static bool started = false;
 
         if (!started)
@@ -752,7 +752,7 @@ void Evm::Init()
             Watchdog::Feed();
         }
     }, "TIMER_EVM_WATCHDOG");
-    // tedWatchdog_.TimeoutIntervalMs(WATCHDOG_TIMEOUT_MS - 2'000, 0);
+    // tWatchdog_.TimeoutIntervalMs(WATCHDOG_TIMEOUT_MS - 2'000, 0);
 
     PAL.RegisterOnFatalHandler("Evm Fatal Handler", []{
         LogModeSync();
@@ -835,16 +835,16 @@ void Evm::SetupShell()
         uint64_t ms = atoi(argList[0].c_str());
 
         Log("Setting timer for ", ms, " ms");
-        tedTest2_.SetCallback([=]{
-            tedTest_.SetCallback([=]{
+        tTest2_.SetCallback([=]{
+            tTest_.SetCallback([=]{
                 uint64_t timeNow = PAL.Micros();
                 Log("evm.test.timer.ms handled - ", Commas((timeNow - timeStart) / 1'000), " ms, ", Commas(timeNow - timeStart), " us");
             }, "TIMER_EVM_TEST_TIMER_MS");
 
             timeStart = PAL.Micros();
-            tedTest_.TimeoutInMs(ms);
+            tTest_.TimeoutInMs(ms);
         }, "TIMER_EVM_TEST_TIMER_MS_CALLER");
-        tedTest2_.TimeoutInMs(0);
+        tTest2_.TimeoutInMs(0);
     }, { .argCount = 1, .help = "test submitting an <x> ms timer to get serviced" });
 
     Shell::AddCommand("evm.test.timer.us", [&](vector<string> argList){
@@ -853,16 +853,16 @@ void Evm::SetupShell()
         uint64_t us = atoi(argList[0].c_str());
 
         Log("Setting timer for ", us, " us");
-        tedTest2_.SetCallback([=]{
-            tedTest_.SetCallback([=]{
+        tTest2_.SetCallback([=]{
+            tTest_.SetCallback([=]{
                 uint64_t timeNow = PAL.Micros();
                 Log("evm.test.timer.us handled - ", Commas(timeNow - timeStart), " us");
             }, "TIMER_EVM_TEST_TIMER_US");
 
             timeStart = PAL.Micros();
-            tedTest_.TimeoutInUs(us);
+            tTest_.TimeoutInUs(us);
         }, "TIMER_EVM_TEST_TIMER_US_CALLER");
-        tedTest2_.TimeoutInMs(0);
+        tTest2_.TimeoutInMs(0);
     }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
 
     Shell::AddCommand("evm.timer.cancel", [&](vector<string> argList){

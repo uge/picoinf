@@ -173,16 +173,16 @@ private:
 
     static Stats stats_;
     static CircularBuffer<StatsSnapshot> statsHistory_;
-    static Timer tedStats_;
+    static Timer tStats_;
 
     static void DumpStats();
     static Stats GetStatsDelta(Stats &s1, Stats &s2);
     static void DumpStats(Stats &stats, uint32_t duration);
     static const Stats &GetStats();
 
-    static Timer tedWatchdog_;
+    static Timer tWatchdog_;
 
 
-    static Timer tedTest_;
-    static Timer tedTest2_;
+    static Timer tTest_;
+    static Timer tTest2_;
 };

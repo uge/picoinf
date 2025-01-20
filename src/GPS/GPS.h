@@ -316,11 +316,11 @@ public:
         Reset();
 
         processData_ = false;
-        static Timer ted;
-        ted.SetCallback([this]{
+        static Timer tTimeout;
+        tTimeout.SetCallback([this]{
             processData_ = true;
         }, "GPS_READER_RE-ENABLE");
-        ted.TimeoutInMs(msDelay);
+        tTimeout.TimeoutInMs(msDelay);
     }
 
     void DumpState()
