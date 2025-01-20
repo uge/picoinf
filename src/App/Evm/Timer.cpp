@@ -87,8 +87,15 @@ void Timer::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirs
 
 void Timer::TimeoutAtUs(uint64_t timeAtUs)
 {
+    uint64_t registeredAtUs = PAL.Micros();
+
+    // cancel existing timer if there is one, without touching
+    // internal state, because that is used in Evm to find this
+    // timer in a data structure
+    Cancel();
+
     // stamp as early as possible
-    registeredAtUs_ = PAL.Micros();
+    registeredAtUs_ = registeredAtUs;
     durationUs_     = timeAtUs - registeredAtUs_;
 
     // work out absolute time of expiry
@@ -103,18 +110,25 @@ void Timer::TimeoutAtUs(uint64_t timeAtUs)
                        ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
     }
 
-    // register before interval set since that would get clobbered
-    Register();
-
     // set up interval details
     isInterval_         = false;
     durationIntervalUs_ = 0;
+
+    // register
+    Register();
 }
 
 void Timer::TimeoutInUs(uint64_t durationUs)
 {
+    uint64_t registeredAtUs = PAL.Micros();
+
+    // cancel existing timer if there is one, without touching
+    // internal state, because that is used in Evm to find this
+    // timer in a data structure
+    Cancel();
+
     // stamp as early as possible
-    registeredAtUs_ = PAL.Micros();
+    registeredAtUs_ = registeredAtUs;
     durationUs_     = durationUs;
 
     // work out absolute time of expiry
@@ -129,12 +143,12 @@ void Timer::TimeoutInUs(uint64_t durationUs)
                        ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
     }
 
-    // register before interval set since that would get clobbered
-    Register();
-
     // set up interval details
     isInterval_         = false;
     durationIntervalUs_ = 0;
+
+    // register
+    Register();
 }
 
 void Timer::TimeoutIntervalUs(uint64_t durationIntervalUs)
@@ -196,19 +210,27 @@ void Timer::OnTimeout()
 
     cbFn_();
 
+    // interval callback might have canceled itself
     if (isInterval_)
     {
+        // no need to cancel this timer, it has just gone off.
+        // the callback has either:
+        // - canceled (and it won't get here)
+        // - taken no timer action (and so interval remains)
+        // - changed to At/In (and it won't get here)
+        // - changed to interval again (at which point everything is fine)
+            // hmm, not quite fine actually, just don't do that one
+
         // don't stamp the registeredAt, let the original persist
 
         // work out absolute time of expiry
         timeoutAtUs_ += durationIntervalUs_;
 
-        // register before interval set since that would get clobbered
-        Register();
-
-        // set up interval details
-        isInterval_ = true;
+        // no need to set up interval details
         // no need to update duration, it is unchanged
+
+        // register
+        Register();
     }
 }
 
@@ -247,8 +269,6 @@ void Timer::Print(uint64_t timeNowUs)
 
 void Timer::Register()
 {
-    Cancel();
-
     // update seqno
     seqNo_ = seqNoNext_;
     ++seqNoNext_;

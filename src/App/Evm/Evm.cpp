@@ -500,7 +500,7 @@ void Evm::DumpStats(Stats &stats, uint32_t duration)
 // Testing
 //////////////////////////////////////////////////////////////////////
 
-void Evm::DebugTimer(const char *str = "")
+void Evm::DebugTimer(const char *str)
 {
     LogNL();
     Log(str);
@@ -658,7 +658,7 @@ void Evm::TestTimer()
         Log('[', PAL.Micros(), ", ", t5_i_to_a.GetTimeoutAtUs(), "] ", "t5_i_to_a as Interval");
 
         t5_i_to_a.SetCallback([&]{
-            Log('[', PAL.Micros(), ", ", t5_i_to_a.GetTimeoutAtUs(), "] ", "t5_i_to_a as At");
+            Log('[', PAL.Micros(), ", ", t5_i_to_a.GetTimeoutAtUs(), "] ", "t5_i_to_a as In");
         });
         t5_i_to_a.TimeoutInMs(0);
     }, "t4_i_cancel");

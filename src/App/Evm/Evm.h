@@ -78,7 +78,7 @@ public:
     static void RegisterTimer(Timer *timer);
     static void DeRegisterTimer(Timer *timer);
     static bool IsTimerRegistered(Timer *timer);
-    static void DebugTimer(const char *str);
+    static void DebugTimer(const char *str = "");
     static void TestTimer();
 
 private:
