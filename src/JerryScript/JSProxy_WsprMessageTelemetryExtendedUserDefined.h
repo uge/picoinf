@@ -1,16 +1,16 @@
 #pragma once
 
-#include "WsprMessageTelemetryExtendedUserDefined.h"
+#include "WsprEncodedDynamic.h"
 
 
 class JSProxy_WsprMessageTelemetryExtendedUserDefined
 {
 private:
-    using Msg = WsprMessageTelemetryExtendedUserDefined<29>;
+    using MsgUD = WsprMessageTelemetryExtendedUserDefined<29>;
 
 public:
 
-    static void Proxy(jerry_value_t obj, Msg *msg)
+    static void Proxy(jerry_value_t obj, MsgUD *msg)
     {
         auto     &fieldDefList    = msg->GetFieldDefList();
         uint16_t  fieldDefListLen = msg->GetFieldDefListLen();
@@ -38,7 +38,7 @@ private:
 
         if (argc == 0)
         {
-            Msg *msg = nullptr;
+            MsgUD *msg = nullptr;
             string fieldName;
 
             if (CheckArgs(retVal, callInfo, "Get", msg, fieldName))
@@ -62,7 +62,7 @@ private:
 
         if (argc == 1 && jerry_value_is_number(argv[0]))
         {
-            Msg *msg = nullptr;
+            MsgUD *msg = nullptr;
             string fieldName;
 
             if (CheckArgs(retVal, callInfo, "Set", msg, fieldName))
@@ -94,12 +94,12 @@ private:
     static bool CheckArgs(jerry_value_t           &retValJerry,
                           const jerry_call_info_t *callInfo,
                           string                    prefix,
-                          Msg                     *&msgRet,
+                          MsgUD                   *&msgRet,
                           string                   &fieldNameRet)
     {
         bool retVal = false;
 
-        Msg *msg = (Msg *)JerryScript::GetNativePointer(callInfo->function);
+        MsgUD *msg = (MsgUD *)JerryScript::GetNativePointer(callInfo->function);
         if (msg)
         {
             string name = JerryScript::GetInternalPropertyAsString(callInfo->function, "name");
