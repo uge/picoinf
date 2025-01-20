@@ -24,23 +24,23 @@ static void MaybeEvent(const char *str)
 // Evm Core
 //////////////////////////////////////////////////////////////////////
 
-uint64_t Evm::GetTimeToNextTimedEvent()
+uint64_t Evm::GetDurationUsToNextTimerTimeout()
 {
     uint64_t sleepUs;
 
-    if (!timedEventHandlerList_.empty())
+    if (!timerList_.empty())
     {
-        TimedEventHandler *teh = *timedEventHandlerList_.begin();
+        Timer *timer = *timerList_.begin();
 
         uint64_t timeNow = PAL.Micros();
 
-        if (teh->timeoutAbs_ <= timeNow)
+        if (timer->GetTimeoutAtUs() <= timeNow)
         {
             sleepUs = 0;
         }
         else
         {
-            sleepUs = teh->timeoutAbs_ - timeNow;
+            sleepUs = timer->GetTimeoutAtUs() - timeNow;
         }
     }
     else
@@ -131,14 +131,14 @@ void Evm::MainLoop()
         stats_.HANDLED_WORK += ServiceWork();
         stats_.HANDLED_WORK += ServiceLowPriorityWork();
         uint64_t timePostIsr = PAL.Micros();
-        stats_.HANDLED_TIMED += ServiceTimedEventHandlers();
+        stats_.HANDLED_TIMED += ServiceTimers();
         uint64_t timePostTimed = PAL.Micros();
 
         // Determine whether to keep processing or if sleep is an option
         if (fnWorkList_.Count() == 0 && fnLowPriorityWorkList_.Count() == 0)
         {
             // is there time to sleep?
-            uint64_t timeToSleep = GetTimeToNextTimedEvent();
+            uint64_t timeToSleep = GetDurationUsToNextTimerTimeout();
             if (timeToSleep)
             {
                 uint64_t timeToWake = PAL.Micros() + timeToSleep;
@@ -332,63 +332,44 @@ uint32_t Evm::ServiceLowPriorityWork()
 // Timed Events
 //////////////////////////////////////////////////////////////////////
 
-bool Evm::RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeoutAbs)
+void Evm::RegisterTimer(Timer *timer)
 {
-    // Keeping track of these states here, and not in the
-    // TimedEventHandler code, is necessary because for interval timers, the
-    // Evm code will register this event again, but that won't call the
-    // TimedEventHandler code to do so.
-    
-    // Keep track of some useful state
-    teh->timeQueued_ = PAL.Micros();
-    teh->timeoutAbs_ = timeoutAbs;
-
-    // Queue it
-    timedEventHandlerList_.insert(teh);
-
-    return true;
+    timerList_.insert(timer);
 }
 
-void Evm::DeRegisterTimedEventHandler(TimedEventHandler *teh)
+void Evm::DeRegisterTimer(Timer *timer)
 {
-    timedEventHandlerList_.erase(teh);
+    timerList_.erase(timer);
 }
 
-bool Evm::IsRegisteredTimedEventHandler(TimedEventHandler *teh)
+bool Evm::IsTimerRegistered(Timer *timer)
 {
-    return timedEventHandlerList_.contains(teh);
+    return timerList_.contains(timer);
 }
 
-uint32_t Evm::ServiceTimedEventHandlers()
+uint32_t Evm::ServiceTimers()
 {
     const uint8_t MAX_EVENTS_HANDLED = 1;
     uint8_t remainingEvents = MAX_EVENTS_HANDLED;
     
-    if (!timedEventHandlerList_.empty())
+    if (!timerList_.empty())
     {
-        bool               keepGoing       = true;
-        TimedEventHandler *teh             = NULL;
+        bool   keepGoing = true;
+        Timer *timer     = NULL;
         
         do {
-            teh = *timedEventHandlerList_.begin();
+            timer = *timerList_.begin();
             
             // check if the timer expiry is in the past
-            if (teh->timeoutAbs_ <= PAL.Micros())
+            if (timer->GetTimeoutAtUs() <= PAL.Micros())
             {
                 // drop this element from the list
-                timedEventHandlerList_.erase(teh);
+                timerList_.erase(timer);
                 
                 // invoke the IdleTimeEventHandler
                 MaybeEvent("EVM_TIMED_START");
-                teh->OnTimedEvent();
+                timer->OnTimeout();
                 MaybeEvent("EVM_TIMED_END");
-                ++teh->calledCount_;
-                
-                // re-schedule if it is an interval timer
-                if (teh->isInterval_)
-                {
-                    RegisterTimedEventHandler(teh, teh->timeoutAbs_ + teh->durationIntervalUs_);
-                }
                 
                 // only keep going if remaining quota of events remains
                 --remainingEvents;
@@ -398,7 +379,7 @@ uint32_t Evm::ServiceTimedEventHandlers()
             {
                 keepGoing = false;
             }
-        } while (keepGoing && !timedEventHandlerList_.empty());
+        } while (keepGoing && !timerList_.empty());
     }
 
     // Return events handled
@@ -428,7 +409,7 @@ void Evm::DumpStats()
     {
         StatsSnapshot &ss = statsHistory_[i];
 
-        Log("Stats from ", Time::GetNotionalTimeFromSystemUs(ss.snapshotTime));
+        Log("Stats from ", Time::GetNotionalTimeAtSystemUs(ss.snapshotTime));
         DumpStats(ss.stats, STATS_INTERVAL_MS * 1'000);
         LogNL();
     }
@@ -441,7 +422,7 @@ void Evm::DumpStats()
     }
     uint64_t durationCurrentStats = timeNow - currentStatsStartedAt;
 
-    Log("Current Stats: ", Time::GetNotionalTimeFromSystemUs(timeNow));
+    Log("Current Stats: ", Time::GetNotionalTimeAtSystemUs(timeNow));
     DumpStats(stats_, durationCurrentStats);
     LogNL();
 }
@@ -519,86 +500,183 @@ void Evm::DumpStats(Stats &stats, uint32_t duration)
 // Testing
 //////////////////////////////////////////////////////////////////////
 
-void Evm::DebugTimedEventHandler(const char *str, TimedEventHandler *obj)
+void Evm::DebugTimer(const char *str = "")
 {
     LogNL();
     Log(str);
-
-    if (obj)
-    {
-        Log("objid: ", obj->id_);
-    }
+    LogNL();
 
     // log current time
-    uint64_t timeNow = PAL.Micros();
-    Log("Current time - ", Commas(timeNow), " - ", Time::GetNotionalTimeFromSystemUs(timeNow));
+    uint64_t timeNowUs = PAL.Micros();
+    Log("Current time - ", Time::GetNotionalTimeAtSystemUs(timeNowUs), " - ", Commas(timeNowUs));
 
-    Log(timedEventHandlerList_.size(), " objects");
+    Log("Timers pending: ", timerList_.size());
     LogNL();
-    for (auto &teh : timedEventHandlerList_)
+    for (auto &timer : timerList_)
     {
-        int64_t timeRemaining = teh->timeoutAbs_ - timeNow;
-
-        Log(teh->origin_);
-        Log("ptr           ", Commas((uint32_t)teh));
-        Log("id_           ", teh->id_);
-        Log("timeQueued_   ", StrUtl::PadLeft(Commas(teh->timeQueued_), ' ', 13));
-        Log("timeoutAbs_   ", StrUtl::PadLeft(Commas(teh->timeoutAbs_), ' ', 13));
-        Log("durationUs_   ", StrUtl::PadLeft(Commas(teh->durationUs_), ' ', 13));
-        Log("timeRemaining ", StrUtl::PadLeft(Commas(timeRemaining), ' ', 13));
-        Log("seqNo_        ", StrUtl::PadLeft(Commas(teh->seqNo_), ' ', 13));
-        Log("calledCount   ", StrUtl::PadLeft(Commas(teh->calledCount_), ' ', 13));
-
+        timer->Print(timeNowUs);
         LogNL();
     }
 }
 
-void Evm::TestTimedEventHandler()
+void Evm::TestTimer()
 {
-    Timer t1;
+    // Timer functionality to test. Timers:
+    // - can bet set At a given moment in time
+    //   - including in the past
+    // - can be set In a given duration in the future (only 0 or positive duration)
+    //   - equates to an expiry At a given time
+    // - multiple timers can be due to expire at the same time
+    //   - when they do, they expire in the sequential order of registration
+    //     - earliest-scheduler-wins
+    // - timers which fire and re-schedule for the same expiry time cannot
+    //   starve out other timers scheduled for the same time due to the
+    //   earliest-scheduler-wins ordering
+
+
+    // testing that follows snaps the ms-timers to the ms, eliminating any
+    // us component. this makes testing aligning equal times easier.
+    // this is not the default behavior.
+
+
+    uint64_t timeNowUs = PAL.Micros();
+    uint64_t timeNowMs = timeNowUs / 1'000;
+    uint64_t durationGapMs = 2;
+    int count = 0;
+    int quitAfter = 6;
+
+
+    // time out in the past
+    // should see this go absolutely first
+    Timer t0;
+    t0.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t0.GetTimeoutAtUs(), "] ", "t0");
+    }, "t0");
+    t0.TimeoutAtMs(0);
+
+
+
+
+
+    // should follow t0 since this is scheduled for the past.
+    // they should go one after the other scheduled for the same time.
+
+    // time out in the past
+    Timer t0_1;
+    t0_1.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t0_1.GetTimeoutAtUs(), "] ", "t0_1");
+    }, "t0_1");
+    t0_1.SetSnapToMs(true);
+    t0_1.TimeoutAtMs(timeNowMs - durationGapMs);
+
+    Timer t0_2;
+    t0_2.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t0_2.GetTimeoutAtUs(), "] ", "t0_2");
+    }, "t0_2");
+    t0_2.SetSnapToMs(true);
+    t0_2.TimeoutAtMs(timeNowMs - durationGapMs);
+
+
+
+
+    // interval timer in microseconds
+    // should go first from 'now', and repeat, starting at some us past the ms mark
+    Timer t0_i_us;
+    t0_i_us.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t0_i_us.GetTimeoutAtUs(), "] ", "t0_i_us");
+    }, "t0_i_us");
+    t0_i_us.TimeoutIntervalUs(1'000, 0);
+
+
+
+
+    // these two interval timers should go next, then alternate with each other
+    // every millisecond.
+    Timer t1_i_1;
+    t1_i_1.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t1_i_1.GetTimeoutAtUs(), "] ", "t1_i_1");
+    }, "t1_i_1");
+    t1_i_1.SetSnapToMs(true);
+    t1_i_1.TimeoutIntervalMs(1, 0);
+
+    Timer t1_i_2;
+    t1_i_2.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t1_i_2.GetTimeoutAtUs(), "] ", "t1_i_2");
+
+        ++count;
+        if (count == quitAfter)
+        {
+            t0_i_us.Cancel();
+            t1_i_1.Cancel();
+            t1_i_2.Cancel();
+        }
+    }, "t1_i_2");
+    t1_i_2.SetSnapToMs(true);
+    t1_i_2.TimeoutIntervalMs(1, 0);
+
+
+
+
+
+    // t2, t3 time out in the future, clash/follow t2 and beat t1_i_x to same timeout
     Timer t2;
+    t2.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t2.GetTimeoutAtUs(), "] ", "t2");
+    }, "t2");
+    t2.SetSnapToMs(true);
+    t2.TimeoutAtMs(timeNowMs + durationGapMs);
+
     Timer t3;
-    Timer t4;
-    Timer t5;
-    Timer t6;
-
-    t1.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t1");
-        t1.Cancel();
-    });
-    t1.TimeoutIntervalMs(1000);
-
-    t2.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t2");
-    });
-    t2.TimeoutIntervalMs(1000);
-
-    t3.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t3");
-    });
-    t3.TimeoutIntervalMs(500);
-
-    t4.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t4");
-    });
-    t4.TimeoutInMs(25);
+    t3.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t3.GetTimeoutAtUs(), "] ", "t3");
+    }, "t3");
+    t3.SetSnapToMs(true);
+    t3.TimeoutAtMs(timeNowMs + durationGapMs);
 
 
-    // see two timers compete for the same time
-    uint64_t timeNow = PAL.Millis();
-    uint64_t timeThen = timeNow + 20;
-    t5.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t5");
-    });
-    t5.TimeoutAtMs(timeThen);
-    
-    t6.SetCallback([&](){
-        Log('[', PAL.Millis(), "] ", "t6");
-    });
-    t6.TimeoutAtMs(timeThen);
 
 
-    DebugTimedEventHandler("After t4");
+
+
+    // interval timer cancels itself and beats all others to this time
+    Timer t4_i_cancel;
+    t4_i_cancel.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t4_i_cancel.GetTimeoutAtUs(), "] ", "t4_i_cancel");
+        t4_i_cancel.Cancel();
+    }, "t4_i_cancel");
+    t4_i_cancel.SetSnapToMs(true);
+    t4_i_cancel.TimeoutIntervalMs(1, durationGapMs + 2);
+
+
+
+
+    // interval timer converts to In timer
+    // should see interval timer fire at immediately subsequently to t4_i_cancel
+    // should see In timer fire some time after
+    Timer t5_i_to_a;
+    t5_i_to_a.SetCallback([&]{
+        Log('[', PAL.Micros(), ", ", t5_i_to_a.GetTimeoutAtUs(), "] ", "t5_i_to_a as Interval");
+
+        t5_i_to_a.SetCallback([&]{
+            Log('[', PAL.Micros(), ", ", t5_i_to_a.GetTimeoutAtUs(), "] ", "t5_i_to_a as At");
+        });
+        t5_i_to_a.TimeoutInMs(0);
+    }, "t4_i_cancel");
+    t5_i_to_a.SetSnapToMs(true);
+    t5_i_to_a.TimeoutIntervalMs(1, durationGapMs + 2);
+
+
+
+
+
+
+
+
+
+    DebugTimer();
+    LogNL();
+    Log("Now: ", timeNowUs, ", ", timeNowMs);
+    LogNL();
 
     Evm::MainLoop();
 }
@@ -614,7 +692,7 @@ KMessagePipe<Evm::FnWork,   Evm::MAX_WORK_ITEMS> Evm::fnWorkList_;
 KMessagePipe<Evm::WorkData, Evm::MAX_WORK_ITEMS> Evm::fnLowPriorityWorkList_;
 
 KSemaphore Evm::sem_;
-multiset<TimedEventHandler *, Evm::CmpTimedEventHandler> Evm::timedEventHandlerList_;
+multiset<Timer *, Evm::CmpTimer> Evm::timerList_;
 
 Evm::Stats Evm::stats_;
 CircularBuffer<Evm::StatsSnapshot> Evm::statsHistory_;
@@ -713,13 +791,13 @@ void Evm::SetupShell()
         LogModeAsync();
     }, { .argCount = 0, .help = "" });
 
-    Shell::AddCommand("evm.debug", [&](vector<string> argList){
-        DebugTimedEventHandler("evm.debug");
+    Shell::AddCommand("evm.timer.debug", [&](vector<string> argList){
+        DebugTimer("evm.timer.debug");
     }, { .argCount = 0, .help = "" });
 
-    Shell::AddCommand("evm.debugNow", [&](vector<string> argList){
+    Shell::AddCommand("evm.timer.debugNow", [&](vector<string> argList){
         LogModeSync();
-        DebugTimedEventHandler("evm.debugnow");
+        DebugTimer("evm.timer.debugnow");
         LogModeAsync();
     }, { .argCount = 0, .help = "" });
 
@@ -788,21 +866,21 @@ void Evm::SetupShell()
     }, { .argCount = 1, .help = "test submitting an <x> us timer to get serviced" });
 
     Shell::AddCommand("evm.timer.cancel", [&](vector<string> argList){
-        uint32_t id = atoi(argList[0].c_str());
+        Timer *timerSearch = (Timer *)atoi(argList[0].c_str());
 
         bool found = false;
-        for (auto &teh : timedEventHandlerList_)
+        for (auto &timer : timerList_)
         {
-            if (teh->id_ == id)
+            if (timer == timerSearch)
             {
-                teh->Cancel();
+                timer->Cancel();
                 found = true;
 
                 break;
             }
         }
 
-        if (found) { Log("ID ", id, " found and dereigistered"); }
-        else       { Log("ID ", id, " not found");               }
-    }, { .argCount = 1, .help = "cancel timer <id>" });
+        if (found) { Log("Timer ", timerSearch, " found and dereigistered"); }
+        else       { Log("Timer ", timerSearch, " not found");               }
+    }, { .argCount = 1, .help = "cancel timer <ptr>" });
 }

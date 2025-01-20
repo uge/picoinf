@@ -5,119 +5,129 @@
 #include <source_location>
 
 
-//////////////////////////////////////////////////////////////////////
-//
-// Timed Events
-//
-//////////////////////////////////////////////////////////////////////
-
-class TimedEventHandler
-{
-    friend class Evm;
-
-public:
-
-public:
-    TimedEventHandler()
-    : id_(idNext_)
-    , isInterval_(0)
-    {
-        ++idNext_;
-    }
-    virtual ~TimedEventHandler() { Cancel(); }
-
-    bool TimeoutAtMs(uint64_t absTimeMs);
-    bool TimeoutInMs(uint64_t durationMs);
-    bool TimeoutIntervalMs(uint64_t durationIntervalMs);
-    bool TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs);
-
-    bool TimeoutAtUs(uint64_t absTimeUs);
-    bool TimeoutInUs(uint64_t durationUs);
-    bool TimeoutIntervalUs(uint64_t durationIntervalUs);
-    bool TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs);
-
-
-    // move implementation inside Timer, clean up Evm
-    // rename all timer instances to not be tedX but tX or whatever
-
-
-
-
-    void Cancel();
-    bool IsPending();
-    bool GetTimeQueued();
-    uint64_t GetTimeoutTimeUs();
-    virtual void OnTimedEvent() = 0;
-
-
-public:
-    uint32_t id_;
-
-protected:
-    const char *origin_ = nullptr;
-
-private:
-    // Evm uses these for state keeping
-    uint64_t timeQueued_;
-    uint64_t timeoutAbs_ = 0;
-    uint64_t durationUs_ = 0;
-    bool     isInterval_;
-    uint64_t durationIntervalUs_;
-    uint64_t calledCount_ = 0;
-    uint64_t seqNo_ = 0;
-
-    inline static uint32_t idNext_ = 1;
-    inline static uint64_t seqNoNext_ = 1;
-};
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Helpers
-//
-//////////////////////////////////////////////////////////////////////
+// rename all timer instances to not be tedX but tX or whatever
 
 class Timer
-: public TimedEventHandler
 {
 public:
-    Timer()
-    {
-        // Nothing to do
-    }
+
+    /////////////////////////////////////////////////////////////////
+    // Constructor / Destructor
+    /////////////////////////////////////////////////////////////////
+
+    Timer();
+    ~Timer();
+
+
+    /////////////////////////////////////////////////////////////////
+    // No copy or move
+    /////////////////////////////////////////////////////////////////
+
+    Timer(const Timer &)            = delete;
+    Timer& operator=(const Timer &) = delete;
     
-    // tried to the nice way but none worked
-    // https://www.techiedelight.com/find-name-of-the-calling-function-in-cpp/
-    void SetCallback(std::function<void()> cbFn, const char *origin = std::source_location::current().function_name())
-    {
-        cbFn_ = cbFn;
-        origin_ = origin;
-    }
+    Timer(Timer &&)            = delete;
+    Timer& operator=(Timer &&) = delete;
+
+
+    /////////////////////////////////////////////////////////////////
+    // Setting and Getting Callback
+    /////////////////////////////////////////////////////////////////
+
+    void SetCallback(std::function<void()> cbFn, const char *origin = std::source_location::current().function_name());
+    std::function<void()> GetCallback();
+    void operator()();
+
+    /////////////////////////////////////////////////////////////////
+    // Timer Alignment
+    /////////////////////////////////////////////////////////////////
+
+    void SetSnapToMs(bool tf);
+
+
+    /////////////////////////////////////////////////////////////////
+    // Setting Timeout in Milliseconds
+    /////////////////////////////////////////////////////////////////
+
+    void TimeoutAtMs(uint64_t timeAtMs);
+    void TimeoutInMs(uint64_t durationMs);
+    void TimeoutIntervalMs(uint64_t durationIntervalMs);
+    void TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs);
+
+
+    /////////////////////////////////////////////////////////////////
+    // Setting Timeout in Microseconds
+    /////////////////////////////////////////////////////////////////
+
+    void TimeoutAtUs(uint64_t timeAtUs);
+    void TimeoutInUs(uint64_t durationUs);
+    void TimeoutIntervalUs(uint64_t durationIntervalUs);
+    void TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs);
+
+
+    /////////////////////////////////////////////////////////////////
+    // Timer State
+    /////////////////////////////////////////////////////////////////
+
+    bool IsPending();
+    void Cancel();
+
+
+    /////////////////////////////////////////////////////////////////
+    // EVM Interface
+    /////////////////////////////////////////////////////////////////
+  
+    uint64_t GetSeqNo();
+    uint64_t GetTimeoutAtUs();
+    void OnTimeout();
+
+
+    /////////////////////////////////////////////////////////////////
+    // Debug
+    /////////////////////////////////////////////////////////////////
     
-    std::function<void()> GetCallback()
-    {
-        return cbFn_;
-    }
-    
-    void operator()()
-    {
-        GetCallback()();
-    }
+    void Print(uint64_t timeNowUs = 0);
+
 
 private:
-    virtual void OnTimedEvent();
 
-    std::function<void()> cbFn_;
+    /////////////////////////////////////////////////////////////////
+    // Common Registration Logic
+    /////////////////////////////////////////////////////////////////
+
+    void Register();
+
+
+private:
+
+    // provide ordering tie-breaking mechanism by giving each new timer
+    // registration a unique and incrementing number.
+    // this allows any number of timers to share the same expiry and
+    // retain an execution order of earliest-to-latest-to-register.
+    uint64_t               seqNo_     = 0;
+    inline static uint64_t seqNoNext_ = 1;
+
+    // configuration
+    bool snapToMs_               = false;
+    bool snapToMsAtRegistration_ = false;
+
+    // the absolute time this timer expires at.
+    uint64_t timeoutAtUs_ = 0;
+
+    // support interval mode.
+    bool     isInterval_         = false;
+    uint64_t durationIntervalUs_ = 0;
+
+    // callback data
+    const char *cbSetFromFn_ = "unknown";   // put in timeline
+    std::function<void()> cbFn_ = []{};
+
+    // debug data
+    uint64_t               id_     = 0;
+    inline static uint64_t idNext_ = 1;
+
+    uint64_t registeredAtUs_ = 0;
+    uint64_t durationUs_     = 0;
+    uint64_t timeoutCount_   = 0;
 };
-
-
-
-
-
-
-
-
-
-
-
 

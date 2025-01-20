@@ -2,7 +2,7 @@
 
 #include "PAL.h"
 #include "Log.h"
-#include "TimedEventHandler.h"
+#include "Timer.h"
 #include "Pin.h"
 #include "HeapAllocators.h"
 #include "KMessagePassing.h"
@@ -33,7 +33,7 @@ private:
     inline static bool autoLogAsync_ = true;
     inline static bool mainLoopKeepRunning_ = true;
 
-    static uint64_t GetTimeToNextTimedEvent();
+    static uint64_t GetDurationUsToNextTimerTimeout();
 
 
     //////////////////////////////////////////////////////////////////////
@@ -74,18 +74,20 @@ private:
     //////////////////////////////////////////////////////////////////////
 
 public:
-    static bool RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeoutAbs);
-    static void DeRegisterTimedEventHandler(TimedEventHandler *teh);
-    static bool IsRegisteredTimedEventHandler(TimedEventHandler *teh);
-    static void DebugTimedEventHandler(const char *str, TimedEventHandler *obj = nullptr);
-    static void TestTimedEventHandler();
+
+    static void RegisterTimer(Timer *timer);
+    static void DeRegisterTimer(Timer *timer);
+    static bool IsTimerRegistered(Timer *timer);
+    static void DebugTimer(const char *str);
+    static void TestTimer();
 
 private:
-    static uint32_t ServiceTimedEventHandlers();
+
+    static uint32_t ServiceTimers();
 
 
 private:
-    class CmpTimedEventHandler
+    class CmpTimer
     {
     public:
         // never let different objects compare equivalent.
@@ -94,29 +96,28 @@ private:
         // at seqno value.  otherwise the insert/delete api
         // for multiset winds up operating on groups at a time
         // when all I want is individual object access.
-        bool operator()(TimedEventHandler * const &teh1,
-                        TimedEventHandler * const &teh2) const
+        bool operator()(Timer * const &t1, Timer * const &t2) const
         {
             bool retVal;
 
-            if (teh1 == teh2)
+            if (t1 == t2)
             {
                 retVal = false;
             }
             else
             {
-                if (teh1->timeoutAbs_ < teh2->timeoutAbs_)
+                if (t1->GetTimeoutAtUs() < t2->GetTimeoutAtUs())
                 {
                     retVal = true;
                 }
-                else if (teh1->timeoutAbs_ == teh2->timeoutAbs_)
+                else if (t1->GetTimeoutAtUs() == t2->GetTimeoutAtUs())
                 {
                     // in a scenario where two timers are both set to go off at the
                     // same time, we want the one which was scheduled first to be
                     // fired first.
                     // This is helpful in a scenario where there are zero-length
                     // timers, we don't want one to starve out another.
-                    if (teh1->seqNo_ < teh2->seqNo_)
+                    if (t1->GetSeqNo() < t2->GetSeqNo())
                     {
                         retVal = true;
                     }
@@ -125,7 +126,7 @@ private:
                         retVal = false;
                     }
                 }
-                else    // teh1->timeoutAbs_ > teh2->timeoutAbs_
+                else    // t1->GetTimeoutAtUs() > t2->GetTimeoutAtUs()
                 {
                     retVal = false;
                 }
@@ -134,7 +135,7 @@ private:
             return retVal;
         }
     };
-    static std::multiset<TimedEventHandler *, CmpTimedEventHandler> timedEventHandlerList_;
+    static std::multiset<Timer *, CmpTimer> timerList_;
 
 
     //////////////////////////////////////////////////////////////////////

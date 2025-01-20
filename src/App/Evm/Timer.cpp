@@ -1,102 +1,257 @@
 #include "Evm.h"
+#include "TimeClass.h"
 #include "Timeline.h"
+#include "Utl.h"
+
+using namespace std;
+
+#include "StrictMode.h"
 
 
-bool TimedEventHandler::TimeoutAtMs(uint64_t absTimeMs)
+/////////////////////////////////////////////////////////////////
+// Constructor / Destructor
+/////////////////////////////////////////////////////////////////
+
+Timer::Timer()
+: id_(idNext_)
 {
-    return TimeoutAtUs(absTimeMs * 1'000);
+    ++idNext_;
 }
 
-bool TimedEventHandler::TimeoutInMs(uint64_t durationMs)
+Timer::~Timer()
 {
-    return TimeoutInUs(durationMs * 1'000);
-}
-
-bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs)
-{
-    return TimeoutIntervalUs(durationIntervalMs * 1'000);
-}
-
-bool TimedEventHandler::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs)
-{
-    return TimeoutIntervalUs(durationIntervalMs * 1'000, durationFirstInMs * 1'000);
-}
-
-
-bool TimedEventHandler::TimeoutAtUs(uint64_t absTimeUs)
-{
-    // Don't allow yourself to be scheduled more than once.
-    // Cache whether this is an interval callback since that
-    // gets reset during cancel.
-    bool isIntervalCache = isInterval_;
     Cancel();
-    isInterval_ = isIntervalCache;
-
-    // give this registration a unique incrementing number, so tie-breaks
-    // between this and another time set for the same expiry can be
-    // broken when sorting (earliest setter wins).
-    seqNo_ = seqNoNext_;
-    ++seqNoNext_;
-
-    return Evm::RegisterTimedEventHandler(this, absTimeUs);
 }
 
-bool TimedEventHandler::TimeoutInUs(uint64_t durationUs)
-{
-    durationUs_ = durationUs;
 
-    return TimeoutAtUs(PAL.Micros() + durationUs_);
+/////////////////////////////////////////////////////////////////
+// Setting and Getting Callback
+/////////////////////////////////////////////////////////////////
+
+// tried to the nice way but none worked
+// https://www.techiedelight.com/find-name-of-the-calling-function-in-cpp/
+void Timer::SetCallback(function<void()> cbFn, const char *origin)
+{
+    cbFn_ = cbFn;
+    cbSetFromFn_ = origin;
 }
 
-bool TimedEventHandler::TimeoutIntervalUs(uint64_t durationIntervalUs)
+function<void()> Timer::GetCallback()
 {
-    isInterval_ = 1;
+    return cbFn_;
+}
+
+void Timer::operator()()
+{
+    GetCallback()();
+}
+
+/////////////////////////////////////////////////////////////////
+// Timer Alignment
+/////////////////////////////////////////////////////////////////
+
+void Timer::SetSnapToMs(bool tf)
+{
+    snapToMs_ = tf;
+}
     
+
+/////////////////////////////////////////////////////////////////
+// Setting Timeout in Milliseconds
+/////////////////////////////////////////////////////////////////
+
+void Timer::TimeoutAtMs(uint64_t timeAtMs)
+{
+    TimeoutAtUs(timeAtMs * 1'000);
+}
+
+void Timer::TimeoutInMs(uint64_t durationMs)
+{
+    TimeoutInUs(durationMs * 1'000);
+}
+
+void Timer::TimeoutIntervalMs(uint64_t durationIntervalMs)
+{
+    TimeoutIntervalMs(durationIntervalMs, durationIntervalMs);
+}
+
+void Timer::TimeoutIntervalMs(uint64_t durationIntervalMs, uint64_t durationFirstInMs)
+{
+    TimeoutIntervalUs(durationIntervalMs * 1'000, durationFirstInMs * 1'000);
+}
+
+
+/////////////////////////////////////////////////////////////////
+// Setting Timeout in Microseconds
+/////////////////////////////////////////////////////////////////
+
+void Timer::TimeoutAtUs(uint64_t timeAtUs)
+{
+    // stamp as early as possible
+    registeredAtUs_ = PAL.Micros();
+    durationUs_     = timeAtUs - registeredAtUs_;
+
+    // work out absolute time of expiry
+    timeoutAtUs_ = timeAtUs;
+
+    // optionally snap to ms, only going forward in time when necessary to adjust
+    snapToMsAtRegistration_ = snapToMs_;
+    if (snapToMs_)
+    {
+        timeoutAtUs_ = (timeoutAtUs_ % 1'000) == 0 ?
+                       timeoutAtUs_ :
+                       ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
+    }
+
+    // register before interval set since that would get clobbered
+    Register();
+
+    // set up interval details
+    isInterval_         = false;
+    durationIntervalUs_ = 0;
+}
+
+void Timer::TimeoutInUs(uint64_t durationUs)
+{
+    // stamp as early as possible
+    registeredAtUs_ = PAL.Micros();
+    durationUs_     = durationUs;
+
+    // work out absolute time of expiry
+    timeoutAtUs_ = registeredAtUs_ + durationUs_;
+
+    // optionally snap to ms, only going forward in time when necessary to adjust
+    snapToMsAtRegistration_ = snapToMs_;
+    if (snapToMs_)
+    {
+        timeoutAtUs_ = (timeoutAtUs_ % 1'000) == 0 ?
+                       timeoutAtUs_ :
+                       ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
+    }
+
+    // register before interval set since that would get clobbered
+    Register();
+
+    // set up interval details
+    isInterval_         = false;
+    durationIntervalUs_ = 0;
+}
+
+void Timer::TimeoutIntervalUs(uint64_t durationIntervalUs)
+{
+    TimeoutIntervalUs(durationIntervalUs, durationIntervalUs);
+}
+
+void Timer::TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs)
+{
+    // register before interval set since that would get clobbered
+    TimeoutInUs(durationFirstInUs);
+
+    // set up interval details
+    isInterval_         = true;
     durationIntervalUs_ = durationIntervalUs;
-    
-    return TimeoutInUs(durationIntervalUs);
-}
-
-bool TimedEventHandler::TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirstInUs)
-{
-    isInterval_ = 1;
-    
-    durationIntervalUs_ = durationIntervalUs;
-    
-    return TimeoutInUs(durationFirstInUs);
 }
 
 
-void TimedEventHandler::Cancel()
-{
-    Evm::DeRegisterTimedEventHandler(this);
-    
-    // make sure this isn't re-scheduled if interval and you attempt to
-    // deregister yourself from within your own callback.
-    isInterval_ = 0;
-}
+/////////////////////////////////////////////////////////////////
+// Timer State
+/////////////////////////////////////////////////////////////////
 
-bool TimedEventHandler::IsPending()
+bool Timer::IsPending()
 {
-    uint8_t retVal = Evm::IsRegisteredTimedEventHandler(this);
+    uint8_t retVal = Evm::IsTimerRegistered(this);
     
     return retVal;
 }
 
-bool TimedEventHandler::GetTimeQueued()
+void Timer::Cancel()
 {
-    return timeQueued_;
+    Evm::DeRegisterTimer(this);
+    
+    // make sure this isn't re-scheduled if an interval callback
+    // decides to deregister itself.
+    isInterval_ = false;
 }
 
-uint64_t TimedEventHandler::GetTimeoutTimeUs()
+
+/////////////////////////////////////////////////////////////////
+// EVM Interface
+/////////////////////////////////////////////////////////////////
+
+uint64_t Timer::GetSeqNo()
 {
-    return timeoutAbs_;
+    return seqNo_;
 }
 
-
-void Timer::OnTimedEvent()
+uint64_t Timer::GetTimeoutAtUs()
 {
-    Timeline::Global().Event(origin_);
+    return timeoutAtUs_;
+}
+
+void Timer::OnTimeout()
+{
+    Timeline::Global().Event(cbSetFromFn_);
+
+    ++timeoutCount_;
 
     cbFn_();
+
+    if (isInterval_)
+    {
+        // don't stamp the registeredAt, let the original persist
+
+        // work out absolute time of expiry
+        timeoutAtUs_ += durationIntervalUs_;
+
+        // register before interval set since that would get clobbered
+        Register();
+
+        // set up interval details
+        isInterval_ = true;
+        // no need to update duration, it is unchanged
+    }
+}
+
+
+/////////////////////////////////////////////////////////////////
+// Debug
+/////////////////////////////////////////////////////////////////
+
+void Timer::Print(uint64_t timeNowUs)
+{
+    if (timeNowUs == 0)
+    {
+        timeNowUs = PAL.Micros();
+    }
+
+    int64_t durationRemainingUs = (int64_t)(timeoutAtUs_ - timeNowUs);
+
+    Log("cbSetFromFn_            : ", cbSetFromFn_);
+    Log("isInterval_             : ", isInterval_);
+    Log("ptr                     : ", Commas((uint32_t)this));
+    Log("id_                     : ", id_);
+    Log("seqNo_                  : ", Commas(seqNo_));
+    Log("snapToMs_               : ", snapToMs_);
+    Log("snapToMsAtRegistration_ : ", snapToMsAtRegistration_);
+    Log("timeoutAtUs_            : ", Time::GetNotionalTimeAtSystemUs(timeoutAtUs_),       " - ", StrUtl::PadLeft(Commas(timeoutAtUs_),        ' ', 13));
+    Log("registeredAtUs_         : ", Time::GetNotionalTimeAtSystemUs(registeredAtUs_),    " - ", StrUtl::PadLeft(Commas(registeredAtUs_),     ' ', 13));
+    Log("durationUs_             : ", Time::MakeTimeFromUs(durationUs_),                   " - ", StrUtl::PadLeft(Commas(durationUs_),         ' ', 13));
+    Log("durationRemainingUs     : ", Time::MakeTimeFromUs((uint64_t)durationRemainingUs), " - ", StrUtl::PadLeft(Commas(durationRemainingUs), ' ', 13));
+    Log("timeoutCount_           : ", Commas(timeoutCount_));
+}
+
+
+/////////////////////////////////////////////////////////////////
+// Common Registration Logic
+/////////////////////////////////////////////////////////////////
+
+void Timer::Register()
+{
+    Cancel();
+
+    // update seqno
+    seqNo_ = seqNoNext_;
+    ++seqNoNext_;
+
+    Evm::RegisterTimer(this);
 }
