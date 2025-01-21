@@ -7,49 +7,24 @@
 
 
 class TimerSequence
-: public Timer
 {
 public:
 
-    TimerSequence(const char *title = "TimerSequence")
-    {
-        SetCallback([this]{ OnTimeoutPrivate(); }, title);
+    TimerSequence(const char *title = "TimerSequence");
+    
+    TimerSequence &Add(std::function<void()> fn);
+    TimerSequence &StepFromPause();
+    TimerSequence &StepFromInUs(uint64_t durationUs);
+    TimerSequence &StepFromInMs(uint64_t durationMs);
 
-        Reset();
-    }
-
-    TimerSequence &Add(std::function<void()> fn)
-    {
-        Step step = { fn };
-
-        stepList_.push_back(step);
-
-        return *this;
-    }
-
-    void Reset()
-    {
-        Cancel();
-        stepListIdx_ = 0;
-        stepList_.clear();
-        stepList_.shrink_to_fit();
-    }
+    void Start();
+    void Reset();
 
 
 private:
 
-    void OnTimeoutPrivate()
-    {
-        if (stepListIdx_ < stepList_.size())
-        {
-            stepList_[stepListIdx_].fn();
-            ++stepListIdx_;
-        }
-        else
-        {
-            Cancel();
-        }
-    }
+    void SetLatestStepParameters(bool autoStep, uint64_t durationUs);
+    void OnTimeout();
 
 
 private:
@@ -58,10 +33,12 @@ private:
 
     struct Step
     {
-        std::function<void()> fn = []{};
+        std::function<void()> fn;
+        bool                  scheduleNext;
+        uint64_t              scheduleNextInUs;
     };
 
-    size_t stepListIdx_ = 0;
+    size_t            stepListIdx_ = 0;
     std::vector<Step> stepList_;
 };
 
