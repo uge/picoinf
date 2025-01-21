@@ -242,6 +242,17 @@ void Log(uint8_t val)
 // Signed Ints
 ////////////////////////////////////////////////////////////////////////////////
 
+void LogNNL(int64_t val)
+{
+    FormatAndUartSend("%" PRId64, val);
+}
+
+void Log(int64_t val)
+{
+    LogNNL(val);
+    LogNL();
+}
+
 void LogNNL(int val)
 {
     FormatAndUartSend("%i", val);

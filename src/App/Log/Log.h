@@ -75,6 +75,8 @@ extern void Log(uint8_t val);
 // Signed Ints
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void LogNNL(int64_t val);
+extern void Log(int64_t val);
 extern void LogNNL(int val);
 extern void Log(int val);
 extern void LogNNL(int32_t val);
