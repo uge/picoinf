@@ -28,13 +28,14 @@ public:
 public:
     static void DisableAutoLogAsync();
     static void MainLoop();
-    static void MainLoopRunFor(uint64_t durationMs);
+    static void ExitMainLoop();
+    static uint8_t GetStackDepth();
 
 private:
     inline static bool autoLogAsync_ = true;
-    inline static bool mainLoopKeepRunning_ = true;
+    inline static uint8_t mainLoopStackDepth_ = 0;
 
-    static uint64_t GetDurationUsToNextTimerTimeout();
+    static uint64_t GetDurationUsToNextTimerTimeout(uint8_t expectedStackDepth);
 
 
     //////////////////////////////////////////////////////////////////////

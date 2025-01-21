@@ -24,7 +24,7 @@ static void MaybeEvent(const char *str)
 // Evm Core
 //////////////////////////////////////////////////////////////////////
 
-uint64_t Evm::GetDurationUsToNextTimerTimeout()
+uint64_t Evm::GetDurationUsToNextTimerTimeout(uint8_t expectedStackDepth)
 {
     uint64_t sleepUs;
 
@@ -49,9 +49,9 @@ uint64_t Evm::GetDurationUsToNextTimerTimeout()
         sleepUs = 10'000'000;
     }
 
-    // fast breakout
-    // relies on knowing the implementation of the MainLoop
-    if (mainLoopKeepRunning_ == false)
+    // fast breakout for when a MainLoop stack exits, we want to
+    // not have a long sleep period with (say) no, or distant, timers.
+    if (mainLoopStackDepth_ != expectedStackDepth)
     {
         sleepUs = 0;
     }
@@ -124,7 +124,10 @@ void Evm::MainLoop()
         LogModeAsync();
     }
 
-    while (mainLoopKeepRunning_)
+    ++mainLoopStackDepth_;
+    uint8_t expectedStackDepth = mainLoopStackDepth_;
+
+    while (mainLoopStackDepth_ == expectedStackDepth)
     {
         uint64_t timeStart = PAL.Micros();
 
@@ -138,7 +141,7 @@ void Evm::MainLoop()
         if (fnWorkList_.Count() == 0 && fnLowPriorityWorkList_.Count() == 0)
         {
             // is there time to sleep?
-            uint64_t timeToSleep = GetDurationUsToNextTimerTimeout();
+            uint64_t timeToSleep = GetDurationUsToNextTimerTimeout(expectedStackDepth);
             if (timeToSleep)
             {
                 uint64_t timeToWake = PAL.Micros() + timeToSleep;
@@ -171,19 +174,14 @@ void Evm::MainLoop()
     }
 }
 
-// if this ever gets too wild, use some kind of stack-based system?
-void Evm::MainLoopRunFor(uint64_t durationMs)
+void Evm::ExitMainLoop()
 {
-    static Timer tBreakout;
+    --mainLoopStackDepth_;
+}
 
-    tBreakout.SetCallback([]{
-        mainLoopKeepRunning_ = false;
-    }, "TIMER_EVM_MAIN_LOOP_TIMEOUT");
-    tBreakout.TimeoutInMs(durationMs);
-
-    MainLoop();
-
-    mainLoopKeepRunning_ = true;
+uint8_t Evm::GetStackDepth()
+{
+    return mainLoopStackDepth_;
 }
 
 
@@ -776,6 +774,10 @@ void Evm::SetupShell()
         bool verbose = (bool)atoi(argList[0].c_str());
         SetTimelineVerbose(verbose);
     }, { .argCount = 1, .help = "set whether timeline includes detailed events" });
+
+    Shell::AddCommand("evm.stack", [&](vector<string> argList){
+        Log("Stack Depth: ", mainLoopStackDepth_);
+    }, { .argCount = 0, .help = "" });
 
     Shell::AddCommand("evm.stats", [&](vector<string> argList){
         DumpStats();
