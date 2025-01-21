@@ -3,6 +3,7 @@
 #include "PAL.h"
 #include "Log.h"
 #include "Timer.h"
+#include "TimerSequence.h"
 #include "Pin.h"
 #include "HeapAllocators.h"
 #include "KMessagePassing.h"
