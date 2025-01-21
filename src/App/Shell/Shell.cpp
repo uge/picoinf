@@ -287,6 +287,10 @@ void Shell::Init()
     Shell::AddCommand("clear", [](vector<string>){
         Log("\033[2J"); // clear
         Log("\033[H");  // move to home position
+        for (int i = 0; i < 150; ++i)
+        {
+            Log(">");
+        }
     }, { .help = "Clear the screen" });
 
     UartAddLineStreamCallback(UART::UART_0, [](const string &line){
