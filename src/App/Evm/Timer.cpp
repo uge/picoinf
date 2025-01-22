@@ -50,9 +50,14 @@ void Timer::operator()()
 // Timer Alignment
 /////////////////////////////////////////////////////////////////
 
-void Timer::SetSnapToMs(bool tf)
+void Timer::SetSnapToMs(uint64_t ms)
 {
-    snapToMs_ = tf;
+    SetSnapToUs(ms * 1'000);
+}
+
+void Timer::SetSnapToUs(uint64_t us)
+{
+    snapToUs_ = us;
 }
     
 
@@ -102,12 +107,12 @@ void Timer::TimeoutAtUs(uint64_t timeAtUs)
     timeoutAtUs_ = timeAtUs;
 
     // optionally snap to ms, only going forward in time when necessary to adjust
-    snapToMsAtRegistration_ = snapToMs_;
-    if (snapToMs_)
+    snapToUsAtRegistration_ = snapToUs_;
+    if (snapToUs_)
     {
-        timeoutAtUs_ = (timeoutAtUs_ % 1'000) == 0 ?
+        timeoutAtUs_ = (timeoutAtUs_ % snapToUs_) == 0 ?
                        timeoutAtUs_ :
-                       ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
+                       ((timeoutAtUs_ / snapToUs_ * snapToUs_) + snapToUs_);
     }
 
     // set up interval details
@@ -135,12 +140,12 @@ void Timer::TimeoutInUs(uint64_t durationUs)
     timeoutAtUs_ = registeredAtUs_ + durationUs_;
 
     // optionally snap to ms, only going forward in time when necessary to adjust
-    snapToMsAtRegistration_ = snapToMs_;
-    if (snapToMs_)
+    snapToUsAtRegistration_ = snapToUs_;
+    if (snapToUs_)
     {
-        timeoutAtUs_ = (timeoutAtUs_ % 1'000) == 0 ?
+        timeoutAtUs_ = (timeoutAtUs_ % snapToUs_) == 0 ?
                        timeoutAtUs_ :
-                       ((timeoutAtUs_ / 1'000 * 1'000) + 1'000);
+                       ((timeoutAtUs_ / snapToUs_ * snapToUs_) + snapToUs_);
     }
 
     // set up interval details
@@ -253,8 +258,8 @@ void Timer::Print(uint64_t timeNowUs)
     Log("ptr                     : ", Commas((uint32_t)this));
     Log("id_                     : ", id_);
     Log("seqNo_                  : ", Commas(seqNo_));
-    Log("snapToMs_               : ", snapToMs_);
-    Log("snapToMsAtRegistration_ : ", snapToMsAtRegistration_);
+    Log("snapToUs_               : ", Commas(snapToUs_));
+    Log("snapToUsAtRegistration_ : ", Commas(snapToUsAtRegistration_));
     Log("timeoutAtUs_            : ", Time::GetNotionalTimeAtSystemUs(timeoutAtUs_),       " - ", StrUtl::PadLeft(Commas(timeoutAtUs_),        ' ', 13));
     Log("registeredAtUs_         : ", Time::GetNotionalTimeAtSystemUs(registeredAtUs_),    " - ", StrUtl::PadLeft(Commas(registeredAtUs_),     ' ', 13));
     Log("durationUs_             : ", Time::MakeTimeFromUs(durationUs_),                   " - ", StrUtl::PadLeft(Commas(durationUs_),         ' ', 13));

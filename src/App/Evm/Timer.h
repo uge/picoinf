@@ -42,7 +42,8 @@ public:
     // Timer Alignment
     /////////////////////////////////////////////////////////////////
 
-    void SetSnapToMs(bool tf);
+    void SetSnapToMs(uint64_t ms);
+    void SetSnapToUs(uint64_t us);
 
 
     /////////////////////////////////////////////////////////////////
@@ -108,8 +109,8 @@ private:
     inline static uint64_t seqNoNext_ = 1;
 
     // configuration
-    bool snapToMs_               = false;
-    bool snapToMsAtRegistration_ = false;
+    uint64_t snapToUs_               = 0;
+    uint64_t snapToUsAtRegistration_ = 0;
 
     // the absolute time this timer expires at.
     uint64_t timeoutAtUs_ = 0;

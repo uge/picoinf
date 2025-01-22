@@ -537,6 +537,12 @@ void Evm::TestTimer()
     // this is not the default behavior.
 
 
+    // align to a millisecond to start, to help make timer setting
+    // more certain. the tests below unfortunately suffer from the clock
+    // running during their setup and registration.
+    while (PAL.Micros() % 1'000 != 0);
+
+
     uint64_t timeNowUs = PAL.Micros();
     uint64_t timeNowMs = timeNowUs / 1'000;
     uint64_t durationGapMs = 2;
@@ -564,14 +570,14 @@ void Evm::TestTimer()
     t0_1.SetCallback([&]{
         Log('[', PAL.Micros(), ", ", t0_1.GetTimeoutAtUs(), "] ", "t0_1");
     }, "t0_1");
-    t0_1.SetSnapToMs(true);
+    t0_1.SetSnapToMs(1);
     t0_1.TimeoutAtMs(timeNowMs - durationGapMs);
 
     Timer t0_2;
     t0_2.SetCallback([&]{
         Log('[', PAL.Micros(), ", ", t0_2.GetTimeoutAtUs(), "] ", "t0_2");
     }, "t0_2");
-    t0_2.SetSnapToMs(true);
+    t0_2.SetSnapToMs(1);
     t0_2.TimeoutAtMs(timeNowMs - durationGapMs);
 
 
@@ -594,7 +600,7 @@ void Evm::TestTimer()
     t1_i_1.SetCallback([&]{
         Log('[', PAL.Micros(), ", ", t1_i_1.GetTimeoutAtUs(), "] ", "t1_i_1");
     }, "t1_i_1");
-    t1_i_1.SetSnapToMs(true);
+    t1_i_1.SetSnapToMs(1);
     t1_i_1.TimeoutIntervalMs(1, 0);
 
     Timer t1_i_2;
@@ -609,7 +615,7 @@ void Evm::TestTimer()
             t1_i_2.Cancel();
         }
     }, "t1_i_2");
-    t1_i_2.SetSnapToMs(true);
+    t1_i_2.SetSnapToMs(1);
     t1_i_2.TimeoutIntervalMs(1, 0);
 
 
@@ -621,14 +627,14 @@ void Evm::TestTimer()
     t2.SetCallback([&]{
         Log('[', PAL.Micros(), ", ", t2.GetTimeoutAtUs(), "] ", "t2");
     }, "t2");
-    t2.SetSnapToMs(true);
+    t2.SetSnapToMs(1);
     t2.TimeoutAtMs(timeNowMs + durationGapMs);
 
     Timer t3;
     t3.SetCallback([&]{
         Log('[', PAL.Micros(), ", ", t3.GetTimeoutAtUs(), "] ", "t3");
     }, "t3");
-    t3.SetSnapToMs(true);
+    t3.SetSnapToMs(1);
     t3.TimeoutAtMs(timeNowMs + durationGapMs);
 
 
@@ -642,7 +648,7 @@ void Evm::TestTimer()
         Log('[', PAL.Micros(), ", ", t4_i_cancel.GetTimeoutAtUs(), "] ", "t4_i_cancel");
         t4_i_cancel.Cancel();
     }, "t4_i_cancel");
-    t4_i_cancel.SetSnapToMs(true);
+    t4_i_cancel.SetSnapToMs(1);
     t4_i_cancel.TimeoutIntervalMs(1, durationGapMs + 2);
 
 
@@ -660,7 +666,7 @@ void Evm::TestTimer()
         });
         t5_i_to_a.TimeoutInMs(0);
     }, "t4_i_cancel");
-    t5_i_to_a.SetSnapToMs(true);
+    t5_i_to_a.SetSnapToMs(1);
     t5_i_to_a.TimeoutIntervalMs(1, durationGapMs + 2);
 
 
@@ -732,6 +738,7 @@ void Evm::Init()
         // reset current stats
         stats_ = Stats{};
     }, "TIMER_EVM_STATS_HISTORY");
+    tStats_.SetSnapToMs(STATS_INTERVAL_MS);
     tStats_.TimeoutIntervalMs(STATS_INTERVAL_MS);
 
     static const uint64_t WATCHDOG_TIMEOUT_MS = 5'000;
