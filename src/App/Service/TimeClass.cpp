@@ -72,6 +72,11 @@ const char *Time::GetNotionalDateTime()
     return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
 }
 
+const char *Time::GetNotionalTime(bool replaceDateWithSpaces)
+{
+    return MakeTimeFromUs(PAL.Micros() + timeDeltaUs_, replaceDateWithSpaces);
+}
+
 uint64_t Time::GetNotionalTimeDeltaUs()
 {
     return timeDeltaUs_;

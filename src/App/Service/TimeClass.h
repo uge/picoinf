@@ -25,6 +25,7 @@ public:
     static int64_t     SetNotionalDateTime(std::string dt);
     static int64_t     SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
     static const char *GetNotionalDateTime();
+    static const char *GetNotionalTime(bool replaceDateWithSpaces = false);
     static uint64_t    GetNotionalTimeDeltaUs();
 
 
