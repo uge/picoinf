@@ -9,21 +9,40 @@ using namespace std;
 #include "StrictMode.h"
 
 
-bool Shell::Eval(string cmd)
+bool Shell::Eval(string input)
 {
     bool didEval = false;
 
-    cmd = Trim(cmd);
+    vector<string> cmdList = SplitByCharQuoteAware(input, ';');
 
-    if (cmd.length())
+    string maybeNewline = "";
+    bool dotCmdRun = false;
+    for (auto &cmd : cmdList)
     {
-        didEval = true;
+        cmd = Trim(cmd);
 
-        ShellCmdExecute(cmd);
-
-        if (cmd != ".")
+        if (cmd.length())
         {
-            cmdLast_ = cmd;
+            didEval = true;
+
+            if (cmd == ".")
+            {
+                dotCmdRun = true;
+            }
+
+            LogNNL(maybeNewline);
+            maybeNewline = "\n";
+
+            ShellCmdExecute(cmd);
+        }
+    }
+
+    if (didEval)
+    {
+        // watch out for infinite loop on '.' being in the list
+        if (dotCmdRun == false)
+        {
+            cmdLast_ = input;
         }
     }
 
@@ -32,7 +51,15 @@ bool Shell::Eval(string cmd)
 
 bool Shell::RepeatPriorCommand()
 {
-    return Shell::Eval(cmdLast_);
+    bool retVal = false;
+
+    if (cmdLast_.size())
+    {
+        Log(cmdLast_);
+        retVal = Shell::Eval(cmdLast_);
+    }
+
+    return retVal;
 }
 
 bool Shell::AddCommand(string name, function<void(vector<string> argList)> cbFn)
