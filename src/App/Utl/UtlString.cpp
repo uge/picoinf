@@ -150,6 +150,40 @@ vector<string> Split(string str, string delim, bool trimmed, bool allowEmpty)
     return retVal;
 }
 
+// make a list of strings from a str, splitting by a character
+// eg a "b c;" ; d => [(a "b c;"), (d)]
+vector<string> SplitByCharQuoteAware(const string &str, char splitChar)
+{
+    vector<string> cmdList;
+
+    string cmd;
+    bool inQuote = false;
+
+    for (char c : str)
+    {
+        if (c == '"')
+        {
+            inQuote = !inQuote;
+        }
+
+        if (c == splitChar && inQuote == false)
+        {
+            cmdList.push_back(cmd);
+            cmd.clear();
+        }
+        else
+        {
+            cmd += c;
+        }
+    }
+
+    if (cmd.length())
+    {
+        cmdList.push_back(cmd);
+    }
+
+    return cmdList;
+}
 
 vector<string> SplitQuotedString(const string &input)
 {

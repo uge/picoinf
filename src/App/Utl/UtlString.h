@@ -49,6 +49,7 @@ extern std::vector<std::string> Split(std::string str,
                                       bool        trimmed    = true,
                                       bool        allowEmpty = false);
 
+extern std::vector<std::string> SplitByCharQuoteAware(const std::string &str, char splitChar);
 extern std::vector<std::string> SplitQuotedString(const std::string &input);
 
 extern std::string Join(const std::vector<std::string> &valList, const std::string &sep);
