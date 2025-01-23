@@ -40,8 +40,7 @@ static void Overlay(char *dtBuf, uint8_t hour, uint8_t minute, uint8_t second, u
 // Notional time
 /////////////////////////////////////////////////////////////////
 
-
-int64_t Time::SetNotionalDateTimeUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs)
+int64_t Time::SetNotionalUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs)
 {
     systemTimeUsAtChange_ = systemTimeUs;
 
@@ -54,7 +53,7 @@ int64_t Time::SetNotionalDateTimeUs(uint64_t notionalDateTimeUs, uint64_t system
 
 int64_t Time::SetNotionalDateTime(string dt)
 {
-    return SetNotionalDateTimeUs(MakeUsFromDateTime(dt));
+    return SetNotionalUs(MakeUsFromDateTime(dt));
 }
 
 int64_t Time::SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us)
@@ -67,21 +66,31 @@ int64_t Time::SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint
     return SetNotionalDateTime(dateTimeBuffer);
 }
 
+
+uint64_t Time::GetNotionalUsAtSystemUs(uint64_t timeUs)
+{
+    return timeUs + timeDeltaUs_;
+}
+
+uint64_t Time::GetNotionalUs()
+{
+    return GetNotionalUsAtSystemUs(PAL.Micros());
+}
+
 const char *Time::GetNotionalDateTime()
 {
-    return MakeDateTimeFromUs(PAL.Micros() + timeDeltaUs_);
+    return MakeDateTimeFromUs(GetNotionalUs());
 }
 
 const char *Time::GetNotionalTime(bool replaceDateWithSpaces)
 {
-    return MakeTimeFromUs(PAL.Micros() + timeDeltaUs_, replaceDateWithSpaces);
+    return MakeTimeFromUs(GetNotionalUs(), replaceDateWithSpaces);
 }
 
 uint64_t Time::GetNotionalTimeDeltaUs()
 {
     return timeDeltaUs_;
 }
-
 
 
 /////////////////////////////////////////////////////////////////
@@ -204,6 +213,34 @@ const char *Time::MakeTimeMMSSmmmFromUs(uint64_t timeMs)
     return timeAt;
 }
 
+const char *Time::MakeTimeRelativeFromUs(uint64_t timeAtUs, uint64_t timeRefUs)
+{
+    static constexpr const char *pastNote = " (in the past)";
+
+    // max size of duration is 29 + 1 (null).
+    // we may need space for a sign, so add 1.
+    // plus the note if in the past
+    static const uint8_t BUF_SIZE = 29 + 1 + strlen(pastNote) + 1;
+    static char buf[BUF_SIZE] = { 0 };
+
+    if (timeRefUs <= timeAtUs)
+    {
+        buf[0] = ' ';
+        buf[1] = '\0';
+        strcat(buf, Time::MakeTimeFromUs(timeAtUs - timeRefUs));
+    }
+    else
+    {
+        buf[0] = '-';
+        buf[1] = '\0';
+
+        strcat(buf, Time::MakeTimeFromUs(timeRefUs - timeAtUs));
+        strcat(buf, pastNote);
+    }
+
+    return buf;
+}
+
 
 Time::TimePoint Time::ParseDateTime(const string &dt)
 {
@@ -284,17 +321,15 @@ uint64_t Time::MakeUsFromDateTime(const string &dt)
 // thus this function is safe to call from ISRs
 const char *Time::MakeDurationFromUs(uint64_t timeUs)
 {
-    uint64_t time = timeUs;
-
-    // A 64-bit int of microseconds is, let's say, 5000 seconds, which
-    // is 307,445,734,562 minutes, so 5,124,095,576 hours
+    // A 64-bit unsigned int of microseconds can represent up to
+    // 5,116,200,836,669,387 hours (16 non-comma digits).
+    //
     // So the max format will be:
-    // HHHHHHHHHH:MM:SS.uuuuuu = 23
-    // The compiler is worried that theoretical values could exceed
-    // the buffer, so I'll just make it large enough for any possible
-    // value fed in.
-    static const uint8_t BUF_SIZE = 35 + 1;
+    // HHHHHHHHHHHHHHHH:MM:SS.uuuuuu = 29
+    static const uint8_t BUF_SIZE = 29 + 1;
     static char buf[BUF_SIZE];
+
+    uint64_t time = timeUs;
 
     // extract microseconds
     uint32_t us = (uint32_t)(time % 1'000'000);
@@ -322,11 +357,6 @@ const char *Time::MakeDurationFromMs(uint64_t timeMs)
 {
     return MakeDurationFromUs(timeMs * 1000);
 }
-
-
-
-
-
 
 
 

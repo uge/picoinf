@@ -21,11 +21,15 @@ public:
     // - if old time > new time, you get a negative number.
     // this can be handy for knowing if your locally-running clock
     // is falling behind (positive) or running fast (negative).
-    static int64_t     SetNotionalDateTimeUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs = PAL.Micros());
+    static int64_t     SetNotionalUs(uint64_t notionalDateTimeUs, uint64_t systemTimeUs = PAL.Micros());
     static int64_t     SetNotionalDateTime(std::string dt);
     static int64_t     SetNotionalTime(uint8_t hour, uint8_t minute, uint8_t second, uint32_t us);
+
+    static uint64_t    GetNotionalUsAtSystemUs(uint64_t timeUs);
+    static uint64_t    GetNotionalUs();
     static const char *GetNotionalDateTime();
     static const char *GetNotionalTime(bool replaceDateWithSpaces = false);
+
     static uint64_t    GetNotionalTimeDeltaUs();
 
 
@@ -52,6 +56,10 @@ public:
     static const char *MakeTimeFromUs(uint64_t timeUs, bool replaceDateWithSpaces = false);
     static const char *MakeTimeMMSSmmmFromUs(uint64_t timeUs);
 
+    // time duration (compared to a reference, possibly negative).
+    // this would be MakeDuration... except it is unconditional 2-digit hours.
+    static const char *MakeTimeRelativeFromUs(uint64_t timeAtUs, uint64_t timeRefUs = PAL.Micros());
+
 
     // string parsing
     struct TimePoint
@@ -71,9 +79,10 @@ public:
     static uint64_t MakeUsFromDateTime(const std::string &dt);
 
 
-    // duration
+    // duration (compared to 0, so always positive)
     static const char *MakeDurationFromUs(uint64_t timeUs);
     static const char *MakeDurationFromMs(uint64_t timeMs);
+
 
 
 
