@@ -209,7 +209,10 @@ uint64_t Timer::GetTimeoutAtUs()
 
 void Timer::OnTimeout()
 {
-    Timeline::Global().Event(cbSetFromFn_);
+    if (visibleInTimeline_)
+    {
+        Timeline::Global().Event(cbSetFromFn_);
+    }
 
     ++timeoutCount_;
 
@@ -243,6 +246,11 @@ void Timer::OnTimeout()
 /////////////////////////////////////////////////////////////////
 // Debug
 /////////////////////////////////////////////////////////////////
+
+void Timer::SetVisibleInTimeline(bool tf)
+{
+    visibleInTimeline_ = tf;
+}
 
 void Timer::Print(uint64_t timeNowUs)
 {

@@ -87,6 +87,7 @@ public:
     // Debug
     /////////////////////////////////////////////////////////////////
     
+    void SetVisibleInTimeline(bool tf);
     void Print(uint64_t timeNowUs = 0);
 
 
@@ -124,6 +125,8 @@ private:
     std::function<void()> cbFn_ = []{};
 
     // debug data
+    bool visibleInTimeline_ = true;
+
     uint64_t               id_     = 0;
     inline static uint64_t idNext_ = 1;
 
