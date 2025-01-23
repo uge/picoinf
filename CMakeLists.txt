@@ -389,9 +389,12 @@ target_compile_definitions(PicoInf PRIVATE
 
 # set(PICO_DEOPTIMIZED_DEBUG 1)
 # add_definitions(-O0)
-add_definitions(-Wall)
-add_definitions(-Wno-psabi)
-add_definitions(-fstack-usage)
+target_compile_options(PicoInf
+    PUBLIC
+        -Wall
+        -Wno-psabi
+        -fstack-usage
+)
 
 
 #####################################################################
