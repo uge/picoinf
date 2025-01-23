@@ -316,11 +316,11 @@ public:
         Reset();
 
         processData_ = false;
-        static Timer tTimeout;
-        tTimeout.SetCallback([this]{
+        static Timer timer("GPS_READER_RE-ENABLE");
+        timer.SetCallback([this]{
             processData_ = true;
-        }, "GPS_READER_RE-ENABLE");
-        tTimeout.TimeoutInMs(msDelay);
+        });
+        timer.TimeoutInMs(msDelay);
     }
 
     void DumpState()

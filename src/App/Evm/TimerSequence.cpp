@@ -6,9 +6,10 @@ using namespace std;
 #include "StrictMode.h"
 
 
-TimerSequence::TimerSequence(const char *title)
+TimerSequence::TimerSequence(const char *name)
 {
-    timer_.SetCallback([this]{ OnTimeout(); }, title);
+    timer_.SetName(name);
+    timer_.SetCallback([this]{ OnTimeout(); });
 
     Reset();
 }

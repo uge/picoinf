@@ -209,8 +209,8 @@ void USB::Init()
     // Start the thread after the event manager has begun, this allows
     // main code to register for callbacks for events that this
     // thread would otherwise process before main code had that chance
-    static Timer tTimeout;
-    tTimeout.SetCallback([]{
+    static Timer timer("TIMER_TINY_USB_TASK_START");
+    timer.SetCallback([]{
         static KTask<256> t("TinyUSB", []{
             tusb_init();
 
@@ -223,8 +223,8 @@ void USB::Init()
                 tud_task();
             }
         }, 5);
-    }, "TIMER_TINY_USB_TASK_START");
-    tTimeout.TimeoutInMs(0);
+    });
+    timer.TimeoutInMs(0);
 
     initHasRun_ = true;
 }

@@ -12,7 +12,7 @@ class Blinker
 public:
     Blinker();
 
-    void SetName(std::string name);
+    void SetName(const char *name);
     void SetPin(Pin pin);
     void SetOnOffFunctions(std::function<void()> fnOn, std::function<void()> fnOff);
     void SetBlinkOnOffTime(uint64_t onMs, uint64_t offMs);
@@ -32,8 +32,6 @@ private:
 
 
 private:
-    std::string name_ = "TIMER_BLINKER";
-
     Pin pin_;
 
     uint64_t onMs_  = 250;
@@ -46,5 +44,5 @@ private:
 
     bool on_ = false;
 
-    Timer tTimeout_;
+    Timer timer_;
 };

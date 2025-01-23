@@ -8,16 +8,16 @@ using namespace std;
 
 Blinker::Blinker()
 {
-    SetName(name_);
+    SetName("TIMER_BLINKER");
+
+    timer_.SetCallback([this]{
+        OnTimeout();
+    });
 }
 
-void Blinker::SetName(string name)
+void Blinker::SetName(const char *name)
 {
-    name_ = name;
-
-    tTimeout_.SetCallback([this]{
-        OnTimeout();
-    }, name_.c_str());
+    timer_.SetName(name);
 }
 
 void Blinker::SetPin(Pin pin)
@@ -49,7 +49,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
     // - start
 
     Off();
-    tTimeout_.TimeoutInMs(0);
+    timer_.TimeoutInMs(0);
 
     if (count == 0)
     {
@@ -64,7 +64,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
 void Blinker::DisableAsyncBlink()
 {
     Off();
-    tTimeout_.Cancel();
+    timer_.Cancel();
 
     asyncCountRemaining_ = -1;
 }
@@ -128,14 +128,14 @@ void Blinker::OnTimeout()
         {
             On();
 
-            tTimeout_.TimeoutInMs(onMs_);
+            timer_.TimeoutInMs(onMs_);
         }
     }
     else
     {
         Off();
 
-        tTimeout_.TimeoutInMs(offMs_);
+        timer_.TimeoutInMs(offMs_);
     }
 }
 

@@ -73,7 +73,7 @@ struct KTaskCpuTimeFrame
 };
 
 static CircularBuffer<KTaskCpuTimeFrame> frameList_;
-static Timer tTimeout_;
+static Timer timer_;
 
 
 static void CaptureStats()
@@ -166,10 +166,10 @@ void KStats::Init()
     // to dig in again.
 
     // static const uint64_t STATS_INTERVAL_MS = 5000;
-    tTimeout_.SetCallback([]{
+    timer_.SetCallback([]{
         CaptureStats();
     });
-    // tTimeout_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
+    // timer_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
 }
 
 void KStats::SetupShell()

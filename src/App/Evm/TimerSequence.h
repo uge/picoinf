@@ -11,7 +11,7 @@ class TimerSequence
 public:
 
     // constructor
-    TimerSequence(const char *title = "TimerSequence");
+    TimerSequence(const char *name = "TimerSequence");
 
     // restore object to post-constructor state
     void Reset();

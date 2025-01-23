@@ -12,10 +12,12 @@ using namespace std;
 // Constructor / Destructor
 /////////////////////////////////////////////////////////////////
 
-Timer::Timer()
+Timer::Timer(const char *name)
 : id_(idNext_)
 {
     ++idNext_;
+
+    SetName(name);
 }
 
 Timer::~Timer()
@@ -30,13 +32,12 @@ Timer::~Timer()
 
 // tried to the nice way but none worked
 // https://www.techiedelight.com/find-name-of-the-calling-function-in-cpp/
-void Timer::SetCallback(function<void()> cbFn, const char *origin)
+void Timer::SetCallback(function<void()> cbFn)
 {
     cbFn_ = cbFn;
-    cbSetFromFn_ = origin;
 }
 
-function<void()> Timer::GetCallback()
+function<void()> Timer::GetCallback() const
 {
     return cbFn_;
 }
@@ -176,7 +177,7 @@ void Timer::TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirs
 // Timer State
 /////////////////////////////////////////////////////////////////
 
-bool Timer::IsPending()
+bool Timer::IsPending() const
 {
     uint8_t retVal = Evm::IsTimerRegistered(this);
     
@@ -197,12 +198,12 @@ void Timer::Cancel()
 // EVM Interface
 /////////////////////////////////////////////////////////////////
 
-uint64_t Timer::GetSeqNo()
+uint64_t Timer::GetSeqNo() const
 {
     return seqNo_;
 }
 
-uint64_t Timer::GetTimeoutAtUs()
+uint64_t Timer::GetTimeoutAtUs() const
 {
     return timeoutAtUs_;
 }
@@ -211,7 +212,7 @@ void Timer::OnTimeout()
 {
     if (visibleInTimeline_)
     {
-        Timeline::Global().Event(cbSetFromFn_);
+        Timeline::Global().Event(name_);
     }
 
     ++timeoutCount_;
@@ -247,12 +248,22 @@ void Timer::OnTimeout()
 // Debug
 /////////////////////////////////////////////////////////////////
 
+void Timer::SetName(const char *name)
+{
+    name_ = name;
+}
+
+const char *Timer::GetName() const
+{
+    return name_;
+}
+
 void Timer::SetVisibleInTimeline(bool tf)
 {
     visibleInTimeline_ = tf;
 }
 
-void Timer::Print(uint64_t timeNowUs)
+void Timer::Print(uint64_t timeNowUs) const
 {
     if (timeNowUs == 0)
     {
@@ -261,7 +272,7 @@ void Timer::Print(uint64_t timeNowUs)
 
     int64_t durationRemainingUs = (int64_t)(timeoutAtUs_ - timeNowUs);
 
-    Log("cbSetFromFn_            : ", cbSetFromFn_);
+    Log("name_                   : ", name_);
     Log("isInterval_             : ", isInterval_);
     Log("ptr                     : ", Commas((uint32_t)this));
     Log("id_                     : ", id_);

@@ -15,7 +15,7 @@ public:
     // Constructor / Destructor
     /////////////////////////////////////////////////////////////////
 
-    Timer();
+    Timer(const char *name = std::source_location::current().function_name());
     ~Timer();
 
 
@@ -34,8 +34,8 @@ public:
     // Setting and Getting Callback
     /////////////////////////////////////////////////////////////////
 
-    void SetCallback(std::function<void()> cbFn, const char *origin = std::source_location::current().function_name());
-    std::function<void()> GetCallback();
+    void SetCallback(std::function<void()> cbFn);
+    std::function<void()> GetCallback() const;
     void operator()();
 
     /////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ public:
     // Timer State
     /////////////////////////////////////////////////////////////////
 
-    bool IsPending();
+    bool IsPending() const;
     void Cancel();
 
 
@@ -78,8 +78,8 @@ public:
     // EVM Interface
     /////////////////////////////////////////////////////////////////
   
-    uint64_t GetSeqNo();
-    uint64_t GetTimeoutAtUs();
+    uint64_t GetSeqNo() const;
+    uint64_t GetTimeoutAtUs() const;
     void OnTimeout();
 
 
@@ -87,8 +87,10 @@ public:
     // Debug
     /////////////////////////////////////////////////////////////////
     
+    void SetName(const char *name);
+    const char *GetName() const;
     void SetVisibleInTimeline(bool tf);
-    void Print(uint64_t timeNowUs = 0);
+    void Print(uint64_t timeNowUs = 0) const;
 
 
 private:
@@ -121,7 +123,7 @@ private:
     uint64_t durationIntervalUs_ = 0;
 
     // callback data
-    const char *cbSetFromFn_ = "unknown";   // put in timeline
+    const char *name_; // put in timeline
     std::function<void()> cbFn_ = []{};
 
     // debug data
