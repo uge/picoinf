@@ -1302,6 +1302,7 @@ void Clock::SetClockMHz(double mhz, bool lowPowerPriority, bool mustBeExact)
     }
 }
 
+static bool usbEnabled_ = true;
 void Clock::EnableUSB()
 {
     Log("Clock::EnableUSB");
@@ -1315,6 +1316,8 @@ void Clock::EnableUSB()
         psUsb.pllData.post_div1,
         psUsb.pllData.post_div2
     );
+
+    usbEnabled_ = true;
 }
 
 void Clock::DisableUSB()
@@ -1322,6 +1325,13 @@ void Clock::DisableUSB()
     Log("Clock::DisableUSB");
 
     pll_deinit(pll_usb);
+
+    usbEnabled_ = false;
+}
+
+bool Clock::IsEnabledUSB()
+{
+    return usbEnabled_;
 }
 
 void Clock::PrepareClockMHz(double mhz, bool lowPowerPriority, bool mustBeExact)
