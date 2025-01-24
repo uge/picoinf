@@ -52,8 +52,8 @@ private:
 
     static void ShellCmdExecute(const std::string &line);
 
-    static void HistoryShow();
     static void HistoryAdd(const std::string &cmd);
+    static void HistoryShow();
     static std::string HistoryGet(uint16_t num);
 
 
