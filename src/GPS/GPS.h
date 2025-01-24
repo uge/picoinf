@@ -515,27 +515,6 @@ public:
         return data_.fixTimeSource;
     }
 
-    string ConvertFixTimeToString(const FixTime &fix)
-    {
-        string time;
-
-        time += StrUtl::PadLeft(fix.year, '0', 4);
-        time += "-";
-        time += StrUtl::PadLeft(fix.month, '0', 2);
-        time += "-";
-        time += StrUtl::PadLeft(fix.day, '0', 2);
-        time += " ";
-        time += StrUtl::PadLeft(fix.hour, '0', 2);
-        time += ":";
-        time += StrUtl::PadLeft(fix.minute, '0', 2);
-        time += ":";
-        time += StrUtl::PadLeft(fix.second, '0', 2);
-        time += ".";
-        time += StrUtl::PadLeft(fix.millisecond, '0', 3);
-
-        return time;
-    }
-
     Fix2D GetFix2D()
     {
         auto dmsLat = ToDegMinSec(data_.latStr, data_.latNorthSouth);
