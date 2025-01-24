@@ -12,51 +12,144 @@ using namespace std;
 bool Shell::Eval(string input)
 {
     bool didEval = false;
-
+    bool process = true;
     vector<string> cmdList = SplitByCharQuoteAware(input, ';');
 
-    string maybeNewline = "";
-    bool dotCmdRun = false;
-    for (auto &cmd : cmdList)
+    // implement !<num>
+    if (cmdList.size())
     {
-        cmd = Trim(cmd);
+        string cmd = Trim(cmdList[0]);
 
-        if (cmd.length())
+        if (cmd.size() >= 2)
         {
-            didEval = true;
-
-            if (cmd == ".")
+            if (cmd[0] == '!' && cmd[1] == '!' && cmd.size() == 2)
             {
-                dotCmdRun = true;
+                RepeatPriorCommand();
+                didEval = true;
+                process = false;
             }
+            else if (cmd[0] == '!')
+            {
+                // pull up the history
+                uint16_t num = (uint16_t)atoi(cmd.substr(1).c_str());
+                input = HistoryGet(num);
 
-            LogNNL(maybeNewline);
-            maybeNewline = "\n";
-
-            ShellCmdExecute(cmd);
+                if (input != "")
+                {
+                    cmdList = SplitByCharQuoteAware(input, ';');
+                }
+                else
+                {
+                    Log("ERR: No history found for ", num);
+                    didEval = true;
+                    process = false;
+                }
+            }
         }
     }
 
-    if (didEval)
+    if (process)
     {
-        // watch out for infinite loop on '.' being in the list
-        if (dotCmdRun == false)
+        string maybeNewline = "";
+        bool didInternalCmd = false;
+        for (auto &cmd : cmdList)
         {
-            cmdLast_ = input;
+            cmd = Trim(cmd);
+
+            if (cmd.length())
+            {
+                didEval = true;
+
+                didInternalCmd |= internalCommandSet_.contains(cmd);
+
+                LogNNL(maybeNewline);
+                maybeNewline = "\n";
+
+                ShellCmdExecute(cmd);
+            }
+        }
+
+        if (didEval)
+        {
+            // watch out for infinite loop on '.' being in the list
+            if (didInternalCmd == false)
+            {
+                HistoryAdd(input);
+            }
         }
     }
 
     return didEval;
 }
 
+void Shell::HistoryAdd(const string &cmd)
+{
+    // add to history unless it's the same as the last one
+    bool addHistory = true;
+    uint16_t num = 1;
+    if (historyList_.size())
+    {
+        History &last = historyList_.back();
+
+        addHistory    = last.cmd != cmd;
+        num = last.num + 1;
+    }
+
+    if (addHistory)
+    {
+        if (historyList_.size() == MAX_HISTORY_SIZE)
+        {
+            historyList_.erase(historyList_.begin());
+        }
+
+        historyList_.push_back({
+            num,
+            cmd,
+        });
+    }
+}
+
+void Shell::HistoryShow()
+{
+    if (historyList_.size())
+    {
+        uint8_t fieldWidth = (uint8_t)to_string(historyList_.back().num).length();
+
+        for (const auto &history : historyList_)
+        {
+            string num = StrUtl::PadLeft(to_string(history.num), ' ', fieldWidth);
+
+            Log(num, "  ", history.cmd);
+        }
+    }
+}
+
+string Shell::HistoryGet(uint16_t num)
+{
+    string retVal;
+
+    for (const auto &history : historyList_)
+    {
+        if (history.num == num)
+        {
+            retVal = history.cmd;
+            break;
+        }
+    }
+
+    return retVal;
+}
+
 bool Shell::RepeatPriorCommand()
 {
     bool retVal = false;
 
-    if (cmdLast_.size())
+    if (historyList_.size())
     {
-        Log(cmdLast_);
-        retVal = Shell::Eval(cmdLast_);
+        string &cmd = historyList_.back().cmd;
+
+        Log(cmd);
+        retVal = Shell::Eval(cmd);
     }
 
     return retVal;
@@ -235,13 +328,21 @@ void Shell::ShellCmdExecute(const string &line)
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Initilization
+// Initialization
 ////////////////////////////////////////////////////////////////////////////////
 
 
 void Shell::Init()
 {
     Timeline::Global().Event("Shell::Init");
+
+    Shell::AddCommand("!", [](vector<string>){
+        Log("ERR: You must specify a history number, eg !34");
+    }, { .help = "Repeat numbered command" });
+
+    Shell::AddCommand("!!", [](vector<string>){
+        Shell::RepeatPriorCommand();
+    }, { .help = "Repeat prior command" });
 
     Shell::AddCommand(".", [](vector<string>){
         Shell::RepeatPriorCommand();
@@ -268,6 +369,14 @@ void Shell::Init()
 
         Shell::ShowHelp(prefix);
     }, { .argCount = -1, .help = "Show Help (scope by optional first argument)" });
+
+    Shell::AddCommand("h", [](vector<string>){
+        HistoryShow();
+    }, { .help = "Show history" });
+
+    Shell::AddCommand("history", [](vector<string>){
+        HistoryShow();
+    }, { .help = "Show history" });
 
     Shell::AddCommand("scope", [](vector<string> argList){
         if (argList.size() == 0)
