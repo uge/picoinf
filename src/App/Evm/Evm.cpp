@@ -203,6 +203,23 @@ void Evm::QueueWorkInternal(const char *label, FnWork &fnWork)
 {
     timeline_.Event(label);
 
+    // Caution must be used when sending work.
+    //
+    // Lambdas must capture only [this], a single reference, or
+    // some 4-byte-or-less value.
+    //
+    // This functionality relies on small-buffer-optimization to work,
+    // and so must not trigger dynamic memory allocation in either the
+    // lambda or the function<> object.
+    //
+    // The work queue byte-wise copying a function<> object and so any
+    // allocations will be ultimately a use-after-free operation.
+    //
+    // An example of this limit being broken was evm.delaybusy capturing
+    // a uint64_t by value and it coming out garbage on the other side.
+    //
+    // (The exact limits have not been not exhaustively tested, eg, can
+    // you capture 4 1-byte values? Is the limit actually 4?)
     fnWorkList_.Put(fnWork);
     sem_.Give();
 }
@@ -811,7 +828,7 @@ void Evm::SetupShell()
     }, { .argCount = 0, .help = "" });
 
     Shell::AddCommand("evm.delay", [&](vector<string> argList){
-        uint64_t ms = atol(argList[0].c_str());
+        uint32_t ms = atol(argList[0].c_str());
         Log("Delaying for ", ms, " ms");
 
         QueueWork("evm.delay", [=]{
@@ -821,7 +838,7 @@ void Evm::SetupShell()
     }, { .argCount = 1, .help = "run delay in evm thread" });
 
     Shell::AddCommand("evm.delaybusy", [&](vector<string> argList){
-        uint64_t ms = atol(argList[0].c_str());
+        uint32_t ms = atol(argList[0].c_str());
         LogModeSync();
         Log("Delaying Busy for ", ms, " ms");
         LogModeAsync();
