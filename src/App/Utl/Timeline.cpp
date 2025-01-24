@@ -210,14 +210,8 @@ void Timeline::ReportNow(const char *title)
         if (eventList_.Size() >= 2)
         {
             uint64_t totalUs = eventList_[eventList_.Size() - 1].timeUs - eventList_[0].timeUs;
-            uint64_t totalMs = (uint64_t)round((double)totalUs / 1'000.0);
 
-            LogNNL("[Total Duration: ");
-            LogNNL(CommasStatic(totalMs));
-            LogNNL(" ms, ");
-            LogNNL(CommasStatic(totalUs));
-            LogNNL(" us]");
-            LogNL();
+            Log("[Total Duration: ", Time::MakeDurationFromUs(totalUs), "]");
         }
     }
     LogNL();
