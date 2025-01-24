@@ -436,6 +436,22 @@ public:
         return data_.satDataList;
     }
 
+    static string MakeDateTimeFromFixTime(const FixTime &fix)
+    {
+        string dateTime;
+
+        dateTime += FormatStr("%04u", fix.year)  + "-" +
+                    FormatStr("%02u", fix.month) + "-" +
+                    FormatStr("%02u", fix.day);
+        dateTime += " ";
+        dateTime += FormatStr("%02u", fix.hour)   + ":" +
+                    FormatStr("%02u", fix.minute) + ":" +
+                    FormatStr("%02u", fix.second) + "." +
+                    FormatStr("%06u", fix.millisecond * 1'000);
+
+        return dateTime;
+    }
+
     FixTime GetFixTime()
     {
         auto TwoCharToInt = [](const char *str) {
@@ -449,23 +465,19 @@ public:
         string dateTime;
 
         // UTC DDMMYY
-        uint16_t year = 0;
-        uint8_t month = 0;
-        uint8_t day = 0;
+        uint16_t year  = 0;
+        uint8_t  month = 0;
+        uint8_t  day   = 0;
         if (data_.dateStr.size() == 6)
         {
             year  = 2000 + TwoCharToInt(&data_.dateStr.c_str()[4]);
             month = TwoCharToInt(&data_.dateStr.c_str()[2]);
             day   = TwoCharToInt(&data_.dateStr.c_str()[0]);
         }
-        dateTime += FormatStr("%04u", year)  + "-" +
-                    FormatStr("%02u", month) + "-" +
-                    FormatStr("%02u", day);
-        dateTime += " ";
 
-        uint8_t hour = 0;
-        uint8_t minute = 0;
-        uint8_t second = 0;
+        uint8_t  hour        = 0;
+        uint8_t  minute      = 0;
+        uint8_t  second      = 0;
         uint16_t millisecond = 0;
         if (data_.timeStr.size() >= 6)
         {
@@ -483,21 +495,17 @@ public:
 
             millisecond = round(timeFloat * 1000);
         }
-        dateTime += FormatStr("%02u", hour)   + ":" +
-                    FormatStr("%02u", minute) + ":" +
-                    FormatStr("%02u", day)    + "." +
-                    FormatStr("%06u", millisecond);
 
         FixTime retVal = {
-            .year = year,
-            .month = month,
-            .day = day,
-            .hour = hour,
-            .minute = minute,
-            .second = second,
+            .year        = year,
+            .month       = month,
+            .day         = day,
+            .hour        = hour,
+            .minute      = minute,
+            .second      = second,
             .millisecond = millisecond,
-            .dateTime = dateTime,
         };
+        retVal.dateTime = MakeDateTimeFromFixTime(retVal);
 
         return retVal;
     }
@@ -610,6 +618,7 @@ public:
         retVal.minute           = 42;
         retVal.second           = 1;
         retVal.millisecond      = 25;
+        retVal.dateTime         = MakeDateTimeFromFixTime(retVal);
         retVal.latDeg           = 40;
         retVal.latMin           = 44;
         retVal.latSec           = 30;
