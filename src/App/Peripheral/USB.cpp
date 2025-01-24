@@ -191,7 +191,7 @@ void USB::Init()
         serial_ = PAL.GetAddress();
     }
 
-    if (PAL.GetPicoBoard() == "pico_w")
+    if (PAL.GetPicoBoard() == "pico")
     {
         pVbus_ = Pin(24, Pin::Type::INPUT);
         pVbus_.SetInterruptCallback([]{ OnPinVbusInterrupt(); }, Pin::TriggerType::BOTH);
@@ -208,23 +208,51 @@ void USB::Init()
     
     // Start the thread after the event manager has begun, this allows
     // main code to register for callbacks for events that this
-    // thread would otherwise process before main code had that chance
+    // thread would otherwise process before main code had that chance.
+    //
+    // There is a conflict between this thread startup and the Clock
+    // USB being disabled.
+    // That is, TinyUSB will spin trying to init USB, which never
+    // starts, on account of it being disabled.
+    //
+    // The effect of this is that this priority-x thread will snuff
+    // out any lower-priority thread (eg Work), forever, until USB
+    // is re-enabled.
+    //
+    // The workaround is to poll the state of USB and only start this
+    // task when it is safe to do so.
+    //
+    // No testing has been done to see if TinyUSB is operational after
+    // USB is re-enabled, that is outside the current use-case.
     static Timer timer("TIMER_TINY_USB_TASK_START");
+    timer.SetVisibleInTimeline(false);
     timer.SetCallback([]{
-        static KTask<256> t("TinyUSB", []{
-            tusb_init();
+        if (Clock::IsEnabledUSB())
+        {
+            static bool didOnce = false;
 
-            // has to run after scheduler started for some reason
-            tud_init(0);
-
-            while (true)
+            if (didOnce == false)
             {
-                // blocks via FreeRTOS task sync mechanisms
-                tud_task();
+                didOnce = true;
+
+                static KTask<256> t("TinyUSB", []{
+                    tusb_init();
+
+                    // has to run after scheduler started for some reason
+                    tud_init(0);
+
+                    while (true)
+                    {
+                        // blocks via FreeRTOS task sync mechanisms
+                        tud_task();
+                    }
+                }, 5);
+
+                timer.Cancel();
             }
-        }, 5);
+        }
     });
-    timer.TimeoutInMs(0);
+    timer.TimeoutIntervalMs(100, 0);
 
     initHasRun_ = true;
 }
