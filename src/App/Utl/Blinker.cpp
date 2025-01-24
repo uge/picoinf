@@ -48,7 +48,7 @@ void Blinker::EnableAsyncBlink(uint32_t count)
     //   - timer not running
     // - start
 
-    Off();
+    DisableAsyncBlink();
     timer_.TimeoutInMs(0);
 
     if (count == 0)
