@@ -31,16 +31,16 @@ public:
     }
 
     // 1ms
-    double GetPressureHectopascals()
+    double GetPressureHectoPascals()
     {
         // sensor returns Pa
         return bme280_.readPressure() / 100;
     }
 
     // 1ms
-    double GetPressureBars()
+    double GetPressureMilliBars()
     {
-        return GetPressureHectopascals() * 1'000;
+        return GetPressureHectoPascals();
     }
 
     // 1ms

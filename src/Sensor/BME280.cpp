@@ -66,11 +66,11 @@ void BME280::SetupShell()
     Shell::AddCommand("sensor.bme280.get.pressure", [](vector<string> argList){
         GetSensor();
 
-        double hPa = sensor->GetPressureHectopascals();
-        double bar = sensor->GetPressureBars();
+        double hPa = sensor->GetPressureHectoPascals();
+        double mb  = sensor->GetPressureMilliBars();
 
         Log("hPa: ", Commas(hPa));
-        Log("bar: ", Commas(bar));
+        Log("mb : ", Commas(mb));
     }, { .argCount = 0, .help = "get pressure" });
 
     Shell::AddCommand("sensor.bme280.get.altitude", [](vector<string> argList){
@@ -99,10 +99,10 @@ void BME280::SetupShell()
             t.Event("tempC");
             double tempF  = sensor->GetTemperatureFahrenheit();
             t.Event("tempF");
-            double hPa    = sensor->GetPressureHectopascals();
+            double hPa    = sensor->GetPressureHectoPascals();
             t.Event("hPa");
-            double bar    = sensor->GetPressureBars();
-            t.Event("bar");
+            double mb     = sensor->GetPressureMilliBars();
+            t.Event("mb");
             double altM   = sensor->GetAltitudeMeters();
             t.Event("altM");
             double altFt  = sensor->GetAltitudeFeet();
@@ -113,7 +113,7 @@ void BME280::SetupShell()
             Log("TempC : ", tempC);
             Log("TempF : ", tempF);
             Log("hPa   : ", Commas(hPa));
-            Log("bar   : ", Commas(bar));
+            Log("mb    : ", Commas(mb));
             Log("altM  : ", Commas(altM));
             Log("altFt : ", Commas(altFt));
             Log("humPct: ", humPct);

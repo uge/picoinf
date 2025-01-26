@@ -37,8 +37,8 @@ public:
 
                 JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureCelsius",    JsFnGetHandler);
                 JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetTemperatureFahrenheit", JsFnGetHandler);
-                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureHectopascals",  JsFnGetHandler);
-                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureBars",          JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureHectoPascals",  JsFnGetHandler);
+                JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetPressureMilliBars",     JsFnGetHandler);
                 JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetAltitudeMeters",        JsFnGetHandler);
                 JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetAltitudeFeet",          JsFnGetHandler);
                 JerryScript::SetPropertyToJerryNativeFunction(prototype, "GetHumidityPct",           JsFnGetHandler);
@@ -81,13 +81,13 @@ private:
             {
                 retVal = jerry_number(obj->GetTemperatureFahrenheit());
             }
-            else if (fnName == "GetPressureHectopascals")
+            else if (fnName == "GetPressureHectoPascals")
             {
-                retVal = jerry_number(obj->GetPressureHectopascals());
+                retVal = jerry_number(obj->GetPressureHectoPascals());
             }
-            else if (fnName == "GetPressureBars")
+            else if (fnName == "GetPressureMilliBars")
             {
-                retVal = jerry_number(obj->GetPressureBars());
+                retVal = jerry_number(obj->GetPressureMilliBars());
             }
             else if (fnName == "GetAltitudeMeters")
             {
