@@ -200,9 +200,9 @@ const char *Time::MakeTimeFromUs(uint64_t timeUs, bool replaceDateWithSpaces)
 }
 
 // return the time without hours, with ms-resolution
-const char *Time::MakeTimeMMSSmmmFromUs(uint64_t timeMs)
+const char *Time::MakeTimeMMSSmmmFromUs(uint64_t timeUs)
 {
-    char *timeAt = (char *)MakeTimeFromUs(timeMs);
+    char *timeAt = (char *)MakeTimeFromUs(timeUs);
 
     // start from minute
     timeAt = &timeAt[3];
@@ -212,6 +212,12 @@ const char *Time::MakeTimeMMSSmmmFromUs(uint64_t timeMs)
 
     return timeAt;
 }
+
+const char *Time::MakeTimeMMSSmmmFromMs(uint64_t timeMs)
+{
+    return MakeTimeMMSSmmmFromUs(timeMs * 1'000);
+}
+
 
 const char *Time::MakeTimeRelativeFromUs(uint64_t timeAtUs, uint64_t timeRefUs)
 {

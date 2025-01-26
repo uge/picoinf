@@ -55,6 +55,7 @@ public:
 
     static const char *MakeTimeFromUs(uint64_t timeUs, bool replaceDateWithSpaces = false);
     static const char *MakeTimeMMSSmmmFromUs(uint64_t timeUs);
+    static const char *MakeTimeMMSSmmmFromMs(uint64_t timeMs);
 
     // time duration (compared to a reference, possibly negative).
     // this would be MakeDuration... except it is unconditional 2-digit hours.
