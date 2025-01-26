@@ -4,6 +4,7 @@
 #include "Log.h"
 #include "NMEAStringMaker.h"
 #include "NMEAStringParser.h"
+#include "TimeClass.h"
 #include "UbxMessage.h"
 #include "Utl.h"
 
@@ -24,7 +25,27 @@ using namespace std;
 //     https://docs.datagnss.com/rtk-board/files/T-5-1908-001-GNSS_Protocol_Specification-V2.3.pdf
 // https://www.icofchina.com/d/file/xiazai/2016-12-05/b5c57074f4b1fcc62ba8c7868548d18a.pdf
 
+struct FixMetaData
+{
+    uint64_t timeAtPpsUs         = 0;
+    uint64_t timeAtTimeLockUs    = 0;
+    uint64_t timeAtFix2dUs       = 0;
+    uint64_t timeAtFix3dUs       = 0;
+    uint64_t timeAtSpeedCourseUs = 0;
+
+    void Print() const
+    {
+        Log("FixMetaData");
+        Log("timeAtPpsUs         = ", Time::MakeTimeFromUs(timeAtPpsUs),         " (", Commas(timeAtPpsUs),         ")");
+        Log("timeAtTimeLockUs    = ", Time::MakeTimeFromUs(timeAtTimeLockUs),    " (", Commas(timeAtTimeLockUs),    ")");
+        Log("timeAtFix2dUs       = ", Time::MakeTimeFromUs(timeAtFix2dUs),       " (", Commas(timeAtFix2dUs),       ")");
+        Log("timeAtFix3dUs       = ", Time::MakeTimeFromUs(timeAtFix3dUs),       " (", Commas(timeAtFix3dUs),       ")");
+        Log("timeAtSpeedCourseUs = ", Time::MakeTimeFromUs(timeAtSpeedCourseUs), " (", Commas(timeAtSpeedCourseUs), ")");
+    }
+};
+
 struct FixTime
+: public FixMetaData
 {
     uint16_t year = 0;
     uint8_t  month = 0;
@@ -37,6 +58,7 @@ struct FixTime
 
     void Print() const
     {
+        FixMetaData::Print();
         Log("FixTime");
         Log("year        = ", year);
         Log("month       = ", month);
@@ -132,10 +154,12 @@ private:
 
     struct AccumulatedData
     {
+        uint64_t timeAtPpsUs = 0;
+
         // Time
         string timeStr;
         string dateStr;
-        uint64_t timeAtTimeLock = 0;
+        uint64_t timeAtTimeLockUs = 0;
         string fixTimeSource;
 
         uint8_t consecutiveRoundCount = 0;
@@ -146,18 +170,18 @@ private:
         char latNorthSouth = 'N';
         string lngStr;
         char lngEastWest = 'W';
-        uint64_t timeAtFix2d = 0;
+        uint64_t timeAtFix2dUs = 0;
         string fix2dSource;
 
         // 3D Fix (requires 2D fix also)
         string altitudeStr;
-        uint64_t timeAtFix3d = 0;
+        uint64_t timeAtFix3dUs = 0;
         vector<string> fix3dSourceList;
 
         // 3D Plus Fix
         string speedKnotsStr;
         string courseDegreesStr;
-        uint64_t timeAtSpeedCourse = 0;
+        uint64_t timeAtSpeedCourseUs = 0;
         vector<string> fix3dPlusSourceList;
 
         // Satellite list
@@ -220,7 +244,7 @@ public:
             "TXT",
         };
 
-        uint64_t timeStart = PAL.Micros();
+        uint64_t timeStartUs = PAL.Micros();
 
         if (NMEAStringParser::IsValid(line))
         {
@@ -299,7 +323,7 @@ public:
             }
         }
 
-        uint64_t diffUs = PAL.Micros() - timeStart;
+        uint64_t diffUs = PAL.Micros() - timeStartUs;
 
         return diffUs;
     }
@@ -390,7 +414,7 @@ public:
     // - duration since acquire
     bool HasFixTime()
     {
-        return data_.timeAtTimeLock != 0;
+        return data_.timeAtTimeLockUs != 0;
     }
 
     // can extract:
@@ -398,7 +422,7 @@ public:
     // - duration since fix
     bool HasFix2D()
     {
-        return data_.timeAtFix2d != 0;
+        return data_.timeAtFix2dUs != 0;
     }
 
     // can extract:
@@ -408,7 +432,7 @@ public:
     // - duration since fix
     bool HasFix3D()
     {
-        return data_.timeAtFix3d != 0;
+        return data_.timeAtFix3dUs != 0;
     }
 
     // can extract
@@ -416,7 +440,7 @@ public:
     // - course
     bool HasFix3DPlus()
     {
-        return HasFix3D() && data_.timeAtSpeedCourse != 0;
+        return HasFix3D() && data_.timeAtSpeedCourseUs != 0;
     }
 
     // can extract
@@ -434,6 +458,19 @@ public:
     vector<FixSatelliteData> GetSatelliteDataList()
     {
         return data_.satDataList;
+    }
+
+    FixMetaData GetFixMetaData()
+    {
+        FixMetaData retVal;
+
+        retVal.timeAtPpsUs         = data_.timeAtPpsUs;
+        retVal.timeAtTimeLockUs    = data_.timeAtTimeLockUs;
+        retVal.timeAtFix2dUs       = data_.timeAtFix2dUs;
+        retVal.timeAtFix3dUs       = data_.timeAtFix3dUs;
+        retVal.timeAtSpeedCourseUs = data_.timeAtSpeedCourseUs;
+
+        return retVal;
     }
 
     static string MakeDateTimeFromFixTime(const FixTime &fix)
@@ -496,15 +533,17 @@ public:
             millisecond = round(timeFloat * 1000);
         }
 
-        FixTime retVal = {
-            .year        = year,
-            .month       = month,
-            .day         = day,
-            .hour        = hour,
-            .minute      = minute,
-            .second      = second,
-            .millisecond = millisecond,
-        };
+        FixTime retVal;
+
+        *(FixMetaData *)&retVal = GetFixMetaData();
+
+        retVal.year        = year,
+        retVal.month       = month,
+        retVal.day         = day,
+        retVal.hour        = hour,
+        retVal.minute      = minute,
+        retVal.second      = second,
+        retVal.millisecond = millisecond,
         retVal.dateTime = MakeDateTimeFromFixTime(retVal);
 
         return retVal;
@@ -737,6 +776,73 @@ private:
 
 
 private:
+
+    /////////////////////////////////////////////////////////////////
+    // PPS
+    /////////////////////////////////////////////////////////////////
+
+    void CalculateTimeAtPPS(uint64_t timeNowUs, const string &line)
+    {
+        // Calculate the PPS time (in place of a better actual PPS signal input).
+        //
+        // This class processes GGA and RMC messages.
+        // In practice, the GGA message is coming first of the two, and first period.
+        // The inherent latency of this moment in time from the actual PPS moment is
+        // composed of:
+        // - The delay on the GPS module itself in constructing the data to send
+        // - The literal rate of transmitting this NMEA sentence
+        // - Processing time
+        
+        // The delay on the GPS module itself has been measured to vary a lot but average
+        // approximately 44ms from the time pulse.
+        const uint64_t DURATION_AVG_GPS_MODULE_DELAY_US = 44 * 1'000;
+
+        // The rate of transmitting the characters of this NMEA sentence is
+        // a BAUD rate of 9600. This allows for calculating the duration of time by examining
+        // the number of characters in the sentence (plus \r\n).
+        const uint64_t DURATION_BAUD_9600_US_PER_CHAR_US = 1'042;
+        const uint64_t DURATION_NMEA_SENTENCE_TRANSMISSION_US =
+            (line.length() + 2) * DURATION_BAUD_9600_US_PER_CHAR_US;
+
+        // The processing time is difficult to know and depends on a lot of factors. Instead of
+        // calculating, we will have a placeholder estimate.
+        const uint64_t DURATION_PROCESSING_TIME_ESTIMATE_US = 35 * 1'000;
+
+        // calculate time of PPS
+        const uint64_t DURATION_FROM_PPS_US =
+            DURATION_AVG_GPS_MODULE_DELAY_US +
+            DURATION_NMEA_SENTENCE_TRANSMISSION_US +
+            DURATION_PROCESSING_TIME_ESTIMATE_US;
+
+        data_.timeAtPpsUs = timeNowUs - min(timeNowUs, DURATION_FROM_PPS_US);
+
+
+// revisit high-precision testing for this another time
+// clk.freq 6 ; app.ss.gps on ; app.ss.gps.flightmode
+#if 0
+        static bool didOnce = false;
+        if (didOnce == false)
+        {
+            didOnce = true;
+
+            static Timer timer("TIMER_GPS_PPS");
+            static Pin pin(27);
+
+            pin.DigitalToggle();
+            pin.DigitalToggle();
+
+            timer.SetCallback([this]{
+                Timeline::Global().Event("GPS_PPS");
+
+                pin.DigitalToggle();
+                pin.DigitalToggle();
+
+                timer.TimeoutAtUs(timer.GetTimeoutAtUs() + 1'000'000);
+            });
+            timer.TimeoutAtUs(data_.timeAtPpsUs + 1'000'000);
+        }
+#endif
+    }
 
     /////////////////////////////////////////////////////////////////
     // Converters
@@ -976,6 +1082,9 @@ private:
     {
         bool retVal = true;
 
+        // Note the current time
+        uint64_t timeNowUs = PAL.Micros();
+
         if (linePartList.size() >= 13)
         {
             int i = 1;
@@ -1058,9 +1167,6 @@ private:
             // ignore this
             ++i;
 
-            // Note the current time
-            uint64_t timeNowMs = PAL.Millis();
-
             bool timeStateIsValid = TimeStateIsValid(time);
 
             // time is good when non-blank
@@ -1070,7 +1176,7 @@ private:
                 data_.timeStr = move(time);
                 data_.dateStr = move(date);
 
-                data_.timeAtTimeLock = timeNowMs;
+                data_.timeAtTimeLockUs = timeNowUs;
 
                 // capture source of lock
                 data_.fixTimeSource = line;
@@ -1088,13 +1194,13 @@ private:
                 data_.lngStr = move(lngStr);
                 data_.lngEastWest = eastWest;
 
-                data_.timeAtFix2d = timeNowMs;
+                data_.timeAtFix2dUs = timeNowUs;
 
                 // add to the 3D plus
                 data_.speedKnotsStr = move(speedKnotsStr);
                 data_.courseDegreesStr = move(courseDegrees);
 
-                data_.timeAtSpeedCourse = timeNowMs;
+                data_.timeAtSpeedCourseUs = timeNowUs;
 
                 // capture source of lock
                 data_.fix2dSource = line;
@@ -1132,6 +1238,9 @@ private:
     bool OnGGA(const vector<string> &linePartList, const string &line)
     {
         bool retVal = true;
+
+        // Note the current time
+        uint64_t timeNowUs = PAL.Micros();
 
         if (linePartList.size() >= 15)
         {
@@ -1212,9 +1321,6 @@ private:
             // 14 - ID of station providing differential corrections (blank when DGPS is not used)
             ++i;
 
-            // Note the current time
-            uint64_t timeNowMs = PAL.Millis();
-
             bool timeStateIsValid = TimeStateIsValid(time);
 
             // time is good when non-blank
@@ -1223,7 +1329,8 @@ private:
             {
                 data_.timeStr = move(time);
 
-                data_.timeAtTimeLock = timeNowMs;
+                data_.timeAtTimeLockUs = timeNowUs;
+                CalculateTimeAtPPS(timeNowUs, line);
 
                 // capture source of lock
                 data_.fixTimeSource = line;
@@ -1240,11 +1347,11 @@ private:
                 data_.latNorthSouth = northSouth;
                 data_.lngStr = lngStr;
                 data_.lngEastWest = move(eastWest);
-                data_.timeAtFix2d = timeNowMs;
+                data_.timeAtFix2dUs = timeNowUs;
 
                 // add to the 3D
                 data_.altitudeStr = move(altitudeStr);
-                data_.timeAtFix3d = timeNowMs;
+                data_.timeAtFix3dUs = timeNowUs;
 
                 // capture source of lock
                 data_.fix2dSource = line;
