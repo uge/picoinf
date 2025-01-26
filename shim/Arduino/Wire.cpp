@@ -183,3 +183,18 @@ void TwoWire::setClock(uint32_t)
     // real would set the baud
 }
 
+
+
+
+
+
+
+
+
+I2C &TwoWire::GetI2C()
+{
+    return i2c_;
+}
+
+
+

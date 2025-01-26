@@ -27,6 +27,9 @@ public:
 
     void setClock(uint32_t);
 
+    // convenience for my own interfacing
+    I2C &GetI2C();
+
 
 private:
 
