@@ -17,6 +17,16 @@ public:
         bme280_.begin(addr, &tw_);
     }
 
+    static bool IsValidAddr(uint8_t addr)
+    {
+        return addr == 0x76 || addr == 0x77;
+    }
+
+    bool IsAlive()
+    {
+        return tw_.GetI2C().IsAlive();
+    }
+
     // 1ms
     double GetTemperatureCelsius()
     {

@@ -16,6 +16,16 @@ public:
         sensor_.begin(0x30, &tw_);
     }
 
+    static uint8_t GetAddr()
+    {
+        return 0x30;
+    }
+
+    bool IsAlive()
+    {
+        return tw_.GetI2C().IsAlive();
+    }
+
     // 11ms
     double GetMagXMicroTeslas()
     {

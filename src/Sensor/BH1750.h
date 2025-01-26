@@ -18,6 +18,16 @@ public:
         sensor_.powerOn();
     }
 
+    static bool IsValidAddr(uint8_t addr)
+    {
+        return addr == 0x23 || addr == 0x5C;
+    }
+
+    bool IsAlive()
+    {
+        return tw_.GetI2C().IsAlive();
+    }
+
     // default sensor temperature is 20C / 68F
     // 0 ms - internal calculation
     void SetTemperatureCelsius(int temp = 20)

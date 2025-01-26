@@ -24,6 +24,16 @@ public:
                             Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
     }
 
+    static bool IsValidAddr(uint8_t addr)
+    {
+        return addr == 0x76 || addr == 0x77;
+    }
+
+    bool IsAlive()
+    {
+        return tw_.GetI2C().IsAlive();
+    }
+
     // 1ms
     double GetTemperatureCelsius()
     {

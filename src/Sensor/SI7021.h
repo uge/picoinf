@@ -17,6 +17,16 @@ public:
         sensor_.begin();
     }
 
+    static uint8_t GetAddr()
+    {
+        return 0x40;
+    }
+
+    bool IsAlive()
+    {
+        return tw_.GetI2C().IsAlive();
+    }
+
     // 20ms
     double GetTemperatureCelsius()
     {

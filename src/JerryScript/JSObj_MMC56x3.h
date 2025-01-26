@@ -3,6 +3,7 @@
 #include "MMC56x3.h"
 #include "I2C.h"
 #include "JerryScriptUtl.h"
+#include "Utl.h"
 
 #include <string>
 #include <vector>
@@ -107,12 +108,19 @@ private:
         }
         else
         {
-            // Create a new I2C object
+            // Create a new object
             MMC56x3 *obj = new MMC56x3(instance_);
 
             if (!obj)
             {
                 retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+            }
+            else if (obj->IsAlive() == false)
+            {
+                string error = string{"MMC56x3 I2C address ("} + ToHex(obj->GetAddr()) + ") is unresponsive";
+                retVal = jerry_throw_sz(JERRY_ERROR_COMMON, error.c_str());
+
+                delete obj;
             }
             else
             {

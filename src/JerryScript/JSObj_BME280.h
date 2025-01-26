@@ -3,6 +3,7 @@
 #include "BME280.h"
 #include "I2C.h"
 #include "JerryScriptUtl.h"
+#include "Utl.h"
 
 #include <string>
 #include <vector>
@@ -130,17 +131,32 @@ private:
             // Extract parameters
             uint8_t addr = (uint8_t)jerry_value_as_number(argv[0]);
 
-            // Create a new I2C object
-            BME280 *obj = new BME280(addr, instance_);
-
-            if (!obj)
+            if (BME280::IsValidAddr(addr) == false)
             {
-                retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+                string error = string{"BME280 I2C address ("} + ToHex(addr) + ") is invalid";
+                retVal = jerry_throw_sz(JERRY_ERROR_COMMON, error.c_str());
             }
             else
             {
-                // Associate the C state with the JS object
-                JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, obj);
+                // Create a new object
+                BME280 *obj = new BME280(addr, instance_);
+
+                if (!obj)
+                {
+                    retVal = jerry_throw_sz(JERRY_ERROR_TYPE, "Failed to allocate memory for object");
+                }
+                else if (obj->IsAlive() == false)
+                {
+                    string error = string{"BME280 I2C address ("} + ToHex(addr) + ") is unresponsive";
+                    retVal = jerry_throw_sz(JERRY_ERROR_COMMON, error.c_str());
+
+                    delete obj;
+                }
+                else
+                {
+                    // Associate the C state with the JS object
+                    JerryScript::SetNativePointer(callInfo->this_value, &typeInfo_, obj);
+                }
             }
         }
 
