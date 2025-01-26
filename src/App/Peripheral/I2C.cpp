@@ -174,6 +174,16 @@ bool I2C::IsAlive()
     return ret >= 0;
 }
 
+uint8_t I2C::GetAddr()
+{
+    return addr_;
+}
+
+I2C::Instance I2C::GetInstance()
+{
+    return i2c_ == i2c0 ? Instance::I2C0 : Instance::I2C1;
+}
+
 uint8_t I2C::ReadReg8(uint8_t reg, bool stop)
 {
     uint8_t retVal = 0;

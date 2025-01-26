@@ -18,6 +18,8 @@ public:
 
     I2C(uint8_t addr, Instance instance = Instance::I2C0);
     bool     IsAlive();
+    uint8_t  GetAddr();
+    Instance GetInstance();
     uint8_t  ReadReg8(uint8_t reg, bool stop = true);
     uint16_t ReadReg16(uint8_t reg, bool stop = true);
     uint32_t ReadReg(uint8_t reg, uint8_t *buf, uint32_t bufSize, bool stop = true);
