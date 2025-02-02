@@ -16,7 +16,7 @@ public:
     {
         // startup sequence taken from example ino.
         // "Default settings from datasheet."
-        bmp280_.begin();
+        bmp280_.begin(addr);
         bmp280_.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                             Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
                             Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
