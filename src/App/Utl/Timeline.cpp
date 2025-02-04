@@ -95,6 +95,26 @@ uint64_t Timeline::Event(const char *name)
     return timeUs;
 }
 
+// Returns the time at the most recent matching event label, 0 if not found
+uint64_t Timeline::GetTimeAtEvent(const char *name)
+{
+    uint64_t retVal = 0;
+
+    for (int i = (int)eventList_.Size() - 1; i >= 0; --i)
+    {
+        EventData &ed = eventList_[(uint32_t)i];
+
+        if (strcmp(name, ed.name) == 0)
+        {
+            retVal = ed.timeUs;
+
+            break;
+        }
+    }
+
+    return retVal;
+}
+
 void Timeline::Report(const char *title)
 {
     Work::Queue(title, [=, this](){

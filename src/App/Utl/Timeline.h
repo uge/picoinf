@@ -18,6 +18,7 @@ public:
     void KeepOldest();
     void KeepNewest();
     uint64_t Event(const char *name);
+    uint64_t GetTimeAtEvent(const char *name);
     void Report(const char *title = nullptr);
     void ReportNow(const char *title = nullptr);
     void Reset();
