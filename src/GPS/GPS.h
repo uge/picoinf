@@ -25,6 +25,16 @@ using namespace std;
 //     https://docs.datagnss.com/rtk-board/files/T-5-1908-001-GNSS_Protocol_Specification-V2.3.pdf
 // https://www.icofchina.com/d/file/xiazai/2016-12-05/b5c57074f4b1fcc62ba8c7868548d18a.pdf
 
+
+struct FixSatelliteData
+{
+    string talker;
+
+    uint16_t id        = 0;
+    uint8_t  elevation = 0;
+    uint16_t azimuth   = 0;
+};
+
 struct FixMetaData
 {
     uint64_t timeAtPpsUs         = 0;
@@ -32,6 +42,9 @@ struct FixMetaData
     uint64_t timeAtFix2dUs       = 0;
     uint64_t timeAtFix3dUs       = 0;
     uint64_t timeAtSpeedCourseUs = 0;
+
+    vector<FixSatelliteData> satDataGPList;
+    vector<FixSatelliteData> satDataBDList;
 
     void Print() const
     {
@@ -41,6 +54,8 @@ struct FixMetaData
         Log("timeAtFix2dUs       = ", Time::MakeTimeFromUs(timeAtFix2dUs),       " (", Commas(timeAtFix2dUs),       ")");
         Log("timeAtFix3dUs       = ", Time::MakeTimeFromUs(timeAtFix3dUs),       " (", Commas(timeAtFix3dUs),       ")");
         Log("timeAtSpeedCourseUs = ", Time::MakeTimeFromUs(timeAtSpeedCourseUs), " (", Commas(timeAtSpeedCourseUs), ")");
+        Log("satDataGPList       = ", satDataGPList.size());
+        Log("satDataBDList       = ", satDataBDList.size());
     }
 };
 
@@ -74,14 +89,14 @@ struct FixTime
 struct Fix2D
 : public FixTime
 {
-    int16_t  latDeg = 0;
-    uint8_t  latMin = 0;
-    uint8_t  latSec = 0;
+    int16_t latDeg = 0;
+    uint8_t latMin = 0;
+    uint8_t latSec = 0;
     int32_t latDegMillionths = 0;
     
-    int16_t  lngDeg = 0;
-    uint8_t  lngMin = 0;
-    uint8_t  lngSec = 0;
+    int16_t lngDeg = 0;
+    uint8_t lngMin = 0;
+    uint8_t lngSec = 0;
     int32_t lngDegMillionths = 0;
 
     static const uint8_t MAIDENHEAD_GRID_LEN = 6;
@@ -137,13 +152,6 @@ struct Fix3DPlus
     }
 };
 
-struct FixSatelliteData
-{
-    uint16_t id       = 0;
-    uint8_t elevation = 0;
-    uint16_t azimuth  = 0;
-};
-
 
 class GPSReader
 {
@@ -185,22 +193,21 @@ private:
         vector<string> fix3dPlusSourceList;
 
         // Satellite list
-        vector<FixSatelliteData> satDataList;
+        vector<FixSatelliteData> satDataGPList;
+        vector<FixSatelliteData> satDataBDList;
     };
     AccumulatedData data_;
 
     // Callbacks
-    function<void(const FixTime &)>                             cbOnFixTime_        = [](const FixTime &){};
-    function<void(const Fix2D &)>                               cbOnFix2D_          = [](const Fix2D &){};
-    function<void(const Fix3D &)>                               cbOnFix3D_          = [](const Fix3D &){};
-    function<void(const Fix3DPlus &)>                           cbOnFix3DPlus_      = [](const Fix3DPlus &){};
-    function<void(const vector<FixSatelliteData> &satDataList)> cbOnFixSatDataList_ = [](const vector<FixSatelliteData> &){};
+    function<void(const FixTime &)>   cbOnFixTime_   = [](const FixTime &){};
+    function<void(const Fix2D &)>     cbOnFix2D_     = [](const Fix2D &){};
+    function<void(const Fix3D &)>     cbOnFix3D_     = [](const Fix3D &){};
+    function<void(const Fix3DPlus &)> cbOnFix3DPlus_ = [](const Fix3DPlus &){};
 
     bool cbOnFixTimeSet_ = false;
     bool cbOnFix2DSet_ = false;
     bool cbOnFix3DSet_ = false;
     bool cbOnFix3DPlusSet_ = false;
-    bool cbOnFixSatDataListSet_ = false;
 
     // UBX message monitoring state
     uint8_t idNmea_ = 0;
@@ -250,21 +257,14 @@ public:
         {
             vector<string> linePartList = NMEAStringParser::GetLineDataPartList(line);
 
-            string &type = linePartList[0];
-
-            // Get last 3 chars representing the message
-            if (type.size() >= 3)
-            {
-                type = type.substr(type.size() - 3);
-            }
-
-            bool ok = true;
-
             // "The default output is GGA, GSA, GSV and RMC in 1 second period"
             //
             // GP prefix is not universal.
             // GN is also used.  I think these may differ.  Need to confirm case-by-case.
             // Sometimes both.
+            //
+            // https://en.wikipedia.org/wiki/NMEA_0183
+            // Refers to GP vs BD, etc, as "talker"
             //
             // "NMEA is the standard of GNSS protocol"
             // GP for GPS-QZSS-SBAS - USA
@@ -273,7 +273,17 @@ public:
             // GI for INSAT-only    - India
             // GA for GALILEO-only  - EU
             // GN is for GNSS, combination of different global position satellite systems
-            
+
+            string type   = linePartList[0];
+            string talker = type.substr(0, 2);
+
+            // Get last 3 chars representing the message
+            if (type.size() >= 3)
+            {
+                type = type.substr(type.size() - 3);
+            }
+
+            bool ok = true;
             if (type == "RMC") // RMC - Recommended Minimum data for GPS
             {
                 ok = OnRMC(linePartList, line);
@@ -284,7 +294,7 @@ public:
             }
             else if (type == "GSV") // GSV - Detailed satellite data (multi-row)
             {
-                ok = OnGSV(linePartList);
+                ok = OnGSV(talker, linePartList);
             }
             // VTG - Vector track and speed over ground
             // GSA - Overall satellite data (multi-row)
@@ -443,21 +453,19 @@ public:
         return HasFix3D() && data_.timeAtSpeedCourseUs != 0;
     }
 
-    // can extract
-    // - satellite data [{id, elev, az}, ...]
-    bool HasSatDataList()
-    {
-        return data_.satDataList.size();
-    }
-
 
     /////////////////////////////////////////////////////////////////
     // Getters - Sync
     /////////////////////////////////////////////////////////////////
 
-    vector<FixSatelliteData> GetSatelliteDataList()
+    const vector<FixSatelliteData> &GetSatelliteDataGPList()
     {
-        return data_.satDataList;
+        return data_.satDataGPList;
+    }
+
+    const vector<FixSatelliteData> &GetSatelliteDataBDList()
+    {
+        return data_.satDataBDList;
     }
 
     FixMetaData GetFixMetaData()
@@ -469,6 +477,9 @@ public:
         retVal.timeAtFix2dUs       = data_.timeAtFix2dUs;
         retVal.timeAtFix3dUs       = data_.timeAtFix3dUs;
         retVal.timeAtSpeedCourseUs = data_.timeAtSpeedCourseUs;
+
+        retVal.satDataGPList = data_.satDataGPList;
+        retVal.satDataBDList = data_.satDataBDList;
 
         return retVal;
     }
@@ -712,16 +723,6 @@ public:
         cbOnFix3DPlusSet_ = false;
     }
 
-    void SetCallbackOnFixSatelliteList(function<void(const vector<FixSatelliteData> &satDataList)> cb)
-    {
-        cbOnFixSatDataList_ = cb;
-        cbOnFixSatDataListSet_ = true;
-    }
-
-    void UnSetCallbackOnFixSatelliteList()
-    {
-        cbOnFixSatDataListSet_ = false;
-    }
 
 private:
 
@@ -764,15 +765,6 @@ private:
             cbOnFix3DPlus_(fix);
         }
     }
-
-    void OnSatDataList()
-    {
-        if (cbOnFixSatDataListSet_ && HasSatDataList())
-        {
-            cbOnFixSatDataList_(data_.satDataList);
-        }
-    }
-
 
 
 private:
@@ -1389,7 +1381,7 @@ private:
     //
     // from atgm336h-5n31
     // $BDGSV,1,1,03,11,52,179,30,34,68,148,29,43,28,200,29*5B
-    bool OnGSV(const vector<string> &linePartList)
+    bool OnGSV(const string &talker, const vector<string> &linePartList)
     {
         bool retVal = true;
 
@@ -1419,7 +1411,7 @@ private:
             // Log("endSeqNo: ", endSeqNo);
             ++i;
             
-            // 1 - The sequnce number of this message (eg 3 of 4) (diff each batch)
+            // 1 - The sequence number of this message (eg 3 of 4) (diff each batch)
             uint8_t seqNo = stoi(linePartList[i]);
             // Log("seqNo: ", seqNo);
             ++i;
@@ -1476,6 +1468,9 @@ private:
                         // Repeating sequence of 4 fields, one set for each satellite
                         FixSatelliteData satData;
 
+                        // capture talker
+                        satData.talker = talker;
+
                         // 4 + (4N) - Satellite ID (can be in 16-bit range eg 901)
                         const string &strId = linePartList[i];
                         satData.id = atoi(strId.c_str());
@@ -1525,16 +1520,20 @@ private:
                     // of accumulating
                     if (seqNo == satCache_.endSeqNo)
                     {
-                        // Log("Committing cache");
+                        // Log("Committing cache for ", talker, " - ", satCache_.satDataList.size());
                         // commit batch
-                        data_.satDataList = satCache_.satDataList;
+                        if (talker == "GP")
+                        {
+                            data_.satDataGPList = satCache_.satDataList;
+                        }
+                        else
+                        {
+                            data_.satDataBDList = satCache_.satDataList;
+                        }
 
                         // Log("Resetting cache");
                         // reset cache
                         ResetCache();
-
-                        // Declare data updated
-                        OnSatDataList();
                     }
                 }
                 else
@@ -2046,7 +2045,7 @@ public:
             { 0xF0, 0x02, 0, "GSA (satellite id list)"            },
             { 0xF0, 0x00, 1, "GGA (time, lat/lng, altitude)"      },
             { 0xF0, 0x01, 0, "GLL (time, lat/lng)"                },
-            { 0xF0, 0x03, 0, "GSV (satellite locations)"          },
+            { 0xF0, 0x03, 1, "GSV (satellite locations)"          },
             { 0xF0, 0x04, 1, "RMC (time, lat/lng, speed, course)" },
             { 0xF0, 0x05, 0, "VTG (speed, course)"                },
             { 0xF0, 0x08, 0, "ZDA (time, timezone)"               },
