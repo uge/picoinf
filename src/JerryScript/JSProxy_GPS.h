@@ -13,6 +13,11 @@ public:
     static void Proxy(jerry_value_t obj, Fix3DPlus *gpsFix)
     {
         vector<const char *> fieldNameList = {
+            "SatsCountVisibleTotal",
+            "SatsCountVisibleGP",
+            "SatsCountVisibleBD",
+            "SatsCountUsedInLock",
+            "HDOP",
             "Year",
             "Month",
             "Day",
@@ -67,27 +72,36 @@ private:
             string fnName = JerryScript::GetInternalPropertyAsString(callInfo->function, "name");
             string fieldName = fnName.substr(3);
 
-                 if (fieldName == "Year")             { retVal = jerry_number(gpsFix->year);                      }
-            else if (fieldName == "Month")            { retVal = jerry_number(gpsFix->month);                     }
-            else if (fieldName == "Day")              { retVal = jerry_number(gpsFix->day);                       }
-            else if (fieldName == "Hour")             { retVal = jerry_number(gpsFix->hour);                      }
-            else if (fieldName == "Minute")           { retVal = jerry_number(gpsFix->minute);                    }
-            else if (fieldName == "Second")           { retVal = jerry_number(gpsFix->second);                    }
-            else if (fieldName == "Millisecond")      { retVal = jerry_number(gpsFix->millisecond);               }
-            else if (fieldName == "LatDeg")           { retVal = jerry_number(gpsFix->latDeg);                    }
-            else if (fieldName == "LatMin")           { retVal = jerry_number(gpsFix->latMin);                    }
-            else if (fieldName == "LatSec")           { retVal = jerry_number(gpsFix->latSec);                    }
-            else if (fieldName == "LatDegMillionths") { retVal = jerry_number(gpsFix->latDegMillionths);          }
-            else if (fieldName == "LngDeg")           { retVal = jerry_number(gpsFix->lngDeg);                    }
-            else if (fieldName == "LngMin")           { retVal = jerry_number(gpsFix->lngMin);                    }
-            else if (fieldName == "LngSec")           { retVal = jerry_number(gpsFix->lngSec);                    }
-            else if (fieldName == "LngDegMillionths") { retVal = jerry_number(gpsFix->lngDegMillionths);          }
-            else if (fieldName == "Grid6")            { retVal = jerry_string_sz(gpsFix->maidenheadGrid.c_str()); }
-            else if (fieldName == "AltitudeFeet")     { retVal = jerry_number(gpsFix->altitudeFt);                }
-            else if (fieldName == "AltitudeMeters")   { retVal = jerry_number(gpsFix->altitudeM);                 }
-            else if (fieldName == "SpeedMPH")         { retVal = jerry_number(gpsFix->speedMph);                  }
-            else if (fieldName == "SpeedKPH")         { retVal = jerry_number(gpsFix->speedKph);                  }
-            else if (fieldName == "CourseDegrees")    { retVal = jerry_number(gpsFix->courseDegrees);             }
+            uint8_t satsVisibleGP    = gpsFix->satDataGPList.size();
+            uint8_t satsVisibleBD    = gpsFix->satDataBDList.size();
+            uint8_t satsVisibleTotal = satsVisibleGP + satsVisibleBD;
+
+                 if (fieldName == "SatsCountVisibleTotal") { retVal = jerry_number(satsVisibleTotal);                  }
+            else if (fieldName == "SatsCountVisibleGP")    { retVal = jerry_number(satsVisibleGP);                     }
+            else if (fieldName == "SatsCountVisibleBD")    { retVal = jerry_number(satsVisibleBD);                     }
+            else if (fieldName == "SatsCountUsedInLock")   { retVal = jerry_number(gpsFix->satsUsedCount);             }
+            else if (fieldName == "HDOP")                  { retVal = jerry_number(gpsFix->hdop);                      }
+            else if (fieldName == "Year")                  { retVal = jerry_number(gpsFix->year);                      }
+            else if (fieldName == "Month")                 { retVal = jerry_number(gpsFix->month);                     }
+            else if (fieldName == "Day")                   { retVal = jerry_number(gpsFix->day);                       }
+            else if (fieldName == "Hour")                  { retVal = jerry_number(gpsFix->hour);                      }
+            else if (fieldName == "Minute")                { retVal = jerry_number(gpsFix->minute);                    }
+            else if (fieldName == "Second")                { retVal = jerry_number(gpsFix->second);                    }
+            else if (fieldName == "Millisecond")           { retVal = jerry_number(gpsFix->millisecond);               }
+            else if (fieldName == "LatDeg")                { retVal = jerry_number(gpsFix->latDeg);                    }
+            else if (fieldName == "LatMin")                { retVal = jerry_number(gpsFix->latMin);                    }
+            else if (fieldName == "LatSec")                { retVal = jerry_number(gpsFix->latSec);                    }
+            else if (fieldName == "LatDegMillionths")      { retVal = jerry_number(gpsFix->latDegMillionths);          }
+            else if (fieldName == "LngDeg")                { retVal = jerry_number(gpsFix->lngDeg);                    }
+            else if (fieldName == "LngMin")                { retVal = jerry_number(gpsFix->lngMin);                    }
+            else if (fieldName == "LngSec")                { retVal = jerry_number(gpsFix->lngSec);                    }
+            else if (fieldName == "LngDegMillionths")      { retVal = jerry_number(gpsFix->lngDegMillionths);          }
+            else if (fieldName == "Grid6")                 { retVal = jerry_string_sz(gpsFix->maidenheadGrid.c_str()); }
+            else if (fieldName == "AltitudeFeet")          { retVal = jerry_number(gpsFix->altitudeFt);                }
+            else if (fieldName == "AltitudeMeters")        { retVal = jerry_number(gpsFix->altitudeM);                 }
+            else if (fieldName == "SpeedMPH")              { retVal = jerry_number(gpsFix->speedMph);                  }
+            else if (fieldName == "SpeedKPH")              { retVal = jerry_number(gpsFix->speedKph);                  }
+            else if (fieldName == "CourseDegrees")         { retVal = jerry_number(gpsFix->courseDegrees);             }
         }
 
         return retVal;

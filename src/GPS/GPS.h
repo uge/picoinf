@@ -46,6 +46,15 @@ struct FixMetaData
     vector<FixSatelliteData> satDataGPList;
     vector<FixSatelliteData> satDataBDList;
 
+    uint8_t satsUsedCount = 0;
+    double  hdop          = 0;
+
+    string         fixTimeSource;
+    string         fix2dSource;
+    vector<string> fix3dSourceList;
+    vector<string> fix3dPlusSourceList;
+
+
     void Print() const
     {
         Log("FixMetaData");
@@ -56,6 +65,10 @@ struct FixMetaData
         Log("timeAtSpeedCourseUs = ", Time::MakeTimeFromUs(timeAtSpeedCourseUs), " (", Commas(timeAtSpeedCourseUs), ")");
         Log("satDataGPList       = ", satDataGPList.size());
         Log("satDataBDList       = ", satDataBDList.size());
+        Log("satsUsedCount       = ", satsUsedCount);
+        Log("hdop                = ", hdop);
+        // Log("Time Source         = ", fixTimeSource);
+        // Log("2D   Source         = ", fix2dSource);
     }
 };
 
@@ -162,39 +175,44 @@ private:
 
     struct AccumulatedData
     {
-        uint64_t timeAtPpsUs = 0;
+        // Metadata
+        uint64_t timeAtPpsUs         = 0;
+        uint64_t timeAtTimeLockUs    = 0;
+        uint64_t timeAtFix2dUs       = 0;
+        uint64_t timeAtFix3dUs       = 0;
+        uint64_t timeAtSpeedCourseUs = 0;
+
+        vector<FixSatelliteData> satDataGPList;
+        vector<FixSatelliteData> satDataBDList;
+
+        uint8_t satsUsedCount = 0;
+        double  hdop          = 0;
+
+        string         fixTimeSource;
+        string         fix2dSource;
+        vector<string> fix3dSourceList;
+        vector<string> fix3dPlusSourceList;
 
         // Time
         string timeStr;
         string dateStr;
-        uint64_t timeAtTimeLockUs = 0;
-        string fixTimeSource;
 
         uint8_t consecutiveRoundCount = 0;
-        string timeRoundLast;
+        string  timeRoundLast;
 
         // 2D Fix
         string latStr;
-        char latNorthSouth = 'N';
+        char   latNorthSouth = 'N';
         string lngStr;
-        char lngEastWest = 'W';
-        uint64_t timeAtFix2dUs = 0;
-        string fix2dSource;
+        char   lngEastWest = 'W';
 
         // 3D Fix (requires 2D fix also)
         string altitudeStr;
-        uint64_t timeAtFix3dUs = 0;
-        vector<string> fix3dSourceList;
 
         // 3D Plus Fix
         string speedKnotsStr;
         string courseDegreesStr;
-        uint64_t timeAtSpeedCourseUs = 0;
-        vector<string> fix3dPlusSourceList;
 
-        // Satellite list
-        vector<FixSatelliteData> satDataGPList;
-        vector<FixSatelliteData> satDataBDList;
     };
     AccumulatedData data_;
 
@@ -481,6 +499,14 @@ public:
         retVal.satDataGPList = data_.satDataGPList;
         retVal.satDataBDList = data_.satDataBDList;
 
+        retVal.satsUsedCount = data_.satsUsedCount;
+        retVal.hdop          = data_.hdop;
+
+        retVal.fixTimeSource       = data_.fixTimeSource;
+        retVal.fix2dSource         = data_.fix2dSource;
+        retVal.fix3dSourceList     = data_.fix3dSourceList;
+        retVal.fix3dPlusSourceList = data_.fix3dPlusSourceList;
+
         return retVal;
     }
 
@@ -639,6 +665,12 @@ public:
     static Fix3DPlus GetFix3DPlusExample()
     {
         Fix3DPlus retVal;
+
+        retVal.satDataGPList = { {}, {}, {}, {}, {}, {}, {} };  // 7
+        retVal.satDataBDList = { {}, {}, {} };                  // 3
+
+        retVal.satsUsedCount = 5;
+        retVal.hdop          = 4.7;
 
         retVal.year             = 2025;
         retVal.month            = 1;
@@ -1287,9 +1319,11 @@ private:
             // GP - numeric (eg 08)
             // GN - (range 00-40)
             // const string &numSatStr = linePartList[i];
+            uint8_t satsUsedCount = atoi(linePartList[i].c_str());
             ++i;
 
             // 8 - HDOP Horizontal Dilution of Precision
+            double hdop = atof(linePartList[i].c_str());
             ++i;
 
             // 9 - Altitude above mean sea level (meters)
@@ -1319,6 +1353,9 @@ private:
             // date may not be set yet
             if (timeStateIsValid)
             {
+                data_.satsUsedCount = satsUsedCount;
+                data_.hdop          = hdop;
+
                 data_.timeStr = move(time);
 
                 data_.timeAtTimeLockUs = timeNowUs;
