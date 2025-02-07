@@ -3,7 +3,7 @@
 	url = git@github.com:raspberrypi/pico-sdk.git
 [submodule "ext/FreeRTOS-Kernel"]
 	path = ext/FreeRTOS-Kernel
-	url = git@github.com:FreeRTOS/FreeRTOS-Kernel.git
+	url = git@github.com:raspberrypi/FreeRTOS-Kernel.git
 [submodule "ext/littlefs"]
 	path = ext/littlefs
 	url = git@github.com:littlefs-project/littlefs.git
