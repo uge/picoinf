@@ -9,7 +9,9 @@
 #include "FilesystemLittleFS.h"
 #include "Flashable.h"
 #include "I2C.h"
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
 #include "JerryScriptIntegration.h"
+#endif
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
 #include "KStats.h"
@@ -57,7 +59,9 @@ public:
             Clock::Init();
             Evm::Init();
             I2C::Init0();
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
             JerryScriptIntegration::Init();
+#endif
             JSONMsgRouter::Init();
             KStats::Init();
 
@@ -70,7 +74,9 @@ public:
             Evm::SetupShell();
             FilesystemLittleFS::SetupShell();
             I2C::SetupShell0();
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
             JerryScriptIntegration::SetupShell();
+#endif
             JSONMsgRouter::SetupShell();
             KStats::SetupShell();
             LogSetupShell();

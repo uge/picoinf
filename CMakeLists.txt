@@ -321,7 +321,11 @@ set(EXTERNAL_COMPILE_FLAGS
 
 set(JERRY_SCRIPT_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/jerryscript")
 
-if (PICO_INF_USE_JERRYSCRIPT)
+if (NOT DEFINED PICO_INF_ENABLE_JERRYSCRIPT)
+    set(PICO_INF_ENABLE_JERRYSCRIPT 0)
+endif()
+
+if (PICO_INF_ENABLE_JERRYSCRIPT)
     add_subdirectory(${JERRY_SCRIPT_ROOT})
 
     list(APPEND TARGET_LINK_LIBS_LIST
@@ -368,8 +372,6 @@ target_link_libraries(PicoInf ${TARGET_LINK_LIBS_LIST})
 #####################################################################
 
 target_compile_definitions(PicoInf PRIVATE
-    PICO_INF_ENABLE_WIRELESS=${PICO_INF_ENABLE_WIRELESS}
-
     FREERTOS_KERNEL_PATH="${FREERTOS_KERNEL_PATH}"
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     APP_BUILD_VERSION="${APP_BUILD_VERSION}"
@@ -395,6 +397,12 @@ target_compile_options(PicoInf
         -Wall
         -Wno-psabi
         -fstack-usage
+
+        # need to include globally because some areas (eg App.h)
+        # only get evaluated in the final application compile, and
+        # so need to have this definition available.
+        -DPICO_INF_ENABLE_WIRELESS=${PICO_INF_ENABLE_WIRELESS}
+        -DPICO_INF_ENABLE_JERRYSCRIPT=${PICO_INF_ENABLE_JERRYSCRIPT}
 )
 
 
