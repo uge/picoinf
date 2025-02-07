@@ -167,6 +167,10 @@ void Timer::TimeoutIntervalUs(uint64_t durationIntervalUs, uint64_t durationFirs
     // register before interval set since that would get clobbered
     TimeoutInUs(durationFirstInUs);
 
+    // define the debug duration value as the repeating interval, regardless
+    // of the duration before first
+    durationUs_ = durationIntervalUs;
+
     // set up interval details
     isInterval_         = true;
     durationIntervalUs_ = durationIntervalUs;
