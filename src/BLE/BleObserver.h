@@ -105,9 +105,10 @@ public:
             // knowing that detail.
 
             // We know that by the time Evm comes around, BLE is available
+            timer_.SetName("BleObserver::Start Timer");
             timer_.SetCallback([=]{
                 Start(cbFn, filterList);
-            }, "BleObserver::Start Timer");
+            });
             timer_.TimeoutInUs(0);
         }
         else

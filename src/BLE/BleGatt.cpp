@@ -1,5 +1,6 @@
 #include "BleAttDatabase.h"
 #include "BleGatt.h"
+#include "Evm.h"
 #include "Log.h"
 #include "PAL.h"
 #include "Shell.h"
