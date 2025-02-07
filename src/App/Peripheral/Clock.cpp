@@ -173,7 +173,7 @@ static PllState GetPllState(pll_hw_t *pll)
 
 struct ClockSourceData
 {
-    clock_index clk;
+    clock_handle_t clk;
     string name;
 
     uint32_t freqCountId;
@@ -364,9 +364,9 @@ struct ClockState
     string name = "clk_ref";
 
     // clock details
-    clock_index clk    = clk_ref;
-    uint32_t    src    = CLOCKS_CLK_REF_CTRL_SRC_VALUE_XOSC_CLKSRC;
-    uint32_t    auxsrc = 0;
+    clock_handle_t clk    = clk_ref;
+    uint32_t       src    = CLOCKS_CLK_REF_CTRL_SRC_VALUE_XOSC_CLKSRC;
+    uint32_t       auxsrc = 0;
 
     // source
     string srcNameLong  = "CLOCKS_CLK_REF_CTRL_SRC_VALUE_XOSC_CLKSRC";
@@ -400,7 +400,7 @@ struct ClockState
     }
 };
 
-static ClockState GetClockState(clock_index clk, ClockState *overlay = nullptr)
+static ClockState GetClockState(clock_handle_t clk, ClockState *overlay = nullptr)
 {
     ClockState retVal = {
         .name = "-",
@@ -527,7 +527,7 @@ static ClockState GetClockState(clock_index clk, ClockState *overlay = nullptr)
 }
 
 
-static ClockState OverlayClockState(clock_index clk, ClockState overlay)
+static ClockState OverlayClockState(clock_handle_t clk, ClockState overlay)
 {
     return GetClockState(clk, &overlay);
 }
@@ -1026,7 +1026,7 @@ static void DeepSleep(uint32_t us)
 }
 
 
-static string GetSource(clock_index clk)
+static string GetSource(clock_handle_t clk)
 {
     ClockState cs = GetClockState(clk);
 
