@@ -320,14 +320,15 @@ set(EXTERNAL_COMPILE_FLAGS
 )
 
 set(JERRY_SCRIPT_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/jerryscript")
-add_subdirectory(${JERRY_SCRIPT_ROOT})
 
+if (PICO_INF_USE_JERRYSCRIPT)
+    add_subdirectory(${JERRY_SCRIPT_ROOT})
 
-list(APPEND TARGET_LINK_LIBS_LIST
-    jerry-core
-    jerry-ext
-)
-
+    list(APPEND TARGET_LINK_LIBS_LIST
+        jerry-core
+        jerry-ext
+    )
+endif()
 
 #####################################################################
 # Pico SDK Integration
