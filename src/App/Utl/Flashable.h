@@ -3,6 +3,8 @@
 #include "FilesystemLittleFS.h"
 #include "Log.h"
 
+#include <string>
+
 
 class FlashableIdMaker
 {
@@ -33,11 +35,11 @@ public:
     {
         if (id == -1)
         {
-            id_ = to_string(FlashableIdMaker::GetNextId());
+            id_ = std::to_string(FlashableIdMaker::GetNextId());
         }
         else
         {
-            id_ = to_string(id);
+            id_ = std::to_string(id);
         }
     }
 
@@ -141,7 +143,7 @@ public:
 
 private:
 
-    string id_;
+    std::string id_;
 };
 
 
