@@ -1,7 +1,7 @@
 #include "KTime.h"
 #include "Timeline.h"
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 
 #include <cmath>
 using namespace std;
