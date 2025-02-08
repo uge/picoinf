@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ADCInternal.h"
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
 #include "Ble.h"
 #endif
 #include "Clock.h"
@@ -67,7 +67,7 @@ public:
 
             // Shell
             ADC::SetupShell();
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
             Ble::SetupShell();
 #endif
             Clock::SetupShell();
@@ -107,7 +107,7 @@ public:
             USB::Init();
             LogNL();
 
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
             Ble::Init();
             LogNL();
 #endif

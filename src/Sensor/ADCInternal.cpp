@@ -6,7 +6,7 @@
 #include "Timeline.h"
 
 #include "hardware/adc.h"
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
 #include "pico/cyw43_arch.h"
 #endif
 
@@ -72,7 +72,7 @@ uint16_t ADC::GetMilliVoltsVCC()
 {
     uint16_t retVal = 0;
 
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
     {
         cyw43_thread_enter();
         // Make sure cyw43 is awake
@@ -82,7 +82,7 @@ uint16_t ADC::GetMilliVoltsVCC()
 
     retVal = GetMilliVolts(PICO_VSYS_PIN) * 3;
     
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
     {
         cyw43_thread_exit();
     }
