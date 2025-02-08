@@ -67,7 +67,10 @@ struct KTaskCpuTimeFrame
         {
             string nameFormatted = FormatStr("%-15s", taskCpuTime.name.c_str());
 
-            Log("  ", nameFormatted, " : ", Commas(taskCpuTime.runDuration), " of total ", Commas(taskCpuTime.totalRunDuration));
+            Log("  ", nameFormatted, " : ",
+                StrUtl::PadLeft(Commas(taskCpuTime.runDuration), ' ', 9),
+                " of total ",
+                StrUtl::PadLeft(Commas(taskCpuTime.totalRunDuration), ' ', 15));
         }
     }
 };
@@ -130,8 +133,6 @@ static void CaptureStats()
     }
 
     frameList_.PushBack(frame);
-
-    // frame.Print();
 }
 
 static void DumpStats()
@@ -156,20 +157,16 @@ void KStats::Init()
 {
     Timeline::Global().Event("KStats::Init");
 
-    static const uint8_t HISTORY_COUNT = 2;
+    static const uint8_t HISTORY_COUNT = 5;
     frameList_.SetCapacity(HISTORY_COUNT);
 
-    // commenting out because system crashes when enabled.
-    // there is something wrong fundamentally, and this code was put in during
-    // the time tracking it down. however, at the moment it's causing
-    // otherwise "working" code to bomb out, so put it away until you want
-    // to dig in again.
-
-    // static const uint64_t STATS_INTERVAL_MS = 5000;
+    static const uint64_t STATS_INTERVAL_MS = 5'000;
     timer_.SetCallback([]{
         CaptureStats();
     });
-    // timer_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
+
+    timer_.SetSnapToMs(STATS_INTERVAL_MS);
+    timer_.TimeoutIntervalMs(STATS_INTERVAL_MS);
 }
 
 void KStats::SetupShell()
