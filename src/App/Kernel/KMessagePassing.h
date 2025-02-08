@@ -3,7 +3,7 @@
 #include "KTime.h"
 #include "PAL.h"
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 #include "queue.h"
 #include "semphr.h"
 

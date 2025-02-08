@@ -7,7 +7,7 @@
 #include "Timeline.h"
 #include "Utl.h"
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 #include "task.h"
 
 #include <map>
