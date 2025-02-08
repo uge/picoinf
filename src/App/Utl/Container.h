@@ -28,7 +28,7 @@ public:
 
         Clear();
 
-        list_.reserve(capacity_);
+        list_.resize(capacity_);
     }
 
     uint32_t GetCapacity()
