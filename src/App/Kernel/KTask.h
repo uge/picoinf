@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FreeRTOS.Wrapped.h"
+#include "FreeRTOS.h"
 #include "task.h"
 
 #include <cstdint>
