@@ -3,7 +3,7 @@
 	url = git@github.com:raspberrypi/pico-sdk.git
 [submodule "ext/FreeRTOS-Kernel"]
 	path = ext/FreeRTOS-Kernel
-	url = git@github.com:raspberrypi/FreeRTOS-Kernel.git
+	url = git@github.com:FreeRTOS/FreeRTOS-Kernel.git
 [submodule "ext/littlefs"]
 	path = ext/littlefs
 	url = git@github.com:littlefs-project/littlefs.git
@@ -34,3 +34,12 @@
 [submodule "ext/Adafruit_MMC56x3"]
 	path = ext/Adafruit_MMC56x3
 	url = git@github.com:adafruit/Adafruit_MMC56x3.git
+[submodule "ext/pico-examples"]
+	path = ext/pico-examples
+	url = git@github.com:raspberrypi/pico-examples.git
+[submodule "ext/pico-playground"]
+	path = ext/pico-playground
+	url = git@github.com:raspberrypi/pico-playground.git
+[submodule "ext/pico-extras"]
+	path = ext/pico-extras
+	url = git@github.com:raspberrypi/pico-extras.git

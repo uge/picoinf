@@ -12,10 +12,8 @@ if (NOT DEFINED PICO_BOARD)
     set(PICO_BOARD "pico")
 endif()
 
-
-set(PICO_INF_ENABLE_WIRELESS 0)
-if (PICO_BOARD STREQUAL "pico_w")
-    set(PICO_INF_ENABLE_WIRELESS 1)
+if (NOT DEFINED PICO_INF_ENABLE_BLE)
+    set(PICO_INF_ENABLE_BLE 0)
 endif()
 
 
@@ -218,7 +216,7 @@ target_include_directories(PicoInf PRIVATE
     ${BTSTACK_ROOT}/src
 )
 
-if (PICO_INF_ENABLE_WIRELESS)
+if (PICO_BOARD STREQUAL "pico_w")
     list(APPEND TARGET_LINK_LIBS_LIST
         # original
         # ------------------
@@ -401,7 +399,7 @@ target_compile_options(PicoInf
         # need to include globally because some areas (eg App.h)
         # only get evaluated in the final application compile, and
         # so need to have this definition available.
-        -DPICO_INF_ENABLE_WIRELESS=${PICO_INF_ENABLE_WIRELESS}
+        -DPICO_INF_ENABLE_BLE=${PICO_INF_ENABLE_BLE}
         -DPICO_INF_ENABLE_JERRYSCRIPT=${PICO_INF_ENABLE_JERRYSCRIPT}
 )
 

@@ -1,5 +1,5 @@
 add_subdirectory(App)
-if (PICO_INF_ENABLE_WIRELESS)
+if (PICO_INF_ENABLE_BLE)
     add_subdirectory(Ble)
 endif()
 add_subdirectory(Compiler)
