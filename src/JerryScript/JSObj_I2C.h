@@ -136,13 +136,13 @@ private:
 
             if (fnName == "WriteReg8")
             {
-                uint8_t val = (int)jerry_value_as_number(argv[0]);
+                uint8_t val = (int)jerry_value_as_number(argv[1]);
 
                 obj->WriteReg8(reg, val);
             }
             else if (fnName == "WriteReg16")
             {
-                uint16_t val = (int)jerry_value_as_number(argv[0]);
+                uint16_t val = (int)jerry_value_as_number(argv[1]);
 
                 obj->WriteReg16(reg, val);
             }
