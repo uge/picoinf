@@ -1,9 +1,13 @@
-#include "VersionStr.h"
+#include "Shell.h"
 #include "Utl.h"
+#include "VersionStr.h"
 
 #include <string>
 #include <vector>
 using namespace std;
+
+#include "StrictMode.h"
+
 
 #define MY_VERSION_STRINGIFY(s) #s
 #define MY_VERSION_TOSTRING(s) MY_VERSION_STRINGIFY(s)
@@ -27,24 +31,31 @@ uint64_t Version::GetVersionAsInt()
 
     uint64_t version = 0;
 
-    version += atoi(datePartList[0].c_str());
+    version += (uint64_t)atoi(datePartList[0].c_str());
 
     version *= 100;
-    version += atoi(datePartList[1].c_str());
+    version += (uint64_t)atoi(datePartList[1].c_str());
 
     version *= 100;
-    version += atoi(datePartList[2].c_str());
+    version += (uint64_t)atoi(datePartList[2].c_str());
 
     version *= 100;
-    version += atoi(timePartList[0].c_str());
+    version += (uint64_t)atoi(timePartList[0].c_str());
 
     version *= 100;
-    version += atoi(timePartList[1].c_str());
+    version += (uint64_t)atoi(timePartList[1].c_str());
 
     version *= 100;
-    version += atoi(timePartList[2].c_str());
+    version += (uint64_t)atoi(timePartList[2].c_str());
 
     return version;
+}
+
+void Version::SetupShell()
+{
+    Shell::AddCommand("version", [](vector<string> argList){
+        Log(GetVersion());
+    }, { .argCount = 0, .help = "Display the build version"});
 }
 
 #undef MY_VERSION_STRINGIFY

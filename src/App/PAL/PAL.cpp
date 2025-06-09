@@ -1,19 +1,25 @@
+
 #include "PAL.h"
+#include "JSONMsgRouter.h"
 #include "Log.h"
+#include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "VersionStr.h"
 #include "WDT.h"
+#include "Utl.h"
+
+#include "FreeRTOS.Wrapped.h"
+#include "task.h"
 
 #include "pico/time.h"
 #include "pico/unique_id.h"
-
-#include "FreeRTOS.h"
-#include "task.h"
 
 #include <vector>
 #include <string>
 using namespace std;
 
+#include "StrictMode.h"
 
 
 string PlatformAbstractionLayer::GetAddress()
@@ -471,9 +477,9 @@ void faultHandlerWithExcFrame(struct CortexExcFrame *exc, uint32_t reason, uint3
 	// uint32_t i;
 
     const char *reasonStr = "????";
-    if (names.contains(reason))
+    if (names.contains((int)reason))
     {
-        reasonStr = names[reason].c_str();
+        reasonStr = names[(int)reason].c_str();
     }
     Log(reasonStr, " sr = 0x", ToHex(exc->sr));
 	
@@ -613,10 +619,9 @@ void HardFault_Handler_Old()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Shell.h"
-void PALInit()
+void PlatformAbstractionLayer::Init()
 {
-    Timeline::Global().Event("PALInit");
+    Timeline::Global().Event("PAL::Init");
 
     LogNL(5);  // Give some visual space from prior run
     Log("----------------------------------------");
@@ -630,9 +635,9 @@ void PALInit()
     Log("Version     : ", Version::GetVersion());
 }
 
-void PALSetupShell()
+void PlatformAbstractionLayer::SetupShell()
 {
-    Timeline::Global().Event("PALSetupShell");
+    Timeline::Global().Event("PAL::SetupShell");
 
     Shell::AddCommand("sys.reset", [](vector<string>){
         PAL.Reset();
@@ -648,17 +653,23 @@ void PALSetupShell()
     }, { .help = "crash board" });
 
     Shell::AddCommand("sys.time", [](vector<string>){
-        uint64_t time = PAL.Micros();
-        Log(Commas(time), " - ", TimestampFromUs(time));
+        uint64_t timeUs = PAL.Micros();
+
+        string notionalTime = Time::GetNotionalDateTimeAtSystemUs(timeUs);
+        string systemTime   = Time::MakeDateTimeFromUs(timeUs);
+
+        Log("Notional Time: ", notionalTime);
+        Log("System   Time: ", systemTime);
+        Log("Uptime       : ", StrUtl::PadLeft(Time::MakeDurationFromUs(timeUs), ' ', (uint8_t)systemTime.size()), " (", Commas(timeUs), ")");
     }, { .help = "time" });
 
     Shell::AddCommand("pal.delay", [](vector<string> argList){
-        PAL.Delay(atoi(argList[0].c_str()));
+        PAL.Delay((uint64_t)atoi(argList[0].c_str()));
         Log("done");
     }, { .argCount = 1, .help = "delay x ms" });
 
     Shell::AddCommand("pal.delaybusy", [](vector<string> argList){
-        PAL.DelayBusy(atoi(argList[0].c_str()));
+        PAL.DelayBusy((uint64_t)atoi(argList[0].c_str()));
         Log("done");
     }, { .argCount = 1, .help = "delaybusy x ms" });
 
@@ -667,10 +678,9 @@ void PALSetupShell()
     }, { .argCount = 0, .help = "" });
 }
 
-#include "JSONMsgRouter.h"
-void PALSetupJSON()
+void PlatformAbstractionLayer::SetupJSON()
 {
-    Timeline::Global().Event("PALSetupJSON");
+    Timeline::Global().Event("PAL::SetupJSON");
 
     JSONMsgRouter::RegisterHandler("REQ_SYS_RESET", [](auto &in, auto &out){
         LogModeSync();

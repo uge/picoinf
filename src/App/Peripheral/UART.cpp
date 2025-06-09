@@ -10,15 +10,17 @@
 #include "UART.h"
 #include "USB.h"
 
-#include "pico/stdlib.h"
-#include "hardware/uart.h"
 #include "hardware/irq.h"
-
-#include <string.h>
+#include "hardware/uart.h"
+#include "pico/stdlib.h"
 
 #include <algorithm>
+#include <cstring>
 #include <vector>
 using namespace std;
+
+#include "StrictMode.h"
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,9 +34,11 @@ static USB_CDC *cdc0 = USB::GetCdcInstance(0);
 // UART Input / Output state
 ////////////////////////////////////////////////////////////////////////////////
 
-static const uint16_t UART_OUTPUT_PIPE_SIZE   = 1000;
+static const uint16_t UART_OUTPUT_PIPE_SIZE   = 5000;
 static const uint16_t UART_INPUT_PIPE_SIZE    = 1002;
 static const uint16_t UART_INPUT_MAX_LINE_LEN = 1000;
+static const uint16_t UART_USB_INPUT_MAX_LINE_LEN = 5000;
+static const uint16_t UART_USB_OUTPUT_BUF_SIZE = 5000;
 
 static KMessagePipe<char, UART_OUTPUT_PIPE_SIZE> UART_0_OUTPUT_PIPE;
 static KMessagePipe<char, UART_INPUT_PIPE_SIZE>  UART_0_INPUT_PIPE;
@@ -47,7 +51,7 @@ static DataStreamDistributor UART_1_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_1);
 static LineStreamDistributor UART_1_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_1, UART_INPUT_MAX_LINE_LEN, "UART_1_LINE_STREAM_DISTRIBUTOR");
 
 static DataStreamDistributor UART_USB_INPUT_DATA_STREAM_DISTRIBUTOR(UART::UART_USB);
-static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
+static LineStreamDistributor UART_USB_INPUT_LINE_STREAM_DISTRIBUTOR(UART::UART_USB, UART_USB_INPUT_MAX_LINE_LEN, "UART_USB_LINE_STREAM_DISTRIBUTOR");
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,14 +172,7 @@ static void UsbOnRx(vector<uint8_t> &byteList)
 
 static void UsbSend(const uint8_t *buf, uint16_t bufLen)
 {
-    if (cdc0->GetDtr())
-    {
-        cdc0->Send(buf, bufLen);
-    }
-    else
-    {
-        cdc0->Clear();
-    }
+    cdc0->Send(buf, bufLen);
 }
 
 
@@ -276,7 +273,7 @@ void UartSend(const uint8_t *buf, uint16_t bufLen)
 
 void UartSend(const vector<uint8_t> &byteList)
 {
-    UartSend(byteList.data(), byteList.size());
+    UartSend(byteList.data(), (uint16_t)byteList.size());
 }
 
 
@@ -491,7 +488,7 @@ static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
     // Set up a RX interrupt
     // We need to set up the handler first
     // Select correct interrupt for the UART we are using
-    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+    uint UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
 
     // And set up and enable the interrupt handlers
     if (irq_get_exclusive_handler(UART_IRQ) == nullptr)
@@ -506,7 +503,7 @@ static void UartInitDeviceInterrupts(uart_inst_t *uart, irq_handler_t handler)
 
 static void UartDeInitDeviceInterrupts(uart_inst_t *uart)
 {
-    int UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
+    uint UART_IRQ = uart == uart0 ? UART0_IRQ : UART1_IRQ;
 
     irq_set_enabled(UART_IRQ, false);
 }
@@ -617,6 +614,7 @@ void UartInit()
     UartEnable(UART::UART_1);
 
     // Set up USB serial interface
+    cdc0->SetSendBufCapacity(UART_USB_OUTPUT_BUF_SIZE);
     cdc0->SetCallbackOnRx(UsbOnRx);
 }
 

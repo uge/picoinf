@@ -5,7 +5,6 @@
 #include "PAL.h"
 #include "si5351.h"
 #include "Timeline.h"
-#include "WSPRMessage.h"
 #include "WSPREncoder.h"
 
 class WSPRMessageTransmitter
@@ -54,6 +53,15 @@ public:
     {
         fnOnTxEnd_ = fn;
     }
+
+    // whole-number bits will be transmit. 
+    // function has the opportunity to quit _before_ each bit.
+    // you can quit before the first bit (meaning no bits sent).
+    // msSinceStart measures time since the start of the Send() function.
+    void SetQuitEarlyFunction(function<bool(uint64_t msSinceStart)> fn)
+    {
+        fnQuitEarly_ = fn;
+    }
     
     void RadioOn()
     {
@@ -88,25 +96,27 @@ public:
         on_ = true;
     }
 
-    void Send(const WSPRMessage &msg)
+    void Send(const string &callsign, const string &grid4, uint8_t powerDbm)
     {
         Timeline::Global().Event("send start");
 
         fnOnTxStart_();
 
         // wow this is 34ms
-        wsprEncoder_.EncodeType1(msg.GetCallsign(),
-                                 msg.GetGrid(),
-                                 msg.GetPowerDbm());
+        wsprEncoder_.EncodeType1(callsign, grid4, powerDbm);
 
         Timeline::Global().Event("msg encoded");
+
+        uint64_t timeStartSendMs = PAL.Millis();
 
         uint64_t timeStart = 0;
         uint64_t timeNow   = 0;
         uint64_t timeDiff  = 0;
+
+        bool quitEarly = fnQuitEarly_(PAL.Millis() - timeStartSendMs);
         
         // Clock out the bits
-        for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT; i++)
+        for(uint8_t i = 0; i < WSPR_SYMBOL_COUNT && !quitEarly; i++)
         {
             timeStart = PAL.Micros();
 
@@ -130,6 +140,9 @@ public:
             // wait a while less than full, knowing the next bit will be delayed also, during
             // which time this bit continues to be sent
             PAL.DelayBusyUs(WSPR_DELAY_US - timeDiff);
+
+            // check if we should quit early
+            quitEarly = fnQuitEarly_(PAL.Millis() - timeStartSendMs);
         }
 
         // except we have to capture some extra time for the final bit, which
@@ -183,6 +196,7 @@ private:
     function<void()> fnOnBitChange_ = []{};
     function<void()> fnOnTxEnd_     = []{};
 
+    function<bool(uint64_t msSinceStart)> fnQuitEarly_ = [](uint64_t){ return false; };
 };
 
 

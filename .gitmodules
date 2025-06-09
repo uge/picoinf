@@ -7,3 +7,39 @@
 [submodule "ext/littlefs"]
 	path = ext/littlefs
 	url = git@github.com:littlefs-project/littlefs.git
+[submodule "ext/WsprEncoded"]
+	path = ext/WsprEncoded
+	url = git@github.com:traquito/WsprEncoded.git
+[submodule "ext/jerryscript"]
+	path = ext/jerryscript
+	url = git@github.com:jerryscript-project/jerryscript.git
+[submodule "ext/Adafruit_Sensor"]
+	path = ext/Adafruit_Sensor
+	url = git@github.com:adafruit/Adafruit_Sensor.git
+[submodule "ext/Adafruit_BMP280_Library"]
+	path = ext/Adafruit_BMP280_Library
+	url = git@github.com:adafruit/Adafruit_BMP280_Library.git
+[submodule "ext/Adafruit_BusIO"]
+	path = ext/Adafruit_BusIO
+	url = git@github.com:adafruit/Adafruit_BusIO.git
+[submodule "ext/Adafruit_BME280_Library"]
+	path = ext/Adafruit_BME280_Library
+	url = git@github.com:adafruit/Adafruit_BME280_Library.git
+[submodule "ext/Adafruit_Si7021"]
+	path = ext/Adafruit_Si7021
+	url = git@github.com:adafruit/Adafruit_Si7021.git
+[submodule "ext/BH1750FVI_RT"]
+	path = ext/BH1750FVI_RT
+	url = git@github.com:RobTillaart/BH1750FVI_RT.git
+[submodule "ext/Adafruit_MMC56x3"]
+	path = ext/Adafruit_MMC56x3
+	url = git@github.com:adafruit/Adafruit_MMC56x3.git
+[submodule "ext/pico-examples"]
+	path = ext/pico-examples
+	url = git@github.com:raspberrypi/pico-examples.git
+[submodule "ext/pico-playground"]
+	path = ext/pico-playground
+	url = git@github.com:raspberrypi/pico-playground.git
+[submodule "ext/pico-extras"]
+	path = ext/pico-extras
+	url = git@github.com:raspberrypi/pico-extras.git

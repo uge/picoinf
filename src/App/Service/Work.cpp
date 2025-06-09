@@ -1,6 +1,3 @@
-#include <list>
-using namespace std;
-
 #include "KTask.h"
 #include "Work.h"
 #include "Log.h"
@@ -9,9 +6,15 @@ using namespace std;
 #include "HeapAllocators.h"
 #include "Timeline.h"
 #include "Shell.h"
+#include "Utl.h"
+
+#include <list>
+using namespace std;
+
+#include "StrictMode.h"
 
 
-static const uint32_t COUNT_LIMIT = 5;
+static const uint32_t COUNT_LIMIT = 20;
 
 static KSemaphore sem_(0, COUNT_LIMIT);
 
@@ -60,9 +63,9 @@ void Work::Queue(const char *label, function<void()> &&fn)
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkSetupShell()
+void Work::SetupShell()
 {
-    Timeline::Global().Event("WorkSetupShell");
+    Timeline::Global().Event("Work::SetupShell");
 
     Shell::AddCommand("work.report", [&](vector<string> argList){
         Work::Report();

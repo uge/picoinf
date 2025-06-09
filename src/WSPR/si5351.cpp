@@ -34,7 +34,8 @@
 /********************/
 
 Si5351::Si5351(uint8_t i2c_addr):
-	i2c_bus_addr(i2c_addr)
+	i2c_bus_addr(i2c_addr),
+    i2c_(i2c_addr)
 {
 	xtal_freq[0] = SI5351_XTAL_FREQ;
 
@@ -67,7 +68,7 @@ bool Si5351::init(uint8_t xtal_load_c, uint32_t xo_freq, int32_t corr)
 
 	// Check for a device on the bus, bail out if it is not there
 	// Wire.beginTransmission(i2c_bus_addr);
-	uint8_t reg_val = i2c_.CheckAddr(i2c_bus_addr);
+	uint8_t reg_val = I2C::IsAlive(i2c_bus_addr);
 //   reg_val = Wire.endTransmission();
 
 	if(reg_val)
@@ -1320,7 +1321,7 @@ void Si5351::set_ref_freq(uint32_t ref_freq, enum si5351_pll_input ref_osc)
 // }
 uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 {
-    i2c_.WriteDirect(i2c_bus_addr, addr, data, bytes);
+    i2c_.WriteReg(addr, data, bytes);
     return 1;
 }
 
@@ -1334,7 +1335,7 @@ uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 
 uint8_t Si5351::si5351_write(uint8_t addr, uint8_t data)
 {
-    i2c_.WriteReg8(i2c_bus_addr, addr, data);
+    i2c_.WriteReg8(addr, data);
 
     return 1;
 }
@@ -1359,7 +1360,7 @@ uint8_t Si5351::si5351_write(uint8_t addr, uint8_t data)
 
 uint8_t Si5351::si5351_read(uint8_t addr)
 {
-    return i2c_.ReadReg8(i2c_bus_addr, addr);
+    return i2c_.ReadReg8(addr);
 }
 
 /*********************/

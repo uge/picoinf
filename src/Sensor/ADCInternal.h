@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 
 class ADC
@@ -18,6 +18,7 @@ public:
 
     ADC(uint8_t pin);
 
+    uint16_t Read();
     uint16_t GetMilliVolts();
 
 

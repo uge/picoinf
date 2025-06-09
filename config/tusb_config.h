@@ -60,6 +60,12 @@
 
 
 // Configure Debug
+// The TinyUSB build will infer this configuration value by looking at the build
+// type itself (ie if Debug then CFG_TUSB_DEBUG=1). I don't want that to be the
+// control since I always build/run Debug.
+// So I undefine this here. This leaves the build log showing CFG_TUSB_DEBUG=1
+// initially, but oh well.
+#undef CFG_TUSB_DEBUG
 #define CFG_TUSB_DEBUG  0
 
 

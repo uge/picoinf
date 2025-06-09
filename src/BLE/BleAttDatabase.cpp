@@ -1,7 +1,9 @@
 #include "BleAttDatabase.h"
+#include "Log.h"
 #include "Utl.h"
 #include "UUID.h"
 
+#include <cstring>
 #include <unordered_map>
 using namespace std;
 

@@ -4,11 +4,16 @@ cmake_minimum_required(VERSION 3.15...3.31)
 # Library Options
 #####################################################################
 
-set(PICO_BOARD "pico")
+if (NOT DEFINED APP_BUILD_VERSION)
+    set(APP_BUILD_VERSION "1970-01-01 00:00:00")
+endif()
 
-set(PICO_INF_ENABLE_WIRELESS 0)
-if (PICO_BOARD STREQUAL "pico_w")
-    set(PICO_INF_ENABLE_WIRELESS 1)
+if (NOT DEFINED PICO_BOARD)
+    set(PICO_BOARD "pico")
+endif()
+
+if (NOT DEFINED PICO_INF_ENABLE_BLE)
+    set(PICO_INF_ENABLE_BLE 0)
 endif()
 
 
@@ -39,7 +44,7 @@ include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 # Project Declaration
 #####################################################################
 
-project(PicoInf LANGUAGES C CXX)
+project(PicoInf LANGUAGES C CXX ASM)
 
 
 #####################################################################
@@ -53,18 +58,98 @@ pico_sdk_init()
 # PicoInf Library
 #####################################################################
 
-# Library and code
+# Declare Library
 add_library(PicoInf)
-add_subdirectory(src)
 
-# Set up test target executable
-add_executable(PicoInfTest test.cpp)
-target_link_libraries(PicoInfTest PicoInf)
-pico_add_extra_outputs(PicoInfTest)
+# Build link libs list
+set(TARGET_LINK_LIBS_LIST)
 
 
 #####################################################################
-# Library Includes
+# Shims
+#####################################################################
+
+add_subdirectory(shim)
+
+
+#####################################################################
+# Arduino Library Integration
+#####################################################################
+
+set(ADAFRUIT_BME280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BME280_Library")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BME280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BME280_LIBRARY_PATH}/Adafruit_BME280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_BMP280_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BMP280_Library")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BMP280_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_BMP280_LIBRARY_PATH}/Adafruit_BMP280.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_BUSIO_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_BusIO")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_BUSIO_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_BusIO_Register.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
+)
+set_source_files_properties(
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_BusIO_Register.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_I2CDevice.cpp
+    ${ADAFRUIT_BUSIO_LIBRARY_PATH}/Adafruit_SPIDevice.cpp
+    PROPERTIES
+        # COMPILE_DEFINITIONS "ARDUINO=1000;DEBUG_SERIAL=Serial"
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+
+set(ADAFRUIT_MMC56X3_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_MMC56x3")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_MMC56X3_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_MMC56X3_LIBRARY_PATH}/Adafruit_MMC56x3.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_MMC56X3_LIBRARY_PATH}/Adafruit_MMC56x3.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_SENSOR_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_Sensor")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_SENSOR_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_SENSOR_LIBRARY_PATH}/Adafruit_Sensor.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(ADAFRUIT_SI7021_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/Adafruit_Si7021")
+target_include_directories(PicoInf PUBLIC ${ADAFRUIT_SI7021_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp)
+set_source_files_properties(
+    ${ADAFRUIT_SI7021_LIBRARY_PATH}/Adafruit_Si7021.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+set(BH1750_LIBRARY_PATH "${CMAKE_CURRENT_LIST_DIR}/ext/BH1750FVI_RT/")
+target_include_directories(PicoInf PUBLIC ${BH1750_LIBRARY_PATH})
+target_sources(PicoInf PRIVATE ${BH1750_LIBRARY_PATH}/BH1750FVI.cpp)
+set_source_files_properties(
+    ${BH1750_LIBRARY_PATH}/BH1750FVI.cpp
+    PROPERTIES
+        COMPILE_DEFINITIONS "ARDUINO=1000"
+)
+
+
+#####################################################################
+# FreeRTOS Integration
 #####################################################################
 
 # Locate FreeRTOS
@@ -75,6 +160,19 @@ target_include_directories(PicoInf PUBLIC
     ${FREERTOS_KERNEL_PATH}/include
 )
 
+# Pull in FreeRTOS
+include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+
+list(APPEND TARGET_LINK_LIBS_LIST
+    FreeRTOS-Kernel
+    FreeRTOS-Kernel-Heap3
+)
+
+
+#####################################################################
+# TinyUSB Integration
+#####################################################################
+
 # Locate TinyUSB
 # Also include config dir, which is where the tusb_config.h is
 set(TUSB_ROOT ${PICO_SDK_PATH}/lib/tinyusb)
@@ -83,17 +181,65 @@ target_include_directories(PicoInf PRIVATE
     ${TUSB_ROOT}/src
 )
 
+# Target TinyUSB with FreeRTOS
+file(GLOB lib_sources ${TUSB_ROOT}/*.cpp)
+target_sources(PicoInf PRIVATE ${lib_sources})
+
+list(APPEND TARGET_LINK_LIBS_LIST
+    tinyusb_device
+    tinyusb_host
+)
+
+
+#####################################################################
+# LittleFS Integration
+#####################################################################
+
 # Locate LittleFS
 set(LITTLEFS_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/littlefs")
-target_include_directories(PicoInf PRIVATE
+target_include_directories(PicoInf PUBLIC
     ${LITTLEFS_ROOT}
 )
+
+# Target LittleFS
+file(GLOB lib_sources ${LITTLEFS_ROOT}/*.c)
+target_sources(PicoInf PRIVATE ${lib_sources})
+
+
+#####################################################################
+# BTstack Integration
+#####################################################################
 
 # Locate BTstack
 set(BTSTACK_ROOT ${PICO_SDK_PATH}/lib/btstack)
 target_include_directories(PicoInf PRIVATE
     ${BTSTACK_ROOT}/src
 )
+
+if (PICO_BOARD STREQUAL "pico_w")
+    list(APPEND TARGET_LINK_LIBS_LIST
+        # original
+        # ------------------
+        pico_cyw43_arch_none
+        pico_btstack_cyw43
+        pico_btstack_ble
+
+        # new
+        # ------------------
+
+
+        # pico_cyw43_driver
+        # pico_cyw43_arch_lwip_sys_freertos
+
+        # pico_lwip_arch
+        # pico_lwip_freertos
+    )
+endif()
+
+
+#####################################################################
+# LwIP Integration
+#####################################################################
 
 # Locate LwIP
 # Also include config dir, which is where the lwipopts.h is
@@ -104,22 +250,91 @@ target_include_directories(PicoInf PRIVATE
 
 
 #####################################################################
-# Library Build
+# WsprEncoded Integration
 #####################################################################
 
-# Pull in FreeRTOS
-include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+# Include WsprEncoded
+set(WSPR_ENCODED_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/WsprEncoded")
+add_subdirectory(${WSPR_ENCODED_ROOT})
 
-# Target TinyUSB with FreeRTOS
-file(GLOB lib_sources ${TUSB_ROOT}/*.cpp)
-target_sources(PicoInf PRIVATE ${lib_sources})
+list(APPEND TARGET_LINK_LIBS_LIST
+    WsprEncoded
+)
 
-# Target LittleFS
-file(GLOB lib_sources ${LITTLEFS_ROOT}/*.c)
-target_sources(PicoInf PRIVATE ${lib_sources})
 
-# Link libs
-set(TARGET_LINK_LIBS_LIST)
+#####################################################################
+# JerryScript Integration
+#####################################################################
+
+#############################
+# Library Features
+#############################
+
+set(JERRY_PORT OFF) # Should the default/native port be implemented? No, I will implement my own
+set(JERRY_CMDLINE OFF)  # a necessary requirement for JERRY_PORT to be OFF
+set(ENABLE_LTO OFF) # doesn't work on sdk
+
+
+#############################
+# Engine Features
+#############################
+
+# Logging and error diagnosis
+set(JERRY_LINE_INFO ON)
+set(JERRY_ERROR_MESSAGES ON)
+set(JERRY_LOGGING ON)
+
+# CPU time limiting
+set(JERRY_VM_HALT ON)
+set(JERRY_VM_THROW ON)
+
+# Memory limiting
+set(JERRY_GLOBAL_HEAP_SIZE 24)   # in KB
+set(JERRY_STACK_LIMIT 8)        # in KB
+
+# Investigating memory usage
+# (actually seeing a script execute 14% slower when OFF, no idea why)
+# (leave this ON)
+set(JERRY_MEM_STATS ON)
+
+
+#############################
+# Language Features
+#############################
+
+
+#############################
+# Add
+#############################
+
+# tons of compile warnings about printf formatting flags for some
+# reason that don't show up under windows.
+# suppress them, unfortunately.
+set(EXTERNAL_COMPILE_FLAGS
+    -Wno-format
+    -Wno-error=format
+    -Wno-format-nonliteral
+    -Wno-format-security
+)
+
+set(JERRY_SCRIPT_ROOT "${CMAKE_CURRENT_LIST_DIR}/ext/jerryscript")
+
+if (NOT DEFINED PICO_INF_ENABLE_JERRYSCRIPT)
+    set(PICO_INF_ENABLE_JERRYSCRIPT 0)
+endif()
+
+if (PICO_INF_ENABLE_JERRYSCRIPT)
+    add_subdirectory(${JERRY_SCRIPT_ROOT})
+
+    list(APPEND TARGET_LINK_LIBS_LIST
+        jerry-core
+        jerry-ext
+    )
+endif()
+
+#####################################################################
+# Pico SDK Integration
+#####################################################################
 
 list(APPEND TARGET_LINK_LIBS_LIST
     cmsis_core
@@ -142,46 +357,19 @@ list(APPEND TARGET_LINK_LIBS_LIST
     pico_stdlib
 )
 
-if (PICO_INF_ENABLE_WIRELESS)
-    list(APPEND TARGET_LINK_LIBS_LIST
-        # original
-        # ------------------
-        pico_cyw43_arch_none
-        pico_btstack_cyw43
-        pico_btstack_ble
 
-        # new
-        # ------------------
-
-
-        # pico_cyw43_driver
-        # pico_cyw43_arch_lwip_sys_freertos
-
-        # pico_lwip_arch
-        # pico_lwip_freertos
-    )
-endif()
-
-list(APPEND TARGET_LINK_LIBS_LIST
-    FreeRTOS-Kernel
-    FreeRTOS-Kernel-Heap3
-)
-
-list(APPEND TARGET_LINK_LIBS_LIST
-    tinyusb_device
-    tinyusb_host
-)
+#####################################################################
+# PicoInf Linking
+#####################################################################
 
 target_link_libraries(PicoInf ${TARGET_LINK_LIBS_LIST})
 
 
 #####################################################################
-# Compile Defs
+# PicoInf Compile Defs
 #####################################################################
 
 target_compile_definitions(PicoInf PRIVATE
-    PICO_INF_ENABLE_WIRELESS=${PICO_INF_ENABLE_WIRELESS}
-
     FREERTOS_KERNEL_PATH="${FREERTOS_KERNEL_PATH}"
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     APP_BUILD_VERSION="${APP_BUILD_VERSION}"
@@ -202,8 +390,31 @@ target_compile_definitions(PicoInf PRIVATE
 
 # set(PICO_DEOPTIMIZED_DEBUG 1)
 # add_definitions(-O0)
-add_definitions(-Wall)
-add_definitions(-Wno-psabi)
-add_definitions(-fstack-usage)
+target_compile_options(PicoInf
+    PUBLIC
+        -Wall
+        -Wno-psabi
+        -fstack-usage
+
+        # need to include globally because some areas (eg App.h)
+        # only get evaluated in the final application compile, and
+        # so need to have this definition available.
+        -DPICO_INF_ENABLE_BLE=${PICO_INF_ENABLE_BLE}
+        -DPICO_INF_ENABLE_JERRYSCRIPT=${PICO_INF_ENABLE_JERRYSCRIPT}
+)
+
+
+#####################################################################
+# PicoInf Library Code
+#####################################################################
+
+# Code
+add_subdirectory(src)
+
+# Set up test target executable
+add_executable(PicoInfTest test.cpp)
+target_link_libraries(PicoInfTest PicoInf)
+pico_add_extra_outputs(PicoInfTest)
+
 
 

@@ -1,13 +1,18 @@
 #include "ADCInternal.h"
 #include "Log.h"
 #include "PAL.h"
+#include "Shell.h"
 #include "TempSensorInternal.h"
 #include "Timeline.h"
 
 #include "hardware/adc.h"
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
 #include "pico/cyw43_arch.h"
 #endif
+
+#include <string>
+#include <vector>
+using namespace std;
 
 #include "StrictMode.h"
 
@@ -20,6 +25,11 @@ ADC::ADC(uint8_t pin)
 : pin_(pin)
 {
     // Nothing to do
+}
+
+uint16_t ADC::Read()
+{
+    return Read(pin_);
 }
 
 uint16_t ADC::GetMilliVolts()
@@ -62,7 +72,7 @@ uint16_t ADC::GetMilliVoltsVCC()
 {
     uint16_t retVal = 0;
 
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
     {
         cyw43_thread_enter();
         // Make sure cyw43 is awake
@@ -72,7 +82,7 @@ uint16_t ADC::GetMilliVoltsVCC()
 
     retVal = GetMilliVolts(PICO_VSYS_PIN) * 3;
     
-#if PICO_INF_ENABLE_WIRELESS == 1
+#ifdef PICO_W
     {
         cyw43_thread_exit();
     }

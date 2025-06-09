@@ -6,6 +6,10 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 
+#include <string>
+#include <vector>
+using namespace std;
+
 #include "StrictMode.h"
 
 

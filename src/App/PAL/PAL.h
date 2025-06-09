@@ -2,19 +2,14 @@
 
 #include <functional>
 #include <string>
-using namespace std;
 
 #include "hardware/sync.h"
 
 
-extern void PALInit();
-extern void PALSetupShell();
-extern void PALSetupJSON();
-
 class PlatformAbstractionLayer
 {
 public:
-    static string GetAddress();
+    static std::string GetAddress();
     static std::string GetAddressHex();
     static std::string GetPart();
     static std::string GetPackageVariant();
@@ -59,10 +54,14 @@ public:
     static void ResetToBootloader();
     static void CaptureResetReasonAndClear();
     static std::string GetResetReason();
-    static string GetPicoBoard();
+    static std::string GetPicoBoard();
+
+    static void Init();
+    static void SetupShell();
+    static void SetupJSON();
 
 private:
-    inline static string resetReason_;
+    inline static std::string resetReason_;
 
     inline static bool forceInIsrYes_ = false;
 

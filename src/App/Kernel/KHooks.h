@@ -1,4 +1,6 @@
-#include "FreeRTOS.h"
+#pragma once
+
+#include "FreeRTOS.Wrapped.h"
 #include "task.h"
 
 extern "C"

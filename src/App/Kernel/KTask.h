@@ -1,20 +1,20 @@
 #pragma once
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 #include "task.h"
 
+#include <cstdint>
 #include <string>
 #include <functional>
-using namespace std;
 
 
 template <uint16_t STACK_SIZE>
 class KTask
 {
 public:
-    KTask(string           name,
-          function<void()> fn,
-          uint32_t         priority)
+    KTask(std::string           name,
+          std::function<void()> fn,
+          uint32_t              priority)
     : name_(name)
     , fn_(fn)
     {
@@ -38,8 +38,8 @@ private:
     }
 
 private:
-    string name_;
-    function<void()> fn_;
+    std::string name_;
+    std::function<void()> fn_;
 
     StackType_t puxStackBuffer_[STACK_SIZE];
     StaticTask_t pxTaskBuffer_;

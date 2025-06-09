@@ -1,84 +1,45 @@
 #pragma once
 
-#include <string>
-#include <utility>
-using namespace std;
-
 #include "ArduinoJson-v6.21.1.h"
 
-#include "Log.h"
-#include "UART.h"
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 
 
 class JSON
 {
-    static const uint32_t JSON_DOC_BYTE_ALLOC = 256;
+    static const uint32_t JSON_DOC_BYTE_ALLOC = 5000;
 
 public:
     using JSONObj = DynamicJsonDocument;
 
 public:
-    static pair<bool, JSONObj> DeSerialize(const string &jsonStr)
+    static std::pair<bool, JSONObj> DeSerialize(const std::string &jsonStr);
+    static void UseJSON(const std::string &jsonStr, std::function<void(JsonObject &json)> fn);
+
+    template <typename T>
+    static bool HasKey(const T &json, const char *key)
     {
-        bool ok = false;
+        return json.containsKey(key);
+    }
 
-        DynamicJsonDocument docParse(JSON_DOC_BYTE_ALLOC);
+    template <typename T>
+    static bool HasKeyList(const T &json, const std::vector<const char *> &keyList)
+    {
+        bool retVal = true;
 
-        DeserializationError ret = deserializeJson(docParse, jsonStr);
-
-        if (ret == DeserializationError::Ok)
+        for (auto key : keyList)
         {
-            ok = true;
+            retVal &= HasKey(json, key);
         }
-        else
-        {
-            UartTarget target(UART::UART_0);
-            Log("ERR: JSON DeSerialize: \"", jsonStr, "\": ", ret.c_str());
-        }
 
-        return { ok, docParse };
+        return retVal;
     }
 
-    static JSONObj GetObj()
-    {
-        return DynamicJsonDocument{ JSON_DOC_BYTE_ALLOC };
-    }
-
-    static string Serialize(JSONObj &json)
-    {
-        class WriterToString
-        {
-        public:
-            size_t write(uint8_t c)
-            {
-                jsonStr += c;
-
-                return 1;
-            }
-
-            size_t write(const uint8_t *buf, size_t length)
-            {
-                for (size_t i = 0; i < length; ++i)
-                {
-                    jsonStr += (char)buf[i];
-                }
-
-                return length;
-            }
-
-            string GetString()
-            {
-                return jsonStr;
-            }
-
-        private:
-            string jsonStr;
-        };
-
-        WriterToString writer;
-        serializeJson(json, writer);
-
-        return writer.GetString();
-    }
+    static JSONObj GetObj();
+    static std::string Serialize(JSONObj &json);
 };
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Log.h"
+#include "PAL.h"
 
 #include <functional>
 
@@ -221,8 +222,8 @@ private:
         uint8_t buf[sizeof(T)];
     };
 
-    array<MemUsage, POOL_SIZE> memUsageList_;
-    array<AlignedBuffer, POOL_SIZE> memList_;
+    std::array<MemUsage, POOL_SIZE> memUsageList_;
+    std::array<AlignedBuffer, POOL_SIZE> memList_;
 };
 
 

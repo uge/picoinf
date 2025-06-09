@@ -1,196 +1,18 @@
 #pragma once
 
+#include "Evm.h"
+#include "Log.h"
+#include "NMEAStringMaker.h"
+#include "NMEAStringParser.h"
+#include "TimeClass.h"
+#include "UbxMessage.h"
+#include "Utl.h"
+
 #include <string>
 #include <vector>
 #include <unordered_set>
 using namespace std;
 
-#include "UbxMessage.h"
-#include "Utl.h"
-
-
-// Assumes one line at a time, ascii only, no newlines
-// Format of the line:
-// $<data>*<CC>
-// CC is the 2-digit hex checksum of <data>
-class NmeaStringParser
-{
-public:
-
-    // return only <data> length between $ and *
-    // -1 on invalid line
-    static int GetDataLength(const string &line)
-    {
-        int dataLength = -1;
-
-        if (MeetsPreconditions(line))
-        {
-            // ignore the first char ($)
-            // ignore the last 3 chars (checksum)
-            dataLength = line.length() - 4;
-        }
-
-        return dataLength;
-    }
-
-    // empty on invalid line
-    static string GetLineData(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            int dataLength = GetDataLength(line);
-
-            retVal = line.substr(1, dataLength);
-        }
-
-        return retVal;
-    }
-
-    // empty string if invalid
-    static string GetCalcdChecksum(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            // XOR of all the bytes between the $ and the *, written in hexadecimal
-            string lineData = GetLineData(line);
-
-            retVal = CalculateChecksum(lineData);
-        }
-
-        return retVal;
-    }
-
-    // everything between $ and *
-    static string CalculateChecksum(const string &data)
-    {
-        string retVal;
-
-        uint8_t checksum = 0;
-        for (char c : data)
-        {
-            checksum = checksum ^ c;
-        }
-
-        retVal = Format::ToHex(checksum, false);
-
-        return retVal;
-    }
-
-    static string GetNmeaStringChecksum(const string &line)
-    {
-        string retVal;
-
-        if (MeetsPreconditions(line))
-        {
-            retVal = line.substr(1 + GetDataLength(line) + 1, 2);
-        }
-
-        return retVal;
-    }
-
-    static bool IsValid(const string &line)
-    {
-        bool retVal = false;
-
-        if (MeetsPreconditions(line))
-        {
-            string checksumCalcd = GetCalcdChecksum(line);
-            string checksumNmea  = GetNmeaStringChecksum(line);
-
-            retVal = (checksumCalcd == checksumNmea);
-        }
-
-        return retVal;
-    }
-
-    static vector<string> GetLineDataPartList(const string &line)
-    {
-        vector<string> retVal;
-
-        if (IsValid(line))
-        {
-            string lineData = GetLineData(line);
-
-            bool trimmed = true;
-            bool allowEmpty = true;
-            retVal = Split(lineData, ",", trimmed, allowEmpty);
-        }
-
-        return retVal;
-    }
-
-    static string GetMessageTypeFull(const string &line)
-    {
-        string retVal;
-
-        if (IsValid(line))
-        {
-            auto linePartList = GetLineDataPartList(line);
-
-            if (linePartList.size())
-            {
-                retVal = linePartList[0];
-            }
-        }
-
-        return retVal;
-    }
-
-private:
-
-    static bool MeetsPreconditions(const string &line)
-    {
-        bool retVal = false;
-
-        if (line.length() >= 4)
-        {
-            int starIdx = line.length() - 3;
-
-            if (line[0] == '$' && line[starIdx] == '*')
-            {
-                retVal = true;
-            }
-        }
-
-        return retVal;
-    }
-};
-
-
-class NMEAStringMaker
-{
-public:
-
-    // Everything between $ and *
-    // msgType,data,data,...
-    static string Make(const vector<string> &dataList)
-    {
-        // build the data part
-        string tmp;
-        const char *sep = "";
-        for (const string &data : dataList)
-        {
-            tmp += sep;
-            tmp += data;
-
-            sep = ",";
-        }
-        string checksum = NmeaStringParser::CalculateChecksum(tmp);
-
-        // construct entire string
-        string retVal;
-        retVal += "$";
-        retVal += tmp;
-        retVal += "*";
-        retVal += checksum;
-
-        return retVal;
-    }
-};
 
 
 // https://receiverhelp.trimble.com/alloy-gnss/en-us/NMEA-0183messages_CommonMessageElements.html
@@ -203,7 +25,55 @@ public:
 //     https://docs.datagnss.com/rtk-board/files/T-5-1908-001-GNSS_Protocol_Specification-V2.3.pdf
 // https://www.icofchina.com/d/file/xiazai/2016-12-05/b5c57074f4b1fcc62ba8c7868548d18a.pdf
 
+
+struct FixSatelliteData
+{
+    string talker;
+
+    uint16_t id        = 0;
+    uint8_t  elevation = 0;
+    uint16_t azimuth   = 0;
+};
+
+struct FixMetaData
+{
+    uint64_t timeAtPpsUs         = 0;
+    uint64_t timeAtTimeLockUs    = 0;
+    uint64_t timeAtFix2dUs       = 0;
+    uint64_t timeAtFix3dUs       = 0;
+    uint64_t timeAtSpeedCourseUs = 0;
+
+    vector<FixSatelliteData> satDataGPList;
+    vector<FixSatelliteData> satDataBDList;
+
+    uint8_t satsUsedCount = 0;
+    double  hdop          = 0;
+
+    string         fixTimeSource;
+    string         fix2dSource;
+    vector<string> fix3dSourceList;
+    vector<string> fix3dPlusSourceList;
+
+
+    void Print() const
+    {
+        Log("FixMetaData");
+        Log("timeAtPpsUs         = ", Time::MakeTimeFromUs(timeAtPpsUs),         " (", Commas(timeAtPpsUs),         ")");
+        Log("timeAtTimeLockUs    = ", Time::MakeTimeFromUs(timeAtTimeLockUs),    " (", Commas(timeAtTimeLockUs),    ")");
+        Log("timeAtFix2dUs       = ", Time::MakeTimeFromUs(timeAtFix2dUs),       " (", Commas(timeAtFix2dUs),       ")");
+        Log("timeAtFix3dUs       = ", Time::MakeTimeFromUs(timeAtFix3dUs),       " (", Commas(timeAtFix3dUs),       ")");
+        Log("timeAtSpeedCourseUs = ", Time::MakeTimeFromUs(timeAtSpeedCourseUs), " (", Commas(timeAtSpeedCourseUs), ")");
+        Log("satDataGPList       = ", satDataGPList.size());
+        Log("satDataBDList       = ", satDataBDList.size());
+        Log("satsUsedCount       = ", satsUsedCount);
+        Log("hdop                = ", hdop);
+        // Log("Time Source         = ", fixTimeSource);
+        // Log("2D   Source         = ", fix2dSource);
+    }
+};
+
 struct FixTime
+: public FixMetaData
 {
     uint16_t year = 0;
     uint8_t  month = 0;
@@ -212,24 +82,53 @@ struct FixTime
     uint8_t  minute = 0;
     uint8_t  second = 0;
     uint16_t millisecond = 0;
-};
+    string   dateTime;
 
+    void Print() const
+    {
+        FixMetaData::Print();
+        Log("FixTime");
+        Log("year        = ", year);
+        Log("month       = ", month);
+        Log("day         = ", day);
+        Log("hour        = ", hour);
+        Log("minute      = ", minute);
+        Log("second      = ", second);
+        Log("millisecond = ", millisecond);
+        Log("dateTime    = ", dateTime);
+    }
+};
 
 struct Fix2D
 : public FixTime
 {
-    int16_t  latDeg = 0;
-    uint8_t  latMin = 0;
-    double   latSec = 0;
+    int16_t latDeg = 0;
+    uint8_t latMin = 0;
+    uint8_t latSec = 0;
     int32_t latDegMillionths = 0;
     
-    int16_t  lngDeg = 0;
-    uint8_t  lngMin = 0;
-    double   lngSec = 0;
+    int16_t lngDeg = 0;
+    uint8_t lngMin = 0;
+    uint8_t lngSec = 0;
     int32_t lngDegMillionths = 0;
 
     static const uint8_t MAIDENHEAD_GRID_LEN = 6;
     string maidenheadGrid;
+
+    void Print() const
+    {
+        FixTime::Print();
+        Log("Fix2D");
+        Log("latDeg           = ", latDeg);
+        Log("latMin           = ", latMin);
+        Log("latSec           = ", latSec);
+        Log("latDegMillionths = ", latDegMillionths);
+        Log("lngDeg           = ", lngDeg);
+        Log("lngMin           = ", lngMin);
+        Log("lngSec           = ", lngSec);
+        Log("lngDegMillionths = ", lngDegMillionths);
+        Log("maidenheadGrid   = ", maidenheadGrid);
+    }
 };
 
 struct Fix3D
@@ -237,6 +136,14 @@ struct Fix3D
 {
     int32_t altitudeM = 0;
     int32_t altitudeFt = 0;
+
+    void Print() const
+    {
+        Fix2D::Print();
+        Log("Fix3D");
+        Log("altitudeM  = ", altitudeM);
+        Log("altitudeFt = ", altitudeFt);
+    }
 };
 
 struct Fix3DPlus
@@ -244,13 +151,18 @@ struct Fix3DPlus
 {
     uint32_t courseDegrees = 0;
     uint32_t speedKnots = 0;
-};
+    uint32_t speedMph = 0;
+    uint32_t speedKph = 0;
 
-struct FixSatelliteData
-{
-    uint16_t id       = 0;
-    uint8_t elevation = 0;
-    uint16_t azimuth  = 0;
+    void Print() const
+    {
+        Fix3D::Print();
+        Log("Fix3DPlus");
+        Log("courseDegrees = ", courseDegrees);
+        Log("speedKnots    = ", speedKnots);
+        Log("speedMph      = ", speedMph);
+        Log("speedKph      = ", speedKph);
+    }
 };
 
 
@@ -263,51 +175,57 @@ private:
 
     struct AccumulatedData
     {
+        // Metadata
+        uint64_t timeAtPpsUs         = 0;
+        uint64_t timeAtTimeLockUs    = 0;
+        uint64_t timeAtFix2dUs       = 0;
+        uint64_t timeAtFix3dUs       = 0;
+        uint64_t timeAtSpeedCourseUs = 0;
+
+        vector<FixSatelliteData> satDataGPList;
+        vector<FixSatelliteData> satDataBDList;
+
+        uint8_t satsUsedCount = 0;
+        double  hdop          = 0;
+
+        string         fixTimeSource;
+        string         fix2dSource;
+        vector<string> fix3dSourceList;
+        vector<string> fix3dPlusSourceList;
+
         // Time
         string timeStr;
         string dateStr;
-        uint64_t timeAtTimeLock = 0;
-        string fixTimeSource;
 
         uint8_t consecutiveRoundCount = 0;
-        string timeRoundLast;
+        string  timeRoundLast;
 
         // 2D Fix
         string latStr;
-        char latNorthSouth = 'N';
+        char   latNorthSouth = 'N';
         string lngStr;
-        char lngEastWest = 'W';
-        uint64_t timeAtFix2d = 0;
-        string fix2dSource;
+        char   lngEastWest = 'W';
 
         // 3D Fix (requires 2D fix also)
         string altitudeStr;
-        uint64_t timeAtFix3d = 0;
-        vector<string> fix3dSourceList;
 
         // 3D Plus Fix
         string speedKnotsStr;
         string courseDegreesStr;
-        uint64_t timeAtSpeedCourse = 0;
-        vector<string> fix3dPlusSourceList;
 
-        // Satellite list
-        vector<FixSatelliteData> satDataList;
     };
     AccumulatedData data_;
 
     // Callbacks
-    function<void(const FixTime &)>                             cbOnFixTime_        = [](const FixTime &){};
-    function<void(const Fix2D &)>                               cbOnFix2D_          = [](const Fix2D &){};
-    function<void(const Fix3D &)>                               cbOnFix3D_          = [](const Fix3D &){};
-    function<void(const Fix3DPlus &)>                           cbOnFix3DPlus_      = [](const Fix3DPlus &){};
-    function<void(const vector<FixSatelliteData> &satDataList)> cbOnFixSatDataList_ = [](const vector<FixSatelliteData> &){};
+    function<void(const FixTime &)>   cbOnFixTime_   = [](const FixTime &){};
+    function<void(const Fix2D &)>     cbOnFix2D_     = [](const Fix2D &){};
+    function<void(const Fix3D &)>     cbOnFix3D_     = [](const Fix3D &){};
+    function<void(const Fix3DPlus &)> cbOnFix3DPlus_ = [](const Fix3DPlus &){};
 
     bool cbOnFixTimeSet_ = false;
     bool cbOnFix2DSet_ = false;
     bool cbOnFix3DSet_ = false;
     bool cbOnFix3DPlusSet_ = false;
-    bool cbOnFixSatDataListSet_ = false;
 
     // UBX message monitoring state
     uint8_t idNmea_ = 0;
@@ -351,27 +269,20 @@ public:
             "TXT",
         };
 
-        uint64_t timeStart = PAL.Micros();
+        uint64_t timeStartUs = PAL.Micros();
 
-        if (NmeaStringParser::IsValid(line))
+        if (NMEAStringParser::IsValid(line))
         {
-            vector<string> linePartList = NmeaStringParser::GetLineDataPartList(line);
-
-            string &type = linePartList[0];
-
-            // Get last 3 chars representing the message
-            if (type.size() >= 3)
-            {
-                type = type.substr(type.size() - 3);
-            }
-
-            bool ok = true;
+            vector<string> linePartList = NMEAStringParser::GetLineDataPartList(line);
 
             // "The default output is GGA, GSA, GSV and RMC in 1 second period"
             //
             // GP prefix is not universal.
             // GN is also used.  I think these may differ.  Need to confirm case-by-case.
             // Sometimes both.
+            //
+            // https://en.wikipedia.org/wiki/NMEA_0183
+            // Refers to GP vs BD, etc, as "talker"
             //
             // "NMEA is the standard of GNSS protocol"
             // GP for GPS-QZSS-SBAS - USA
@@ -380,7 +291,17 @@ public:
             // GI for INSAT-only    - India
             // GA for GALILEO-only  - EU
             // GN is for GNSS, combination of different global position satellite systems
-            
+
+            string type   = linePartList[0];
+            string talker = type.substr(0, 2);
+
+            // Get last 3 chars representing the message
+            if (type.size() >= 3)
+            {
+                type = type.substr(type.size() - 3);
+            }
+
+            bool ok = true;
             if (type == "RMC") // RMC - Recommended Minimum data for GPS
             {
                 ok = OnRMC(linePartList, line);
@@ -391,7 +312,7 @@ public:
             }
             else if (type == "GSV") // GSV - Detailed satellite data (multi-row)
             {
-                ok = OnGSV(linePartList);
+                ok = OnGSV(talker, linePartList);
             }
             // VTG - Vector track and speed over ground
             // GSA - Overall satellite data (multi-row)
@@ -430,7 +351,7 @@ public:
             }
         }
 
-        uint64_t diffUs = PAL.Micros() - timeStart;
+        uint64_t diffUs = PAL.Micros() - timeStartUs;
 
         return diffUs;
     }
@@ -447,11 +368,11 @@ public:
         Reset();
 
         processData_ = false;
-        static TimedEventHandlerDelegate ted;
-        ted.SetCallback([this]{
+        static Timer timer("GPS_READER_RE-ENABLE");
+        timer.SetCallback([this]{
             processData_ = true;
-        }, "GPS_READER_RE-ENABLE");
-        ted.RegisterForTimedEvent(msDelay);
+        });
+        timer.TimeoutInMs(msDelay);
     }
 
     void DumpState()
@@ -521,7 +442,7 @@ public:
     // - duration since acquire
     bool HasFixTime()
     {
-        return data_.timeAtTimeLock != 0;
+        return data_.timeAtTimeLockUs != 0;
     }
 
     // can extract:
@@ -529,7 +450,7 @@ public:
     // - duration since fix
     bool HasFix2D()
     {
-        return data_.timeAtFix2d != 0;
+        return data_.timeAtFix2dUs != 0;
     }
 
     // can extract:
@@ -539,7 +460,7 @@ public:
     // - duration since fix
     bool HasFix3D()
     {
-        return data_.timeAtFix3d != 0;
+        return data_.timeAtFix3dUs != 0;
     }
 
     // can extract
@@ -547,14 +468,7 @@ public:
     // - course
     bool HasFix3DPlus()
     {
-        return HasFix3D() && data_.timeAtSpeedCourse != 0;
-    }
-
-    // can extract
-    // - satellite data [{id, elev, az}, ...]
-    bool HasSatDataList()
-    {
-        return data_.satDataList.size();
+        return HasFix3D() && data_.timeAtSpeedCourseUs != 0;
     }
 
 
@@ -562,9 +476,54 @@ public:
     // Getters - Sync
     /////////////////////////////////////////////////////////////////
 
-    vector<FixSatelliteData> GetSatelliteDataList()
+    const vector<FixSatelliteData> &GetSatelliteDataGPList()
     {
-        return data_.satDataList;
+        return data_.satDataGPList;
+    }
+
+    const vector<FixSatelliteData> &GetSatelliteDataBDList()
+    {
+        return data_.satDataBDList;
+    }
+
+    FixMetaData GetFixMetaData()
+    {
+        FixMetaData retVal;
+
+        retVal.timeAtPpsUs         = data_.timeAtPpsUs;
+        retVal.timeAtTimeLockUs    = data_.timeAtTimeLockUs;
+        retVal.timeAtFix2dUs       = data_.timeAtFix2dUs;
+        retVal.timeAtFix3dUs       = data_.timeAtFix3dUs;
+        retVal.timeAtSpeedCourseUs = data_.timeAtSpeedCourseUs;
+
+        retVal.satDataGPList = data_.satDataGPList;
+        retVal.satDataBDList = data_.satDataBDList;
+
+        retVal.satsUsedCount = data_.satsUsedCount;
+        retVal.hdop          = data_.hdop;
+
+        retVal.fixTimeSource       = data_.fixTimeSource;
+        retVal.fix2dSource         = data_.fix2dSource;
+        retVal.fix3dSourceList     = data_.fix3dSourceList;
+        retVal.fix3dPlusSourceList = data_.fix3dPlusSourceList;
+
+        return retVal;
+    }
+
+    static string MakeDateTimeFromFixTime(const FixTime &fix)
+    {
+        string dateTime;
+
+        dateTime += FormatStr("%04u", fix.year)  + "-" +
+                    FormatStr("%02u", fix.month) + "-" +
+                    FormatStr("%02u", fix.day);
+        dateTime += " ";
+        dateTime += FormatStr("%02u", fix.hour)   + ":" +
+                    FormatStr("%02u", fix.minute) + ":" +
+                    FormatStr("%02u", fix.second) + "." +
+                    FormatStr("%06u", fix.millisecond * 1'000);
+
+        return dateTime;
     }
 
     FixTime GetFixTime()
@@ -577,10 +536,12 @@ public:
             return val;
         };
 
+        string dateTime;
+
         // UTC DDMMYY
-        uint16_t year = 0;
-        uint8_t month = 0;
-        uint8_t day = 0;
+        uint16_t year  = 0;
+        uint8_t  month = 0;
+        uint8_t  day   = 0;
         if (data_.dateStr.size() == 6)
         {
             year  = 2000 + TwoCharToInt(&data_.dateStr.c_str()[4]);
@@ -588,9 +549,9 @@ public:
             day   = TwoCharToInt(&data_.dateStr.c_str()[0]);
         }
 
-        uint8_t hour = 0;
-        uint8_t minute = 0;
-        uint8_t second = 0;
+        uint8_t  hour        = 0;
+        uint8_t  minute      = 0;
+        uint8_t  second      = 0;
         uint16_t millisecond = 0;
         if (data_.timeStr.size() >= 6)
         {
@@ -609,15 +570,18 @@ public:
             millisecond = round(timeFloat * 1000);
         }
 
-        FixTime retVal = {
-            .year = year,
-            .month = month,
-            .day = day,
-            .hour = hour,
-            .minute = minute,
-            .second = second,
-            .millisecond = millisecond,
-        };
+        FixTime retVal;
+
+        *(FixMetaData *)&retVal = GetFixMetaData();
+
+        retVal.year        = year,
+        retVal.month       = month,
+        retVal.day         = day,
+        retVal.hour        = hour,
+        retVal.minute      = minute,
+        retVal.second      = second,
+        retVal.millisecond = millisecond,
+        retVal.dateTime = MakeDateTimeFromFixTime(retVal);
 
         return retVal;
     }
@@ -625,27 +589,6 @@ public:
     string GetFixTimeSource()
     {
         return data_.fixTimeSource;
-    }
-
-    string ConvertFixTimeToString(const FixTime &fix)
-    {
-        string time;
-
-        time += StrUtl::PadLeft(fix.year, '0', 4);
-        time += "-";
-        time += StrUtl::PadLeft(fix.month, '0', 2);
-        time += "-";
-        time += StrUtl::PadLeft(fix.day, '0', 2);
-        time += " ";
-        time += StrUtl::PadLeft(fix.hour, '0', 2);
-        time += ":";
-        time += StrUtl::PadLeft(fix.minute, '0', 2);
-        time += ":";
-        time += StrUtl::PadLeft(fix.second, '0', 2);
-        time += ".";
-        time += StrUtl::PadLeft(fix.millisecond, '0', 3);
-
-        return time;
     }
 
     Fix2D GetFix2D()
@@ -706,9 +649,53 @@ public:
 
         *(Fix3D *)&retVal = GetFix3D();
 
+        static const double KNOTS_TO_MPH = 1.15078;
+        static const double KNOTS_TO_KPH = 1.852;
+
         retVal.courseDegrees = round(atof(data_.courseDegreesStr.c_str()));
-        retVal.speedKnots = round(atof(data_.speedKnotsStr.c_str()));
+
+        double speedKnots = atof(data_.speedKnotsStr.c_str());
+        retVal.speedKnots = round(speedKnots);
+        retVal.speedMph   = round(speedKnots * KNOTS_TO_MPH);
+        retVal.speedKph   = round(speedKnots * KNOTS_TO_KPH);
         
+        return retVal;
+    }
+
+    static Fix3DPlus GetFix3DPlusExample()
+    {
+        Fix3DPlus retVal;
+
+        retVal.satDataGPList = { {}, {}, {}, {}, {}, {}, {} };  // 7
+        retVal.satDataBDList = { {}, {}, {} };                  // 3
+
+        retVal.satsUsedCount = 5;
+        retVal.hdop          = 4.7;
+
+        retVal.year             = 2025;
+        retVal.month            = 1;
+        retVal.day              = 2;
+        retVal.hour             = 19;
+        retVal.minute           = 42;
+        retVal.second           = 1;
+        retVal.millisecond      = 25;
+        retVal.dateTime         = MakeDateTimeFromFixTime(retVal);
+        retVal.latDeg           = 40;
+        retVal.latMin           = 44;
+        retVal.latSec           = 30;
+        retVal.latDegMillionths = 40741668;
+        retVal.lngDeg           = -74;
+        retVal.lngMin           = 1;
+        retVal.lngSec           = 59;
+        retVal.lngDegMillionths = -74032986;
+        retVal.maidenheadGrid   = "FN20XR";
+        retVal.altitudeFt       = 426;
+        retVal.altitudeM        = 130;
+        retVal.speedKnots       = 19;
+        retVal.speedMph         = 22;
+        retVal.speedKph         = 35;
+        retVal.courseDegrees    = 206;
+
         return retVal;
     }
 
@@ -768,16 +755,6 @@ public:
         cbOnFix3DPlusSet_ = false;
     }
 
-    void SetCallbackOnFixSatelliteList(function<void(const vector<FixSatelliteData> &satDataList)> cb)
-    {
-        cbOnFixSatDataList_ = cb;
-        cbOnFixSatDataListSet_ = true;
-    }
-
-    void UnSetCallbackOnFixSatelliteList()
-    {
-        cbOnFixSatDataListSet_ = false;
-    }
 
 private:
 
@@ -821,17 +798,75 @@ private:
         }
     }
 
-    void OnSatDataList()
-    {
-        if (cbOnFixSatDataListSet_ && HasSatDataList())
-        {
-            cbOnFixSatDataList_(data_.satDataList);
-        }
-    }
-
-
 
 private:
+
+    /////////////////////////////////////////////////////////////////
+    // PPS
+    /////////////////////////////////////////////////////////////////
+
+    void CalculateTimeAtPPS(uint64_t timeNowUs, const string &line)
+    {
+        // Calculate the PPS time (in place of a better actual PPS signal input).
+        //
+        // This class processes GGA and RMC messages.
+        // In practice, the GGA message is coming first of the two, and first period.
+        // The inherent latency of this moment in time from the actual PPS moment is
+        // composed of:
+        // - The delay on the GPS module itself in constructing the data to send
+        // - The literal rate of transmitting this NMEA sentence
+        // - Processing time
+        
+        // The delay on the GPS module itself has been measured to vary a lot but average
+        // approximately 44ms from the time pulse.
+        const uint64_t DURATION_AVG_GPS_MODULE_DELAY_US = 44 * 1'000;
+
+        // The rate of transmitting the characters of this NMEA sentence is
+        // a BAUD rate of 9600. This allows for calculating the duration of time by examining
+        // the number of characters in the sentence (plus \r\n).
+        const uint64_t DURATION_BAUD_9600_US_PER_CHAR_US = 1'042;
+        const uint64_t DURATION_NMEA_SENTENCE_TRANSMISSION_US =
+            (line.length() + 2) * DURATION_BAUD_9600_US_PER_CHAR_US;
+
+        // The processing time is difficult to know and depends on a lot of factors. Instead of
+        // calculating, we will have a placeholder estimate.
+        const uint64_t DURATION_PROCESSING_TIME_ESTIMATE_US = 35 * 1'000;
+
+        // calculate time of PPS
+        const uint64_t DURATION_FROM_PPS_US =
+            DURATION_AVG_GPS_MODULE_DELAY_US +
+            DURATION_NMEA_SENTENCE_TRANSMISSION_US +
+            DURATION_PROCESSING_TIME_ESTIMATE_US;
+
+        data_.timeAtPpsUs = timeNowUs - min(timeNowUs, DURATION_FROM_PPS_US);
+
+
+// revisit high-precision testing for this another time
+// clk.freq 6 ; app.ss.gps on ; app.ss.gps.flightmode
+#if 0
+        static bool didOnce = false;
+        if (didOnce == false)
+        {
+            didOnce = true;
+
+            static Timer timer("TIMER_GPS_PPS");
+            static Pin pin(27);
+
+            pin.DigitalToggle();
+            pin.DigitalToggle();
+
+            timer.SetCallback([this]{
+                Timeline::Global().Event("GPS_PPS");
+
+                pin.DigitalToggle();
+                pin.DigitalToggle();
+
+                timer.TimeoutAtUs(timer.GetTimeoutAtUs() + 1'000'000);
+            });
+            timer.TimeoutAtUs(data_.timeAtPpsUs + 1'000'000);
+        }
+#endif
+    }
 
     /////////////////////////////////////////////////////////////////
     // Converters
@@ -1071,6 +1106,9 @@ private:
     {
         bool retVal = true;
 
+        // Note the current time
+        uint64_t timeNowUs = PAL.Micros();
+
         if (linePartList.size() >= 13)
         {
             int i = 1;
@@ -1153,9 +1191,6 @@ private:
             // ignore this
             ++i;
 
-            // Note the current time
-            uint64_t timeNowMs = PAL.Millis();
-
             bool timeStateIsValid = TimeStateIsValid(time);
 
             // time is good when non-blank
@@ -1165,7 +1200,7 @@ private:
                 data_.timeStr = move(time);
                 data_.dateStr = move(date);
 
-                data_.timeAtTimeLock = timeNowMs;
+                data_.timeAtTimeLockUs = timeNowUs;
 
                 // capture source of lock
                 data_.fixTimeSource = line;
@@ -1183,13 +1218,13 @@ private:
                 data_.lngStr = move(lngStr);
                 data_.lngEastWest = eastWest;
 
-                data_.timeAtFix2d = timeNowMs;
+                data_.timeAtFix2dUs = timeNowUs;
 
                 // add to the 3D plus
                 data_.speedKnotsStr = move(speedKnotsStr);
                 data_.courseDegreesStr = move(courseDegrees);
 
-                data_.timeAtSpeedCourse = timeNowMs;
+                data_.timeAtSpeedCourseUs = timeNowUs;
 
                 // capture source of lock
                 data_.fix2dSource = line;
@@ -1227,6 +1262,9 @@ private:
     bool OnGGA(const vector<string> &linePartList, const string &line)
     {
         bool retVal = true;
+
+        // Note the current time
+        uint64_t timeNowUs = PAL.Micros();
 
         if (linePartList.size() >= 15)
         {
@@ -1281,9 +1319,11 @@ private:
             // GP - numeric (eg 08)
             // GN - (range 00-40)
             // const string &numSatStr = linePartList[i];
+            uint8_t satsUsedCount = atoi(linePartList[i].c_str());
             ++i;
 
             // 8 - HDOP Horizontal Dilution of Precision
+            double hdop = atof(linePartList[i].c_str());
             ++i;
 
             // 9 - Altitude above mean sea level (meters)
@@ -1307,18 +1347,19 @@ private:
             // 14 - ID of station providing differential corrections (blank when DGPS is not used)
             ++i;
 
-            // Note the current time
-            uint64_t timeNowMs = PAL.Millis();
-
             bool timeStateIsValid = TimeStateIsValid(time);
 
             // time is good when non-blank
             // date may not be set yet
             if (timeStateIsValid)
             {
+                data_.satsUsedCount = satsUsedCount;
+                data_.hdop          = hdop;
+
                 data_.timeStr = move(time);
 
-                data_.timeAtTimeLock = timeNowMs;
+                data_.timeAtTimeLockUs = timeNowUs;
+                CalculateTimeAtPPS(timeNowUs, line);
 
                 // capture source of lock
                 data_.fixTimeSource = line;
@@ -1335,11 +1376,11 @@ private:
                 data_.latNorthSouth = northSouth;
                 data_.lngStr = lngStr;
                 data_.lngEastWest = move(eastWest);
-                data_.timeAtFix2d = timeNowMs;
+                data_.timeAtFix2dUs = timeNowUs;
 
                 // add to the 3D
                 data_.altitudeStr = move(altitudeStr);
-                data_.timeAtFix3d = timeNowMs;
+                data_.timeAtFix3dUs = timeNowUs;
 
                 // capture source of lock
                 data_.fix2dSource = line;
@@ -1377,7 +1418,7 @@ private:
     //
     // from atgm336h-5n31
     // $BDGSV,1,1,03,11,52,179,30,34,68,148,29,43,28,200,29*5B
-    bool OnGSV(const vector<string> &linePartList)
+    bool OnGSV(const string &talker, const vector<string> &linePartList)
     {
         bool retVal = true;
 
@@ -1407,7 +1448,7 @@ private:
             // Log("endSeqNo: ", endSeqNo);
             ++i;
             
-            // 1 - The sequnce number of this message (eg 3 of 4) (diff each batch)
+            // 1 - The sequence number of this message (eg 3 of 4) (diff each batch)
             uint8_t seqNo = stoi(linePartList[i]);
             // Log("seqNo: ", seqNo);
             ++i;
@@ -1464,6 +1505,9 @@ private:
                         // Repeating sequence of 4 fields, one set for each satellite
                         FixSatelliteData satData;
 
+                        // capture talker
+                        satData.talker = talker;
+
                         // 4 + (4N) - Satellite ID (can be in 16-bit range eg 901)
                         const string &strId = linePartList[i];
                         satData.id = atoi(strId.c_str());
@@ -1513,16 +1557,20 @@ private:
                     // of accumulating
                     if (seqNo == satCache_.endSeqNo)
                     {
-                        // Log("Committing cache");
+                        // Log("Committing cache for ", talker, " - ", satCache_.satDataList.size());
                         // commit batch
-                        data_.satDataList = satCache_.satDataList;
+                        if (talker == "GP")
+                        {
+                            data_.satDataGPList = satCache_.satDataList;
+                        }
+                        else
+                        {
+                            data_.satDataBDList = satCache_.satDataList;
+                        }
 
                         // Log("Resetting cache");
                         // reset cache
                         ResetCache();
-
-                        // Declare data updated
-                        OnSatDataList();
                     }
                 }
                 else
@@ -1771,7 +1819,7 @@ public:
     void SendCASIC(const string &line)
     {
         Log("Sending: \"", line, "\"");
-        Log("Valid  : ", NmeaStringParser::IsValid(line));
+        Log("Valid  : ", NMEAStringParser::IsValid(line));
 
         UartPush(UART::UART_1);
         LogNNL(line, "\r\n");
@@ -2034,7 +2082,7 @@ public:
             { 0xF0, 0x02, 0, "GSA (satellite id list)"            },
             { 0xF0, 0x00, 1, "GGA (time, lat/lng, altitude)"      },
             { 0xF0, 0x01, 0, "GLL (time, lat/lng)"                },
-            { 0xF0, 0x03, 0, "GSV (satellite locations)"          },
+            { 0xF0, 0x03, 1, "GSV (satellite locations)"          },
             { 0xF0, 0x04, 1, "RMC (time, lat/lng, speed, course)" },
             { 0xF0, 0x05, 0, "VTG (speed, course)"                },
             { 0xF0, 0x08, 0, "ZDA (time, timezone)"               },
@@ -2131,21 +2179,21 @@ private:
                     if (verboseLogging_)
                     {
                         LogNL();
-                        Log("UBX Msg found -- ", Format::ToHex(pUbx_.GetClassId()));
+                        Log("UBX Msg found -- ", ToHex(pUbx_.GetClassId()));
 
                         if (UbxMsgAckAck::MessageValid(pUbx_))
                         {
                             UbxMsgAckAck msg(pUbx_);
-                            Log("ACK from ", Format::ToHex(msg.GetAckClassId()));
+                            Log("ACK from ", ToHex(msg.GetAckClassId()));
                         }
                         else if (UbxMsgAckNak::MessageValid(pUbx_))
                         {
                             UbxMsgAckNak msg(pUbx_);
-                            Log("NAK from ", Format::ToHex(msg.GetNakClassId()));
+                            Log("NAK from ", ToHex(msg.GetNakClassId()));
                         }
                         else
                         {
-                            Log("Unknown message: ", Format::ToHex(pUbx_.GetClassId()));
+                            Log("Unknown message: ", ToHex(pUbx_.GetClassId()));
                             LogBlob(dat.data(), dat.size());
                         }
                         LogNL();

@@ -1,42 +1,15 @@
-#ifndef __BITMAP_H__
-#define __BITMAP_H__
+#pragma once
+
+#include <cstdint>
 
 
 class BitField
 {
 public:
-    BitField()
-    {
-        Attach(NULL, 0);
-    }
-    
-    BitField(uint8_t *buf, uint8_t bufSize)
-    {
-        Attach(buf, bufSize);
-    }
-    
-    void Attach(uint8_t *buf, uint8_t bufSize)
-    {
-        buf_     = buf;
-        bufSize_ = bufSize;
-    }
-    
-    uint8_t SetBitAt(uint16_t bitIdx, uint8_t bitVal)
-    {
-        uint8_t retVal = 0;
-        
-        uint8_t byteIdx;
-        uint8_t bitInByte;
-        
-        if (GetIndexesIfInRange(bitIdx, byteIdx, bitInByte))
-        {
-            retVal = 1;
-            
-            buf_[byteIdx] = (buf_[byteIdx] & ~(1 << bitInByte)) | (bitVal << bitInByte);
-        }
-        
-        return retVal;
-    }
+    BitField();
+    BitField(uint8_t *buf, uint8_t bufSize);
+    void Attach(uint8_t *buf, uint8_t bufSize);
+    uint8_t SetBitAt(uint16_t bitIdx, uint8_t bitVal);
     
     template <typename T>
     uint8_t SetBitRangeAt(uint16_t bitIdx, T bitList, uint8_t bitCount)
@@ -56,24 +29,7 @@ public:
         return retVal;
     }
 
-    uint8_t GetBitAt(uint16_t bitIdx, uint8_t &bitVal) const
-    {
-        uint8_t retVal = 0;
-        
-        bitVal = 0;
-        
-        uint8_t byteIdx;
-        uint8_t bitInByte;
-        
-        if (GetIndexesIfInRange(bitIdx, byteIdx, bitInByte))
-        {
-            retVal = 1;
-            
-            bitVal = (buf_[byteIdx] & (1 << bitInByte)) ? 1 : 0;
-        }
-
-        return retVal;
-    }
+    uint8_t GetBitAt(uint16_t bitIdx, uint8_t &bitVal) const;
     
     template <typename T>
     uint8_t GetBitRangeAt(uint16_t bitIdx, T &bitList, uint8_t bitCount) const
@@ -99,47 +55,13 @@ public:
         return retVal;
     }
     
-    uint8_t Size() const
-    {
-        return bufSize_ * 8;
-    }
-    
-    uint8_t GetBuf(uint8_t *&buf, uint8_t &bufSize)
-    {
-        uint8_t retVal = 0;
-        
-        if (buf_)
-        {
-            retVal = 1;
-            
-            buf     = buf_;
-            bufSize = bufSize_;
-        }
-        
-        return retVal;
-    }
+    uint8_t Size() const;
+    uint8_t GetBuf(uint8_t *&buf, uint8_t &bufSize);
     
 
 private:
 
-    uint8_t GetIndexesIfInRange(uint16_t bitIdx, uint8_t &byteIdx, uint8_t &bitInByte) const
-    {
-        uint8_t retVal = 0;
-        
-        if (buf_)
-        {
-            byteIdx = bitIdx / 8;
-            
-            if (byteIdx < bufSize_)
-            {
-                retVal = 1;
-                
-                bitInByte = 7 - (bitIdx - (byteIdx * 8));   // from rhs
-            }
-        }
-        
-        return retVal;
-    }
+    uint8_t GetIndexesIfInRange(uint16_t bitIdx, uint8_t &byteIdx, uint8_t &bitInByte) const;
 
     uint8_t *buf_;
     uint8_t  bufSize_;
@@ -162,9 +84,6 @@ public:
 private:
     uint8_t buf_[BUF_SIZE] = { 0 };
 };
-
-
-#endif  // __BITMAP_H__
 
 
 

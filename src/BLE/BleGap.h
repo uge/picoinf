@@ -2,6 +2,7 @@
 
 #include "BleAdvertisingDataFormatter.h"
 #include "BleService.h"
+#include "Evm.h"
 #include "Log.h"
 #include "Shell.h"
 #include "Timeline.h"

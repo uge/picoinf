@@ -1,16 +1,20 @@
 #include "Container.h"
 #include "Evm.h"
 #include "KStats.h"
+#include "Log.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
+#include "Utl.h"
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 #include "task.h"
 
 #include <map>
 using namespace std;
 
 #include "StrictMode.h"
+
 
 
 // We're feeding a 32-bit microsecond value to the FreeRTOS stats
@@ -38,7 +42,7 @@ static string ToString(eTaskState state)
 // CPU Time Stats
 //
 // Each captured frame consists of the CPU time for all tasks in that
-// period, for that periodd.
+// period, for that period.
 /////////////////////////////////////////////////////////////////////
 
 struct KTaskCpuTime
@@ -56,20 +60,23 @@ struct KTaskCpuTimeFrame
 
     void Print() const
     {
-        Log("Time at capture: ", TimestampFromUs(timeAtCapture));
-        Log("Duration       : ", TimestampFromUs(duration));
+        Log("Time at capture: ", Time::GetNotionalTimeAtSystemUs(timeAtCapture));
+        Log("Duration       : ", Time::MakeDurationFromUs(duration));
 
         for (const auto &[name, taskCpuTime]: taskCpuTimeList)
         {
-            string nameFormatted = Format::Str("%-15s", taskCpuTime.name.c_str());
+            string nameFormatted = FormatStr("%-15s", taskCpuTime.name.c_str());
 
-            Log("  ", nameFormatted, " : ", Commas(taskCpuTime.runDuration), " of total ", Commas(taskCpuTime.totalRunDuration));
+            Log("  ", nameFormatted, " : ",
+                StrUtl::PadLeft(Commas(taskCpuTime.runDuration), ' ', 9),
+                " of total ",
+                StrUtl::PadLeft(Commas(taskCpuTime.totalRunDuration), ' ', 15));
         }
     }
 };
 
 static CircularBuffer<KTaskCpuTimeFrame> frameList_;
-static TimedEventHandlerDelegate ted_;
+static Timer timer_;
 
 
 static void CaptureStats()
@@ -126,8 +133,6 @@ static void CaptureStats()
     }
 
     frameList_.PushBack(frame);
-
-    // frame.Print();
 }
 
 static void DumpStats()
@@ -152,20 +157,16 @@ void KStats::Init()
 {
     Timeline::Global().Event("KStats::Init");
 
-    static const uint8_t HISTORY_COUNT = 2;
+    static const uint8_t HISTORY_COUNT = 5;
     frameList_.SetCapacity(HISTORY_COUNT);
 
-    // commenting out because system crashes when enabled.
-    // there is something wrong fundamentally, and this code was put in during
-    // the time tracking it down. however, at the moment it's causing
-    // otherwise "working" code to bomb out, so put it away until you want
-    // to dig in again.
-
-    // static const uint64_t STATS_INTERVAL_MS = 5000;
-    ted_.SetCallback([]{
+    static const uint64_t STATS_INTERVAL_MS = 5'000;
+    timer_.SetCallback([]{
         CaptureStats();
     });
-    // ted_.RegisterForTimedEventIntervalRigid(STATS_INTERVAL_MS);
+
+    timer_.SetSnapToMs(STATS_INTERVAL_MS);
+    timer_.TimeoutIntervalMs(STATS_INTERVAL_MS);
 }
 
 void KStats::SetupShell()
@@ -236,3 +237,23 @@ vector<KStats::KTaskStats> KStats::GetTaskStats()
     return retVal;
 }
 
+
+void KStats::KTaskStats::Print() const
+{
+    Log("Task");
+    Log("-----------------------------------------");
+    Log("name            : ", name);
+    Log("number          : ", number);
+    Log("state           : ", state);
+    Log("currentPriority : ", currentPriority);
+    Log("basePriority    : ", basePriority);
+    Log("totalRunDuration: ", Commas(totalRunDuration));
+    Log("stackEnd        : ", ToHex((uint32_t)stackEnd));
+    Log("stackTop        : ", ToHex((uint32_t)stackTop));
+    Log("stackBase       : ", ToHex((uint32_t)stackBase));
+    Log("stackSize       : ", Commas((uint32_t)stackEnd - (uint32_t)stackBase));
+    Log("  stackUsed     : ", Commas((uint32_t)stackEnd - (uint32_t)stackTop));
+    Log("  stackRem      : ", Commas((uint32_t)stackTop - (uint32_t)stackBase));
+    Log("  stackUsedMax  : ", Commas((uint32_t)stackEnd - (uint32_t)stackBase - (uint32_t)(highWaterMark)));
+    Log("  stackRemMin   : ", Commas((uint32_t)(highWaterMark)));
+}

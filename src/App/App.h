@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ADCInternal.h"
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
 #include "Ble.h"
 #endif
 #include "Clock.h"
@@ -9,6 +9,9 @@
 #include "FilesystemLittleFS.h"
 #include "Flashable.h"
 #include "I2C.h"
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
+#include "JerryScriptIntegration.h"
+#endif
 #include "JSONMsgRouter.h"
 #include "KMessagePassing.h"
 #include "KStats.h"
@@ -18,10 +21,13 @@
 #include "Pin.h"
 #include "PWM.h"
 #include "PeripheralControl.h"
+#include "Sensor.h"
 #include "Shell.h"
+#include "TimeClass.h"
 #include "Timeline.h"
 #include "USB.h"
 #include "Utl.h"
+#include "UART.h"
 #include "VersionStr.h"
 #include "WDT.h"
 #include "Work.h"
@@ -39,10 +45,10 @@ public:
         // stack
         static KTask<2000> task("Application", [&]{
             // Init in specific sequence
-            TimelineInit();
+            Timeline::Init();
             LogInit();
             UartInit();
-            PALInit();
+            PlatformAbstractionLayer::Init();
             LogNL();
             FilesystemLittleFS::Init();
             LogNL();
@@ -51,38 +57,46 @@ public:
             // Init everything else
             ADC::Init();
             Clock::Init();
-            EvmInit();
-            I2C::Init();
+            Evm::Init();
+            I2C::Init0();
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
+            JerryScriptIntegration::Init();
+#endif
             JSONMsgRouter::Init();
             KStats::Init();
 
             // Shell
             ADC::SetupShell();
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
             Ble::SetupShell();
 #endif
             Clock::SetupShell();
-            EvmSetupShell();
+            Evm::SetupShell();
             FilesystemLittleFS::SetupShell();
-            I2C::SetupShell();
+            I2C::SetupShell0();
+#if PICO_INF_ENABLE_JERRYSCRIPT == 1
+            JerryScriptIntegration::SetupShell();
+#endif
             JSONMsgRouter::SetupShell();
             KStats::SetupShell();
             LogSetupShell();
-            PALSetupShell();
-            PinSetupShell();
+            PlatformAbstractionLayer::SetupShell();
+            Pin::SetupShell();
             PWM::SetupShell();
             PeripheralControl::SetupShell();
+            Sensor::SetupShell();
             Shell::Init();
-            TimelineSetupShell();
+            Time::SetupShell();
+            Timeline::SetupShell();
             UartSetupShell();
             USB::SetupShell();
             UtlSetupShell();
             Watchdog::SetupShell();
-            WorkSetupShell();
+            Work::SetupShell();
 
             // JSON
             JSONMsgRouter::SetupJSON();
-            PALSetupJSON();
+            PlatformAbstractionLayer::SetupJSON();
             Shell::SetupJSON();
 
             // let app instantiate and potentially configure
@@ -93,7 +107,7 @@ public:
             USB::Init();
             LogNL();
 
-#if PICO_INF_ENABLE_WIRELESS == 1
+#if PICO_INF_ENABLE_BLE == 1
             Ble::Init();
             LogNL();
 #endif

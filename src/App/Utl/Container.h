@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vector>
-using namespace std;
-
 #include "Log.h"
+
+#include <cstdint>
+#include <vector>
 
 
 template <typename T>
@@ -28,7 +28,7 @@ public:
 
         Clear();
 
-        list_.reserve(capacity_);
+        list_.resize(capacity_);
     }
 
     uint32_t GetCapacity()
@@ -162,7 +162,7 @@ public:
     }
 
 private:
-    vector<T> list_;
+    std::vector<T> list_;
 
     uint32_t capacity_;
     uint32_t size_ = 0;

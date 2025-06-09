@@ -1,13 +1,13 @@
 #pragma once
 
-#include <stdint.h>
+#include "KTime.h"
+#include "PAL.h"
 
-#include "FreeRTOS.h"
+#include "FreeRTOS.Wrapped.h"
 #include "queue.h"
 #include "semphr.h"
 
-#include "KTime.h"
-#include "PAL.h"
+#include <cstdint>
 
 
 // Thoughts on ISRs and message passing

@@ -2,6 +2,10 @@
 
 #include "tusb.h"
 
+using namespace std;
+
+#include "StrictMode.h"
+
 
 /////////////////////////////////////////////////////////////////////
 // String Descriptors
@@ -45,7 +49,8 @@ uint16_t const *USB::tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
             byteList.resize(2 + (2 * str.length()));
 
-            for (int i = 0; auto c : str)
+            // for (int i = 0; auto c : str)
+            for (size_t i = 0; auto c : str)
             {
                 byteList[2 + (i * 2)] = c;
 
@@ -66,7 +71,7 @@ uint16_t const *USB::tud_descriptor_string_cb(uint8_t index, uint16_t langid)
 
     if (retVal)
     {
-        byteList[0] = byteList.size();
+        byteList[0] = (uint8_t)byteList.size();
         byteList[1] = TUSB_DESC_STRING;
     }
 

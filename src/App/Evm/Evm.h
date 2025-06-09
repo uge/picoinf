@@ -2,7 +2,8 @@
 
 #include "PAL.h"
 #include "Log.h"
-#include "TimedEventHandler.h"
+#include "Timer.h"
+#include "TimerSequence.h"
 #include "Pin.h"
 #include "HeapAllocators.h"
 #include "KMessagePassing.h"
@@ -11,13 +12,8 @@
 
 #include <cstdint>
 #include <set>
-#include <list>
 #include <functional>
-using namespace std;
 
-
-extern void EvmInit();
-extern void EvmSetupShell();
 
 class Evm
 {
@@ -32,13 +28,14 @@ public:
 public:
     static void DisableAutoLogAsync();
     static void MainLoop();
-    static void MainLoopRunFor(uint64_t durationMs);
+    static void ExitMainLoop();
+    static uint8_t GetStackDepth();
 
 private:
     inline static bool autoLogAsync_ = true;
-    inline static bool mainLoopKeepRunning_ = true;
+    inline static uint8_t mainLoopStackDepth_ = 0;
 
-    static uint64_t GetTimeToNextTimedEvent();
+    static uint64_t GetDurationUsToNextTimerTimeout(uint8_t expectedStackDepth);
 
 
     //////////////////////////////////////////////////////////////////////
@@ -46,7 +43,7 @@ private:
     //////////////////////////////////////////////////////////////////////
 
 public:
-    using FnWork = function<void()>;
+    using FnWork = std::function<void()>;
 private:
     struct WorkData
     {
@@ -79,89 +76,59 @@ private:
     //////////////////////////////////////////////////////////////////////
 
 public:
-    static bool RegisterTimedEventHandler(TimedEventHandler *teh, uint64_t timeout, uint64_t timeNow = PAL.Micros());
-    static void DeRegisterTimedEventHandler(TimedEventHandler *teh);
-    static bool IsRegisteredTimedEventHandler(TimedEventHandler *teh);
-    static void DebugTimedEventHandler(const char *str, TimedEventHandler *obj = nullptr);
-    static void TestTimedEventHandler();
+
+    static void RegisterTimer(Timer *timer);
+    static void DeRegisterTimer(Timer *timer);
+    static bool IsTimerRegistered(const Timer *timer);
+    static void DebugTimer(const char *str = "");
+    static void TestTimer();
 
 private:
-    static uint32_t ServiceTimedEventHandlers();
+
+    static uint32_t ServiceTimers();
 
 
 private:
-    class CmpTimedEventHandler
+    class CmpTimer
     {
     public:
         // never let different objects compare equivalent.
         // meaning, if both set to expire at the same time, then
         // fine, but decide one is "less" than the other by looking
-        // at the pointer value.  otherwise the insert/delete api
+        // at seqno value.  otherwise the insert/delete api
         // for multiset winds up operating on groups at a time
         // when all I want is individual object access.
-        bool operator()(TimedEventHandler * const &teh1,
-                        TimedEventHandler * const &teh2) const
+        bool operator()(Timer * const &t1, Timer * const &t2) const
         {
             bool retVal;
 
-            if (teh1 == teh2)
+            if (t1 == t2)
             {
                 retVal = false;
             }
             else
             {
-                // get time in 64-bit signed.  we subtract the time queued from this
-                // value, which will give the time passed since then, as a positive
-                // number.
-                uint64_t timeNow = PAL.Micros();
-
-                uint64_t timeSinceSchedule1 = timeNow - teh1->timeQueued_;
-                uint64_t timeSinceSchedule2 = timeNow - teh2->timeQueued_;
-
-                // do time remaining calculations in 64-bit signed space to allow
-                // for overdue timers to be a negative value.  This allows for
-                // very large timeout periods, and ensures the possible difference
-                // to fit fully within the negative and positive space in the signed
-                // int.
-                int64_t timeRemaining1 = (int64_t)teh1->timeout_ - timeSinceSchedule1;
-                int64_t timeRemaining2 = (int64_t)teh2->timeout_ - timeSinceSchedule2;
-
-                if (timeRemaining1 < timeRemaining2)
+                if (t1->GetTimeoutAtUs() < t2->GetTimeoutAtUs())
                 {
                     retVal = true;
                 }
-                else if (timeRemaining1 == timeRemaining2)
+                else if (t1->GetTimeoutAtUs() == t2->GetTimeoutAtUs())
                 {
                     // in a scenario where two timers are both set to go off at the
                     // same time, we want the one which was scheduled first to be
                     // fired first.
                     // This is helpful in a scenario where there are zero-length
                     // timers, we don't want one to starve out another.
-                    if (timeSinceSchedule1 < timeSinceSchedule2)
-                    {
-                        retVal = false;
-                    }
-                    else if (timeSinceSchedule1 == timeSinceSchedule2)
-                    {
-                        // ok, so they were scheduled at the same time, and have
-                        // the same duration remaining.
-                        // we know they're not the same object, so let pointer
-                        // value decide
-                        if (teh1 < teh2)
-                        {
-                            retVal = true;
-                        }
-                        else
-                        {
-                            retVal = false;
-                        }
-                    }
-                    else    // timeSinceSchedule1 > timeSinceSchedule2
+                    if (t1->GetSeqNo() < t2->GetSeqNo())
                     {
                         retVal = true;
                     }
+                    else
+                    {
+                        retVal = false;
+                    }
                 }
-                else    // expiryOne > expiryTwo
+                else    // t1->GetTimeoutAtUs() > t2->GetTimeoutAtUs()
                 {
                     retVal = false;
                 }
@@ -170,12 +137,15 @@ private:
             return retVal;
         }
     };
-    static multiset<TimedEventHandler *, CmpTimedEventHandler> timedEventHandlerList_;
+    static std::multiset<Timer *, CmpTimer> timerList_;
 
 
     //////////////////////////////////////////////////////////////////////
     // Observability
     //////////////////////////////////////////////////////////////////////
+
+    static void SetTimelineVerbose(bool tf);
+    
     
     static const uint32_t STATS_INTERVAL_MS = 5'000;
     static const uint32_t STATS_HISTORY_COUNT = 2;
@@ -205,16 +175,16 @@ private:
 
     static Stats stats_;
     static CircularBuffer<StatsSnapshot> statsHistory_;
-    static TimedEventHandlerDelegate tedStats_;
+    static Timer timerStats_;
 
     static void DumpStats();
     static Stats GetStatsDelta(Stats &s1, Stats &s2);
     static void DumpStats(Stats &stats, uint32_t duration);
     static const Stats &GetStats();
 
-    static TimedEventHandlerDelegate tedWatchdog_;
+    static Timer timerWatchdog_;
 
 
-    static TimedEventHandlerDelegate tedTest_;
-    static TimedEventHandlerDelegate tedTest2_;
+    static Timer timerTest1_;
+    static Timer timerTest2_;
 };

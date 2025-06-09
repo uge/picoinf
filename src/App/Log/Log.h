@@ -5,7 +5,6 @@
 #include <array>
 #include <string>
 #include <vector>
-using namespace std;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +75,8 @@ extern void Log(uint8_t val);
 // Signed Ints
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void LogNNL(int64_t val);
+extern void Log(int64_t val);
 extern void LogNNL(int val);
 extern void Log(int val);
 extern void LogNNL(int32_t val);
@@ -127,7 +128,7 @@ void LogHex(const uint8_t *buf, T bufLen, bool withSpaces = true)
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-void LogNNL(const vector<T> &valList)
+void LogNNL(const std::vector<T> &valList)
 {
     LogNNL("[");
     const char *sep = "";
@@ -142,13 +143,13 @@ void LogNNL(const vector<T> &valList)
 }
 
 template <typename T>
-void Log(const vector<T> &valList)
+void Log(const std::vector<T> &valList)
 {
     LogNNL(valList);
     LogNL();
 }
 
-inline void LogNNL(const vector<uint8_t> &valList)
+inline void LogNNL(const std::vector<uint8_t> &valList)
 {
     const char *hexList = "0123456789ABCDEF";
 
@@ -170,14 +171,14 @@ inline void LogNNL(const vector<uint8_t> &valList)
     LogNNL("]");
 }
 
-inline void Log(const vector<uint8_t> &valList)
+inline void Log(const std::vector<uint8_t> &valList)
 {
     LogNNL(valList);
     LogNL();
 }
 
 template <typename T, size_t S>
-void LogNNL(const array<T, S> &valList)
+void LogNNL(const std::array<T, S> &valList)
 {
     LogNNL("[");
     const char *sep = "";
@@ -192,7 +193,7 @@ void LogNNL(const array<T, S> &valList)
 }
 
 template <typename T, size_t S>
-void Log(const array<T, S> &valList)
+void Log(const std::array<T, S> &valList)
 {
     LogNNL(valList);
     LogNL();
@@ -258,7 +259,7 @@ void LogX(T &&val, uint8_t count)
 extern uint8_t LogBlobRow(uint16_t byteCount, uint8_t *buf, uint16_t bufSize, uint8_t showBin = 0, uint8_t showHex = 1);
 extern void LogBlob(uint8_t *buf, uint16_t bufSize, uint8_t showBin = 0, uint8_t showHex = 1);
 
-extern void LogBlob(const vector<uint8_t> &byteList, uint8_t showBin = 0, uint8_t showHex = 1);
+extern void LogBlob(const std::vector<uint8_t> &byteList, uint8_t showBin = 0, uint8_t showHex = 1);
 
 template <typename T, typename U>
 void LogBlob(T *buf, U bufSize, uint8_t showBin = 0, uint8_t showHex = 1)

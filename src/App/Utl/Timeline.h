@@ -1,19 +1,11 @@
 #pragma once
 
 #include "ClassTypes.h"
-#include "PAL.h"
-#include "Log.h"
-#include "Shell.h"
-#include "Utl.h"
 #include "Container.h"
 
-#include <stdlib.h>
-#include <string>
-using namespace std;
+#include <cstdint>
+#include <functional>
 
-
-extern void TimelineInit();
-extern void TimelineSetupShell();
 
 class Timeline
 : private NonCopyable
@@ -26,16 +18,19 @@ public:
     void KeepOldest();
     void KeepNewest();
     uint64_t Event(const char *name);
+    uint64_t GetTimeAtEvent(const char *name);
     void Report(const char *title = nullptr);
     void ReportNow(const char *title = nullptr);
     void Reset();
 
-    void Ready(bool ready);
-    bool Ready();
+    static uint64_t Measure(std::function<void(Timeline &t)> fn, const char *title = nullptr);
 
     static void EnableCcGlobal();
     static void DisableCcGlobal();
     static Timeline &Global();
+
+    static void Init();
+    static void SetupShell();
 
 
 private:
@@ -52,8 +47,6 @@ private:
     bool currentlyReporting_ = false;
 
     uint32_t firstTimeUs_ = 0;
-
-    bool isReady_ = false;
 
     bool iAmTheGlobal_ = false;
 

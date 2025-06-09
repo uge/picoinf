@@ -12,6 +12,12 @@ static const uint8_t ADS1115_REG_ADDR_CONVERSION = 0x00;
 
 public:
 
+    ADC_ADS1115()
+    : i2c_(ADS1115_DEVICE_ID)
+    {
+        // nothing to do
+    }
+
     struct Config
     {
         uint8_t opStatus = 0;
@@ -50,20 +56,20 @@ public:
     {
         Log(str);
 
-        Log("opStatus: ", cfg.opStatus, ", ", Format::ToBin(cfg.opStatus, false, 1));
-        Log("mux     : ", cfg.mux, ", ", Format::ToBin(cfg.mux, false, 3));
-        Log("pga     : ", cfg.pga, ", ", Format::ToBin(cfg.pga, false, 3));
-        Log("mode    : ", cfg.mode, ", ", Format::ToBin(cfg.mode, false, 1));
-        Log("dr      : ", cfg.dr, ", ", Format::ToBin(cfg.dr, false, 3));
-        Log("compMode: ", cfg.compMode, ", ", Format::ToBin(cfg.compMode, false, 1));
-        Log("compPol : ", cfg.compPol, ", ", Format::ToBin(cfg.compPol, false, 1));
-        Log("compLat : ", cfg.compLat, ", ", Format::ToBin(cfg.compLat, false, 1));
-        Log("compQue : ", cfg.compQue, ", ", Format::ToBin(cfg.compQue, false, 2));
+        Log("opStatus: ", cfg.opStatus, ", ", ToBin(cfg.opStatus, false, 1));
+        Log("mux     : ", cfg.mux,      ", ", ToBin(cfg.mux,      false, 3));
+        Log("pga     : ", cfg.pga,      ", ", ToBin(cfg.pga,      false, 3));
+        Log("mode    : ", cfg.mode,     ", ", ToBin(cfg.mode,     false, 1));
+        Log("dr      : ", cfg.dr,       ", ", ToBin(cfg.dr,       false, 3));
+        Log("compMode: ", cfg.compMode, ", ", ToBin(cfg.compMode, false, 1));
+        Log("compPol : ", cfg.compPol,  ", ", ToBin(cfg.compPol,  false, 1));
+        Log("compLat : ", cfg.compLat,  ", ", ToBin(cfg.compLat,  false, 1));
+        Log("compQue : ", cfg.compQue,  ", ", ToBin(cfg.compQue,  false, 2));
     }
 
     Config GetAdcConfig()
     {
-        uint16_t retVal = i2c_.ReadReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONFIG);
+        uint16_t retVal = i2c_.ReadReg16(ADS1115_REG_ADDR_CONFIG);
 
         // convert to config
         Config cfg = {
@@ -107,7 +113,7 @@ public:
         val |= BitsPut(cfg.compLat,   2,  2);
         val |= BitsPut(cfg.compQue,   1,  0);
 
-        i2c_.WriteReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONFIG, val);
+        i2c_.WriteReg16(ADS1115_REG_ADDR_CONFIG, val);
 
         return cfg;
     }
@@ -118,7 +124,7 @@ public:
 
         ConfigureAdc();
 
-        uint16_t val = i2c_.ReadReg16(ADS1115_DEVICE_ID, ADS1115_REG_ADDR_CONVERSION);
+        uint16_t val = i2c_.ReadReg16(ADS1115_REG_ADDR_CONVERSION);
 
         static const uint16_t ADC_MAX = 0x7FFF;
         double adcPct = (double)val / ADC_MAX;

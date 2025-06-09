@@ -1,7 +1,14 @@
-#include "Timeline.h"
-#include "Shell.h"
 #include "PAL.h"
+#include "Shell.h"
+#include "TimeClass.h"
+#include "Timeline.h"
+#include "Utl.h"
 #include "Work.h"
+
+#include <cstring>
+using namespace std;
+
+#include "StrictMode.h"
 
 
 Timeline::Timeline(const char *str)
@@ -12,6 +19,8 @@ Timeline::Timeline(const char *str)
     {
         iAmTheGlobal_ = true;
     }
+
+    Reset();
 }
 
 void Timeline::SetMaxEvents(uint32_t maxEvents)
@@ -84,6 +93,26 @@ uint64_t Timeline::Event(const char *name)
     }
 
     return timeUs;
+}
+
+// Returns the time at the most recent matching event label, 0 if not found
+uint64_t Timeline::GetTimeAtEvent(const char *name)
+{
+    uint64_t retVal = 0;
+
+    for (int i = (int)eventList_.Size() - 1; i >= 0; --i)
+    {
+        EventData &ed = eventList_[(uint32_t)i];
+
+        if (strcmp(name, ed.name) == 0)
+        {
+            retVal = ed.timeUs;
+
+            break;
+        }
+    }
+
+    return retVal;
 }
 
 void Timeline::Report(const char *title)
@@ -192,10 +221,17 @@ void Timeline::ReportNow(const char *title)
             fnPrint("%%%us: ",     len,   evtThis.name);
             fnPrint("%%%us ms, ",  lenMs, CommasStatic(diffMs).c_str());
             fnPrint("%%%us us - ", lenUs, CommasStatic(diffUs).c_str());
-            fnPrint("%%12s\n",     12,    TimestampFromUs(evtThis.timeUs));
+            fnPrint("%%12s\n",     12,    Time::GetNotionalTimeAtSystemUs(evtThis.timeUs));
 
             ++idxLast;
             ++idxThis;
+        }
+
+        if (eventList_.Size() >= 2)
+        {
+            uint64_t totalUs = eventList_[eventList_.Size() - 1].timeUs - eventList_[0].timeUs;
+
+            Log("[Total Duration: ", Time::MakeDurationFromUs(totalUs), "]");
         }
     }
     LogNL();
@@ -209,17 +245,28 @@ void Timeline::Reset()
     
     eventList_.Clear();
     eventsLost_ = 0;
+
+    // record a reset event, but don't CC to the global.
+    // accomplish this by pretending to be the global for
+    // a short while, even when you actually are.
+    bool iAmTheGlobalCache = iAmTheGlobal_;
+    iAmTheGlobal_ = true;
+    Event("[Reset]");
+    iAmTheGlobal_ = iAmTheGlobalCache;
 }
 
-void Timeline::Ready(bool ready)
+uint64_t Timeline::Measure(function<void(Timeline &t)> fn, const char *title)
 {
-    isReady_ = ready;
+    Timeline t;
+
+    uint64_t timeStart = t.Event("Start");
+    fn(t);
+    uint64_t timeEnd = t.Event("End");
+    t.ReportNow(title);
+
+    return timeEnd - timeStart;
 }
 
-bool Timeline::Ready()
-{
-    return isReady_;
-}
 
 void Timeline::EnableCcGlobal()
 {
@@ -243,17 +290,18 @@ Timeline &Timeline::Global()
 // Initilization
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimelineInit()
+void Timeline::Init()
 {
     Timeline::EnableCcGlobal();
     Timeline::Global().SetMaxEvents(80);
+    Timeline::Global().Reset();
 
-    Timeline::Global().Event("TimelineInit");
+    Timeline::Global().Event("Timeline::Init");
 }
 
-void TimelineSetupShell()
+void Timeline::SetupShell()
 {
-    Timeline::Global().Event("TimelineSetupShell");
+    Timeline::Global().Event("Timeline::SetupShell");
 
     Shell::AddCommand("t.max", [&](vector<string> argList){
         if (argList.empty())
@@ -262,7 +310,7 @@ void TimelineSetupShell()
         }
         else
         {
-            Timeline::Global().SetMaxEvents(atoi(argList[0].c_str()));
+            Timeline::Global().SetMaxEvents((uint32_t)atoi(argList[0].c_str()));
         }
     }, { .argCount = -1, .help = "Global Timeline See/Set max events" });
 
