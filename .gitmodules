@@ -9,7 +9,7 @@
 	url = git@github.com:littlefs-project/littlefs.git
 [submodule "ext/WsprEncoded"]
 	path = ext/WsprEncoded
-	url = git@github.com:traquito/WsprEncoded.git
+	url = git@github.com:uge/WsprEncoded.git
 [submodule "ext/jerryscript"]
 	path = ext/jerryscript
 	url = git@github.com:jerryscript-project/jerryscript.git
